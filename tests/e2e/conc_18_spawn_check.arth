@@ -1,0 +1,476 @@
+package test;
+
+// Test: C18 - Cross-Thread Spawn Check
+//
+// This test verifies that Sendable checking is enforced at compile-time for:
+// - Executor.spawnWithArg arguments
+// - Actor.send message arguments
+// - MpmcChan.send value arguments
+//
+// Positive tests (runtime): Verify Sendable types are accepted
+// Negative tests (compile-time): See typeck unit tests in src/compiler/typeck/tests.rs
+
+// ============================================
+// Test Structs: Various Sendable types
+// ============================================
+
+// Simple struct with primitives - auto Sendable
+struct Point {
+    Int x;
+    Int y;
+}
+
+// Nested struct - transitively Sendable
+struct Rectangle {
+    Point topLeft;
+    Point bottomRight;
+}
+
+// Struct with multiple primitive types - auto Sendable
+struct UserData {
+    Int id;
+    String name;
+    Bool active;
+}
+
+// Enum with primitive payloads - auto Sendable
+enum Result {
+    Ok(Int),
+    Err(String)
+}
+
+// Enum with struct payload - auto Sendable (because Point is Sendable)
+enum Message {
+    Empty,
+    Data(Point),
+    Text(String)
+}
+
+// Empty struct - auto Sendable
+struct EmptyStruct {
+}
+
+// ============================================
+// Non-Sendable types (for negative tests in typeck)
+// ============================================
+
+@notSendable
+struct UnsafeHandle {
+    Int rawPointer;
+}
+
+@notSendable
+@notShareable
+struct ThreadLocalData {
+    Int threadId;
+    String context;
+}
+
+// Transitively non-Sendable (contains @notSendable field)
+struct ContainsUnsafe {
+    Int id;
+    UnsafeHandle handle;
+}
+
+// ============================================
+// Helper modules
+// ============================================
+
+module PointFns {
+    public Point new(Int x, Int y) {
+        return Point { x: x, y: y };
+    }
+}
+
+module RectangleFns {
+    public Rectangle new(Point tl, Point br) {
+        return Rectangle { topLeft: tl, bottomRight: br };
+    }
+}
+
+module UserDataFns {
+    public UserData new(Int id, String name, Bool active) {
+        return UserData { id: id, name: name, active: active };
+    }
+}
+
+module UnsafeHandleFns {
+    public UnsafeHandle new(Int ptr) {
+        return UnsafeHandle { rawPointer: ptr };
+    }
+}
+
+module ContainsUnsafeFns {
+    public ContainsUnsafe new(Int id, UnsafeHandle h) {
+        return ContainsUnsafe { id: id, handle: h };
+    }
+}
+
+// ============================================
+// Main test module
+// ============================================
+
+module Main {
+    public static void main() {
+        println("=== C18: Cross-Thread Spawn Check ===");
+
+        // Initialize thread pool
+        println("Initializing pool with 4 threads...");
+        Int initResult = Executor.init(4);
+        println("Pool initialized: " + initResult);
+
+        Int resetResult = Executor.resetStats();
+
+        Int totalTests = 0;
+        Int passedTests = 0;
+
+        // ========================================
+        // Test 1: Spawn with primitive args (Int)
+        // Int is always Sendable
+        // ========================================
+        println("=== Test 1: Spawn with Primitive Args ===");
+        totalTests = totalTests + 1;
+
+        // Work type 2 = fibonacci, arg = n
+        Int t1 = Executor.spawnWithArg(2, 10);  // fib(10) = 55
+        Int r1 = Executor.join(t1);
+
+        Int test1Pass = 0;
+        if (r1 == 55) {
+            println("Test 1 (spawn with Int): PASS");
+            test1Pass = 1;
+            passedTests = passedTests + 1;
+        } else {
+            println("Test 1 FAIL: expected 55, got " + r1);
+        }
+
+        // ========================================
+        // Test 2: Actor.send with Int value
+        // Int is always Sendable
+        // ========================================
+        println("=== Test 2: Actor Send with Int ===");
+        totalTests = totalTests + 1;
+
+        Int actor1 = Actor.create(10);
+        Int s1 = Actor.send(actor1, 42);
+        Int s2 = Actor.send(actor1, 100);
+        Int recv1 = Actor.recv(actor1);
+        Int recv2 = Actor.recv(actor1);
+
+        Int test2Pass = 0;
+        if (recv1 == 42) {
+            if (recv2 == 100) {
+                println("Test 2 (Actor.send with Int): PASS");
+                test2Pass = 1;
+                passedTests = passedTests + 1;
+            }
+        }
+        if (test2Pass == 0) {
+            println("Test 2 FAIL: expected 42, 100");
+        }
+
+        // ========================================
+        // Test 3: MpmcChan.send with Int value
+        // Int is always Sendable
+        // ========================================
+        println("=== Test 3: MpmcChan Send with Int ===");
+        totalTests = totalTests + 1;
+
+        Int ch1 = MpmcChan.create(10);
+        Int cs1 = MpmcChan.send(ch1, 123);
+        Int cs2 = MpmcChan.send(ch1, 456);
+        Int cr1 = MpmcChan.recv(ch1);
+        Int cr2 = MpmcChan.recv(ch1);
+
+        Int test3Pass = 0;
+        if (cr1 == 123) {
+            if (cr2 == 456) {
+                println("Test 3 (MpmcChan.send with Int): PASS");
+                test3Pass = 1;
+                passedTests = passedTests + 1;
+            }
+        }
+        if (test3Pass == 0) {
+            println("Test 3 FAIL: expected 123, 456");
+        }
+
+        MpmcChan.close(ch1);
+
+        // ========================================
+        // Test 4: Sendable struct values via Actor
+        // Point is auto-Sendable
+        // ========================================
+        println("=== Test 4: Sendable Struct via Actor ===");
+        totalTests = totalTests + 1;
+
+        Point p = PointFns.new(10, 20);
+        Int actor2 = Actor.create(10);
+
+        // Send field values (Int) which are Sendable
+        Int ps1 = Actor.send(actor2, p.x);
+        Int ps2 = Actor.send(actor2, p.y);
+        Int pr1 = Actor.recv(actor2);
+        Int pr2 = Actor.recv(actor2);
+
+        Int test4Pass = 0;
+        if (pr1 == 10) {
+            if (pr2 == 20) {
+                println("Test 4 (Sendable struct fields via Actor): PASS");
+                test4Pass = 1;
+                passedTests = passedTests + 1;
+            }
+        }
+        if (test4Pass == 0) {
+            println("Test 4 FAIL: expected 10, 20");
+        }
+
+        // ========================================
+        // Test 5: Nested Sendable struct
+        // Rectangle is Sendable because Point is Sendable
+        // ========================================
+        println("=== Test 5: Nested Sendable Struct ===");
+        totalTests = totalTests + 1;
+
+        Point tl = PointFns.new(0, 0);
+        Point br = PointFns.new(100, 50);
+        Rectangle rect = RectangleFns.new(tl, br);
+
+        Int actor3 = Actor.create(10);
+        Int rs1 = Actor.send(actor3, rect.topLeft.x);
+        Int rs2 = Actor.send(actor3, rect.bottomRight.x);
+        Int rr1 = Actor.recv(actor3);
+        Int rr2 = Actor.recv(actor3);
+
+        Int test5Pass = 0;
+        if (rr1 == 0) {
+            if (rr2 == 100) {
+                println("Test 5 (nested Sendable struct): PASS");
+                test5Pass = 1;
+                passedTests = passedTests + 1;
+            }
+        }
+        if (test5Pass == 0) {
+            println("Test 5 FAIL: expected 0, 100");
+        }
+
+        // ========================================
+        // Test 6: Multiple spawns with Sendable args
+        // ========================================
+        println("=== Test 6: Multiple Spawns ===");
+        totalTests = totalTests + 1;
+
+        Int t6a = Executor.spawnWithArg(2, 5);   // fib(5) = 5
+        Int t6b = Executor.spawnWithArg(2, 6);   // fib(6) = 8
+        Int t6c = Executor.spawnWithArg(2, 7);   // fib(7) = 13
+        Int t6d = Executor.spawnWithArg(2, 8);   // fib(8) = 21
+
+        Int r6a = Executor.join(t6a);
+        Int r6b = Executor.join(t6b);
+        Int r6c = Executor.join(t6c);
+        Int r6d = Executor.join(t6d);
+
+        Int fibSum = r6a + r6b + r6c + r6d;
+
+        Int test6Pass = 0;
+        if (fibSum == 47) {  // 5 + 8 + 13 + 21 = 47
+            println("Test 6 (multiple spawns): PASS");
+            test6Pass = 1;
+            passedTests = passedTests + 1;
+        } else {
+            println("Test 6 FAIL: expected 47, got " + fibSum);
+        }
+
+        // ========================================
+        // Test 7: Channel send/recv sequence
+        // ========================================
+        println("=== Test 7: Channel Sequence ===");
+        totalTests = totalTests + 1;
+
+        Int ch2 = MpmcChan.create(5);
+
+        // Send 5 values
+        Int i = 1;
+        while (i <= 5) {
+            Int ss = MpmcChan.send(ch2, i * 10);
+            i = i + 1;
+        }
+
+        // Receive and sum
+        Int sum = 0;
+        Int j = 1;
+        while (j <= 5) {
+            Int v = MpmcChan.recv(ch2);
+            sum = sum + v;
+            j = j + 1;
+        }
+
+        MpmcChan.close(ch2);
+
+        Int test7Pass = 0;
+        if (sum == 150) {  // 10 + 20 + 30 + 40 + 50 = 150
+            println("Test 7 (channel sequence): PASS");
+            test7Pass = 1;
+            passedTests = passedTests + 1;
+        } else {
+            println("Test 7 FAIL: expected 150, got " + sum);
+        }
+
+        // ========================================
+        // Test 8: Actor message sum
+        // ========================================
+        println("=== Test 8: Actor Message Sum ===");
+        totalTests = totalTests + 1;
+
+        Int actor4 = Actor.create(20);
+
+        // Send 10 values
+        Int k = 1;
+        while (k <= 10) {
+            Int as = Actor.send(actor4, k);
+            k = k + 1;
+        }
+
+        // Receive and sum
+        Int asum = 0;
+        Int m = 1;
+        while (m <= 10) {
+            Int av = Actor.recv(actor4);
+            asum = asum + av;
+            m = m + 1;
+        }
+
+        Int test8Pass = 0;
+        if (asum == 55) {  // 1 + 2 + ... + 10 = 55
+            println("Test 8 (actor message sum): PASS");
+            test8Pass = 1;
+            passedTests = passedTests + 1;
+        } else {
+            println("Test 8 FAIL: expected 55, got " + asum);
+        }
+
+        // ========================================
+        // Test 9: sendBlocking with Sendable value
+        // ========================================
+        println("=== Test 9: sendBlocking ===");
+        totalTests = totalTests + 1;
+
+        Int ch3 = MpmcChan.create(1);
+        Int sb1 = MpmcChan.sendBlocking(ch3, 999);
+        Int rb1 = MpmcChan.recvBlocking(ch3);
+        MpmcChan.close(ch3);
+
+        Int test9Pass = 0;
+        if (rb1 == 999) {
+            println("Test 9 (sendBlocking): PASS");
+            test9Pass = 1;
+            passedTests = passedTests + 1;
+        } else {
+            println("Test 9 FAIL: expected 999, got " + rb1);
+        }
+
+        // ========================================
+        // Test 10: Actor sendBlocking
+        // ========================================
+        println("=== Test 10: Actor sendBlocking ===");
+        totalTests = totalTests + 1;
+
+        Int actor5 = Actor.create(1);
+        Int asb1 = Actor.sendBlocking(actor5, 777);
+        Int arb1 = Actor.recvBlocking(actor5);
+
+        Int test10Pass = 0;
+        if (arb1 == 777) {
+            println("Test 10 (actor sendBlocking): PASS");
+            test10Pass = 1;
+            passedTests = passedTests + 1;
+        } else {
+            println("Test 10 FAIL: expected 777, got " + arb1);
+        }
+
+        // ========================================
+        // Test 11: @notSendable struct exists locally
+        // UnsafeHandle is @notSendable but works within single thread
+        // (Cross-thread usage would be rejected at compile time)
+        // ========================================
+        println("=== Test 11: @notSendable Local Use ===");
+        totalTests = totalTests + 1;
+
+        UnsafeHandle uh = UnsafeHandleFns.new(12345);
+
+        Int test11Pass = 0;
+        if (uh.rawPointer == 12345) {
+            println("Test 11 (@notSendable local use): PASS");
+            test11Pass = 1;
+            passedTests = passedTests + 1;
+        } else {
+            println("Test 11 FAIL: expected 12345");
+        }
+
+        // ========================================
+        // Test 12: Transitive non-Sendable local use
+        // ContainsUnsafe is not Sendable because it contains UnsafeHandle
+        // ========================================
+        println("=== Test 12: Transitive Non-Sendable Local ===");
+        totalTests = totalTests + 1;
+
+        UnsafeHandle uh2 = UnsafeHandleFns.new(54321);
+        ContainsUnsafe cu = ContainsUnsafeFns.new(1, uh2);
+
+        Int test12Pass = 0;
+        if (cu.id == 1) {
+            if (cu.handle.rawPointer == 54321) {
+                println("Test 12 (transitive non-Sendable local): PASS");
+                test12Pass = 1;
+                passedTests = passedTests + 1;
+            }
+        }
+        if (test12Pass == 0) {
+            println("Test 12 FAIL");
+        }
+
+        // ========================================
+        // Test 13: UserData Sendable fields via channel
+        // ========================================
+        println("=== Test 13: UserData Fields via Channel ===");
+        totalTests = totalTests + 1;
+
+        UserData user = UserDataFns.new(42, "Alice", true);
+        Int ch4 = MpmcChan.create(5);
+
+        // Send field value (Int) which is Sendable
+        Int us1 = MpmcChan.send(ch4, user.id);
+        Int ur1 = MpmcChan.recv(ch4);
+        MpmcChan.close(ch4);
+
+        Int test13Pass = 0;
+        if (ur1 == 42) {
+            println("Test 13 (UserData fields via channel): PASS");
+            test13Pass = 1;
+            passedTests = passedTests + 1;
+        } else {
+            println("Test 13 FAIL: expected 42, got " + ur1);
+        }
+
+        // ========================================
+        // Summary
+        // ========================================
+        println("=== Summary ===");
+        println("Passed: " + passedTests + "/" + totalTests);
+
+        if (passedTests == totalTests) {
+            println("ALL TESTS PASSED");
+        } else {
+            println("SOME TESTS FAILED");
+        }
+
+        // ========================================
+        // Note on Negative Tests
+        // ========================================
+        println("");
+        println("Note: Negative tests (compile-time rejection of non-Sendable)");
+        println("are verified in src/compiler/typeck/tests.rs:");
+        println("- actor_send_non_sendable_type_rejected");
+        println("- channel_send_non_sendable_type_rejected");
+        println("- spawn_with_non_sendable_arg_rejected");
+    }
+}

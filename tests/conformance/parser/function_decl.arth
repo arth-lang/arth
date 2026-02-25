@@ -1,0 +1,50 @@
+package conformance;
+
+// @spec: spec.md §6 - Function declarations with modifiers
+// @expect: pass
+// @description: Validates function declaration parsing per spec §6
+
+public struct ValidationError {
+    public String message;
+}
+
+module Functions {
+    // Simple function
+    public Int add(Int a, Int b) {
+        return a + b;
+    }
+
+    // Void function
+    public void doNothing() {
+        // empty
+    }
+
+    // Function with throws clause
+    public Int divide(Int a, Int b) throws (ValidationError) {
+        if (b == 0) {
+            throw ValidationError { message: "division by zero" };
+        }
+        return a / b;
+    }
+
+    // Generic function
+    public T identity<T>(T value) {
+        return value;
+    }
+
+    // Static function
+    public static Int staticAdd(Int a, Int b) {
+        return a + b;
+    }
+}
+
+module Main {
+    public static void main() {
+        Int sum = Functions.add(1, 2);
+        Functions.doNothing();
+        Int id = Functions.identity(42);
+        Int staticSum = Functions.staticAdd(3, 4);
+
+        println("function_decl: pass");
+    }
+}

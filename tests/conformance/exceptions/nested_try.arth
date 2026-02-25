@@ -1,0 +1,74 @@
+package conformance;
+
+// @spec: spec.md §7 - Nested try/catch blocks
+// @expect: pass
+// @description: Validates nested exception handling
+
+public struct InnerError {
+    public String message;
+}
+
+public struct OuterError {
+    public String message;
+}
+
+module Inner {
+    public Int process() throws (InnerError) {
+        throw InnerError { message: "inner failed" };
+    }
+}
+
+module Outer {
+    public Int process() throws (OuterError) {
+        throw OuterError { message: "outer failed" };
+    }
+}
+
+module Main {
+    public static void main() {
+        // Nested try blocks
+        try {
+            try {
+                Int result = Inner.process();
+            } catch (InnerError e) {
+                // Handle inner error
+                String innerMsg = e.message;
+            }
+
+            // Continue after inner try
+            Int x = 1;
+
+        } catch (OuterError e) {
+            // Handle outer error
+            String outerMsg = e.message;
+        }
+
+        // Nested with finally
+        try {
+            try {
+                Int x = 1;
+            } finally {
+                Int innerCleanup = 1;
+            }
+        } finally {
+            Int outerCleanup = 1;
+        }
+
+        // Multiple levels
+        try {
+            try {
+                try {
+                    Int result = Inner.process();
+                } catch (InnerError e) {
+                    // Innermost catch
+                }
+            } finally {
+                // Middle finally
+            }
+        } finally {
+            // Outermost finally
+        }
+
+        println("nested_try: pass");
+    }
+}

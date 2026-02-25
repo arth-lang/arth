@@ -1,0 +1,356 @@
+package test;
+
+// Test: C11 - Actor = Task + Channel
+//
+// This test verifies that actors work correctly:
+// - Actor creation with mailbox
+// - Verify mailbox exists and is empty initially
+// - Non-blocking and blocking send/receive
+// - Actor state management (running, stopping, stopped)
+// - Message counting for verification
+// - Actor-Task association
+//
+// An Actor is a Task + Channel abstraction where:
+// - Each actor has a mailbox (MPMC channel)
+// - Each actor can be associated with a task handle
+// - Actors provide state management (running/stopping/stopped)
+
+module Executor {
+    // Executor intrinsics mapped to __arth_executor_* VM calls
+}
+
+module Actor {
+    // Actor intrinsics mapped to __arth_actor_* VM calls
+}
+
+module MpmcChan {
+    // MPMC channel intrinsics for mailbox operations
+}
+
+module Main {
+    public static void main() {
+        println("=== C11: Actor = Task + Channel ===");
+
+        // Initialize thread pool
+        println("Initializing pool with 4 threads...");
+        Int initResult = Executor.init(4);
+        println("Pool initialized: " + initResult);
+
+        Int resetResult = Executor.resetStats();
+
+        println("=== Test 1: Actor Creation ===");
+        // Create an actor with mailbox capacity 10
+        Int actor1 = Actor.create(10);
+        println("Created actor: handle=" + actor1);
+
+        Int test1Pass = 0;
+        if (actor1 > 0) {
+            println("Test 1 (actor creation): PASS");
+            test1Pass = 1;
+        } else {
+            println("Test 1 FAIL: expected positive handle");
+        }
+
+        println("=== Test 2: Actor Mailbox State ===");
+        // Verify mailbox is empty initially
+        Int isEmpty = Actor.mailboxEmpty(actor1);
+        Int mailboxLen = Actor.mailboxLen(actor1);
+        println("Mailbox: empty=" + isEmpty + ", len=" + mailboxLen);
+
+        Int test2Pass = 0;
+        if (isEmpty == 1) {
+            if (mailboxLen == 0) {
+                println("Test 2 (mailbox initially empty): PASS");
+                test2Pass = 1;
+            }
+        }
+        if (test2Pass == 0) {
+            println("Test 2 FAIL: expected empty=1, len=0");
+        }
+
+        println("=== Test 3: Actor Running State ===");
+        // Actor should be running after creation
+        Int isRunning = Actor.isRunning(actor1);
+        Int state = Actor.getState(actor1);
+        println("Actor: isRunning=" + isRunning + ", state=" + state);
+
+        Int test3Pass = 0;
+        if (isRunning == 1) {
+            if (state == 0) { // 0 = Running
+                println("Test 3 (actor running state): PASS");
+                test3Pass = 1;
+            }
+        }
+        if (test3Pass == 0) {
+            println("Test 3 FAIL: expected isRunning=1, state=0");
+        }
+
+        println("=== Test 4: Non-Blocking Send ===");
+        // Send a message to the actor
+        Int sendResult = Actor.send(actor1, 100);
+        println("Sent 100 to actor: status=" + sendResult);
+
+        Int len1 = Actor.mailboxLen(actor1);
+        println("Mailbox length after send: " + len1);
+
+        Int test4Pass = 0;
+        if (sendResult == 0) { // 0 = success
+            if (len1 == 1) {
+                println("Test 4 (non-blocking send): PASS");
+                test4Pass = 1;
+            }
+        }
+        if (test4Pass == 0) {
+            println("Test 4 FAIL: expected status=0, len=1");
+        }
+
+        println("=== Test 5: Non-Blocking Recv ===");
+        // Receive the message
+        Int recvVal = Actor.recv(actor1);
+        println("Received from actor: value=" + recvVal);
+
+        Int len2 = Actor.mailboxLen(actor1);
+        println("Mailbox length after recv: " + len2);
+
+        Int test5Pass = 0;
+        if (recvVal == 100) {
+            if (len2 == 0) {
+                println("Test 5 (non-blocking recv): PASS");
+                test5Pass = 1;
+            }
+        }
+        if (test5Pass == 0) {
+            println("Test 5 FAIL: expected value=100, len=0");
+        }
+
+        println("=== Test 6: Blocking Send/Recv ===");
+        // Send blocking and receive blocking
+        Int sendResult2 = Actor.sendBlocking(actor1, 200);
+        Int sendResult3 = Actor.sendBlocking(actor1, 300);
+        println("Sent 200 and 300 blocking: " + sendResult2 + ", " + sendResult3);
+
+        Int recv2 = Actor.recvBlocking(actor1);
+        Int recv3 = Actor.recvBlocking(actor1);
+        println("Received blocking: " + recv2 + ", " + recv3);
+
+        Int test6Pass = 0;
+        if (sendResult2 == 0) {
+            if (sendResult3 == 0) {
+                if (recv2 == 200) {
+                    if (recv3 == 300) {
+                        println("Test 6 (blocking send/recv): PASS");
+                        test6Pass = 1;
+                    }
+                }
+            }
+        }
+        if (test6Pass == 0) {
+            println("Test 6 FAIL: expected values 200, 300");
+        }
+
+        println("=== Test 7: Message Count ===");
+        // Send more messages and verify count
+        Int i = 0;
+        while (i < 5) {
+            Actor.send(actor1, i * 10);
+            i = i + 1;
+        }
+
+        Int msgCount = Actor.messageCount(actor1);
+        println("Message count after sending 8 total messages: " + msgCount);
+
+        // Drain the mailbox
+        i = 0;
+        while (i < 5) {
+            Actor.recv(actor1);
+            i = i + 1;
+        }
+
+        Int test7Pass = 0;
+        if (msgCount == 8) { // 3 before (100, 200, 300) + 5 new
+            println("Test 7 (message count): PASS");
+            test7Pass = 1;
+        } else {
+            println("Test 7 FAIL: expected count=8, got " + msgCount);
+        }
+
+        println("=== Test 8: Actor Mailbox Handle ===");
+        // Get the mailbox handle
+        Int mailbox = Actor.getMailbox(actor1);
+        println("Mailbox handle: " + mailbox);
+
+        // Verify mailbox is a valid MPMC channel handle (positive)
+        Int test8Pass = 0;
+        if (mailbox > 0) {
+            println("Test 8 (get mailbox handle): PASS");
+            test8Pass = 1;
+        } else {
+            println("Test 8 FAIL: expected positive mailbox handle");
+        }
+
+        println("=== Test 9: Actor Stop ===");
+        // Stop the actor
+        Int stopResult = Actor.stop(actor1);
+        println("Stopped actor: status=" + stopResult);
+
+        Int stateAfterStop = Actor.getState(actor1);
+        Int runningAfterStop = Actor.isRunning(actor1);
+        println("After stop: state=" + stateAfterStop + ", isRunning=" + runningAfterStop);
+
+        Int test9Pass = 0;
+        if (stopResult == 0) {
+            if (stateAfterStop == 1) { // 1 = Stopping
+                if (runningAfterStop == 0) {
+                    println("Test 9 (actor stop): PASS");
+                    test9Pass = 1;
+                }
+            }
+        }
+        if (test9Pass == 0) {
+            println("Test 9 FAIL: expected status=0, state=1, running=0");
+        }
+
+        println("=== Test 10: Create Second Actor ===");
+        // Create another actor to verify independent instances
+        Int actor2 = Actor.create(5);
+        println("Created second actor: handle=" + actor2);
+
+        // Send to second actor
+        Actor.send(actor2, 999);
+        Int recv999 = Actor.recv(actor2);
+        println("Sent and received from actor2: " + recv999);
+
+        Int test10Pass = 0;
+        if (actor2 != actor1) {
+            if (recv999 == 999) {
+                println("Test 10 (multiple actors): PASS");
+                test10Pass = 1;
+            }
+        }
+        if (test10Pass == 0) {
+            println("Test 10 FAIL: actor handles should differ, recv should be 999");
+        }
+
+        println("=== Test 11: Actor Mark Stopped ===");
+        // Mark actor as stopped
+        Int markResult = Actor.markStopped(actor1);
+        Int finalState = Actor.getState(actor1);
+        println("Mark stopped: result=" + markResult + ", state=" + finalState);
+
+        Int test11Pass = 0;
+        if (markResult == 0) {
+            if (finalState == 2) { // 2 = Stopped
+                println("Test 11 (mark stopped): PASS");
+                test11Pass = 1;
+            }
+        }
+        if (test11Pass == 0) {
+            println("Test 11 FAIL: expected markResult=0, state=2");
+        }
+
+        println("=== Test 12: Actor with Task Association ===");
+        // Create an actor with a mock task handle
+        Int mockTaskHandle = 42;
+        Int actor3 = Actor.spawn(8, mockTaskHandle);
+        println("Spawned actor with task: handle=" + actor3);
+
+        Int taskHandle = Actor.getTask(actor3);
+        println("Actor task handle: " + taskHandle);
+
+        Int test12Pass = 0;
+        if (actor3 > 0) {
+            if (taskHandle == mockTaskHandle) {
+                println("Test 12 (actor-task association): PASS");
+                test12Pass = 1;
+            }
+        }
+        if (test12Pass == 0) {
+            println("Test 12 FAIL: expected task handle=" + mockTaskHandle);
+        }
+
+        println("=== Test 13: Set Task Handle ===");
+        // Set a new task handle
+        Int newTaskHandle = 123;
+        Int setResult = Actor.setTask(actor2, newTaskHandle);
+        Int updatedTask = Actor.getTask(actor2);
+        println("Set task: result=" + setResult + ", new task=" + updatedTask);
+
+        Int test13Pass = 0;
+        if (setResult == 0) {
+            if (updatedTask == newTaskHandle) {
+                println("Test 13 (set task handle): PASS");
+                test13Pass = 1;
+            }
+        }
+        if (test13Pass == 0) {
+            println("Test 13 FAIL: expected task handle=" + newTaskHandle);
+        }
+
+        println("=== Test 14: Close Actor ===");
+        // Close actor 2
+        Int closeResult = Actor.close(actor2);
+        Int stateAfterClose = Actor.getState(actor2);
+        println("Closed actor2: result=" + closeResult + ", state=" + stateAfterClose);
+
+        Int test14Pass = 0;
+        if (closeResult == 0) {
+            if (stateAfterClose == 1) { // 1 = Stopping
+                println("Test 14 (close actor): PASS");
+                test14Pass = 1;
+            }
+        }
+        if (test14Pass == 0) {
+            println("Test 14 FAIL: expected close=0, state=1");
+        }
+
+        println("=== Test 15: High Volume Actor Test ===");
+        // Create actor for high volume test
+        Int hvActor = Actor.create(100);
+        Int hvCount = 50;
+        Int hvExpected = 1225; // 0 + 1 + 2 + ... + 49 = 49*50/2 = 1225
+
+        // Send messages
+        i = 0;
+        while (i < hvCount) {
+            Actor.sendBlocking(hvActor, i);
+            i = i + 1;
+        }
+
+        // Receive and sum
+        Int hvSum = 0;
+        i = 0;
+        while (i < hvCount) {
+            Int val = Actor.recvBlocking(hvActor);
+            hvSum = hvSum + val;
+            i = i + 1;
+        }
+
+        println("High volume sum: " + hvSum + " (expected " + hvExpected + ")");
+
+        Int test15Pass = 0;
+        if (hvSum == hvExpected) {
+            println("Test 15 (high volume): PASS");
+            test15Pass = 1;
+        } else {
+            println("Test 15 FAIL: sum mismatch");
+        }
+
+        Actor.close(hvActor);
+
+        // Cleanup
+        Actor.close(actor3);
+
+        // Summary
+        println("=== Summary ===");
+        Int totalPassed = test1Pass + test2Pass + test3Pass + test4Pass + test5Pass +
+                          test6Pass + test7Pass + test8Pass + test9Pass + test10Pass +
+                          test11Pass + test12Pass + test13Pass + test14Pass + test15Pass;
+        println("Tests passed: " + totalPassed + "/15");
+
+        if (totalPassed == 15) {
+            println("=== C11: PASSED - Actor = Task + Channel works correctly ===");
+        } else {
+            println("=== C11: FAILED ===");
+        }
+    }
+}

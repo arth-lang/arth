@@ -1,0 +1,62 @@
+package conformance;
+
+// @spec: spec.md §2 - Reserved keywords
+// @expect: pass
+// @description: Validates all reserved keywords are recognized
+
+// Testing keyword usage in valid contexts
+// Keywords: package, import, public, internal, private, module, struct,
+// interface, enum, final, async, await, throws, throw, try, catch, finally,
+// switch, case, default, if, else, for, while, break, continue, return, true, false, void
+
+public struct KeywordTestStruct {
+    public final Int value;
+}
+
+public interface KeywordTestInterface {
+    Int getValue();
+}
+
+public enum KeywordTestEnum {
+    FIRST,
+    SECOND
+}
+
+module Main {
+    public static void main() {
+        // Control flow keywords
+        if (true) {
+            Int x = 1;
+        } else {
+            Int y = 2;
+        }
+
+        // Loop keywords
+        for (Int i = 0; i < 1; i = i + 1) {
+            continue;
+        }
+
+        Int counter = 0;
+        while (counter < 1) {
+            counter = counter + 1;
+            break;
+        }
+
+        // Switch keywords
+        Int val = 1;
+        switch (val) {
+            case 1: {
+                Int a = 1;
+            }
+            default: {
+                Int b = 2;
+            }
+        }
+
+        // Boolean keywords
+        Bool t = true;
+        Bool f = false;
+
+        println("keywords: pass");
+    }
+}

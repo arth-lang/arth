@@ -1,0 +1,285 @@
+package test;
+
+// Test: C08 - Blocking Receive (Cross-Thread)
+//
+// This test verifies that blocking receives work correctly across threads.
+// When a channel is empty, the receiving task blocks until data is available.
+//
+// Test scenario:
+// - Channel starts empty
+// - Receiver calls recvWithTask which registers as waiting receiver
+// - Sender calls sendAndWake which sends data and wakes waiting receiver
+// - Verify: Waiting receiver is properly woken
+// - Verify: Data is correctly received
+
+module Executor {
+    // Executor intrinsics mapped to __arth_executor_* VM calls
+}
+
+module MpmcChan {
+    // MPMC channel intrinsics mapped to __arth_mpmc_chan_* VM calls
+}
+
+module Instants {
+    // Time measurement intrinsics
+}
+
+module Main {
+    public static void main() {
+        println("=== C08: Blocking Receive (Cross-Thread) ===");
+
+        // Initialize thread pool with 4 threads
+        println("Initializing pool with 4 threads...");
+        Int initResult = Executor.init(4);
+        println("Pool initialized: " + initResult);
+
+        Int threadCount = Executor.threadCount();
+        println("Thread count: " + threadCount);
+
+        // Reset stats
+        Int resetResult = Executor.resetStats();
+
+        println("=== Test 1: Basic sendAndWake ===");
+        // Create channel with capacity 10 (not empty-constrained)
+        Int ch = MpmcChan.create(10);
+        println("Channel created with capacity 10: handle=" + ch);
+
+        // Send a value using sendAndWake (no waiting receivers yet)
+        Int status = MpmcChan.sendAndWake(ch, 100);
+        println("sendAndWake(100): status=" + status);
+
+        // Receive the value
+        Int r1 = MpmcChan.recv(ch);
+        println("recv: value=" + r1);
+
+        Int test1Pass = 0;
+        if (r1 == 100) {
+            if (status == 0) {
+                println("Test 1 (basic sendAndWake): PASS");
+                test1Pass = 1;
+            }
+        }
+        if (test1Pass == 0) {
+            println("Test 1 FAIL: expected value=100, status=0");
+        }
+
+        println("=== Test 2: Empty Channel Detection ===");
+        // Channel is now empty
+        Int isEmpty = MpmcChan.empty(ch);
+        println("Channel empty: " + isEmpty);
+
+        // Non-blocking receive on empty channel should return -2
+        Int r2 = MpmcChan.recv(ch);
+        println("recv on empty: value=" + r2);
+
+        Int test2Pass = 0;
+        if (isEmpty == 1) {
+            if (r2 == -2) {
+                println("Test 2 (empty channel detection): PASS");
+                test2Pass = 1;
+            }
+        }
+        if (test2Pass == 0) {
+            println("Test 2 FAIL: expected isEmpty=1, recv=-2");
+        }
+
+        println("=== Test 3: Waiting Receiver Registration ===");
+        // Register a task as waiting receiver (simulated task_id = 42)
+        Int simTaskId = 42;
+        Int recvResult = MpmcChan.recvWithTask(ch, simTaskId);
+        println("recvWithTask(42): result=" + recvResult);
+
+        // Check waiting receiver count
+        Int waitingCount = MpmcChan.waitingReceiverCount(ch);
+        println("Waiting receiver count: " + waitingCount);
+
+        Int test3Pass = 0;
+        if (recvResult == -2) {
+            if (waitingCount == 1) {
+                println("Test 3 (waiting receiver registration): PASS");
+                test3Pass = 1;
+            }
+        }
+        if (test3Pass == 0) {
+            println("Test 3 FAIL: expected recvResult=-2, waitingCount=1");
+        }
+
+        println("=== Test 4: sendAndWake Wakes Receiver ===");
+        // Now send and wake - this should wake the waiting receiver
+        Int sendStatus = MpmcChan.sendAndWake(ch, 200);
+        println("sendAndWake(200): status=" + sendStatus);
+
+        // Get the woken receiver's task ID
+        Int wokenReceiver = MpmcChan.getWokenReceiver();
+        println("Woken receiver task ID: " + wokenReceiver);
+
+        // Check that waiting count is now 0
+        Int waitingAfter = MpmcChan.waitingReceiverCount(ch);
+        println("Waiting receiver count after wake: " + waitingAfter);
+
+        Int test4Pass = 0;
+        if (sendStatus == 0) {
+            if (wokenReceiver == simTaskId) {
+                if (waitingAfter == 0) {
+                    println("Test 4 (sendAndWake wakes receiver): PASS");
+                    test4Pass = 1;
+                }
+            }
+        }
+        if (test4Pass == 0) {
+            println("Test 4 FAIL: expected status=0, woken=" + simTaskId + ", waiting=0");
+        }
+
+        // Consume the value we just sent
+        Int r3 = MpmcChan.recv(ch);
+        println("recv(cleanup): " + r3);
+
+        println("=== Test 5: Multiple Waiting Receivers ===");
+        // Register multiple waiting receivers
+        Int task1 = 101;
+        Int task2 = 102;
+        Int task3 = 103;
+
+        Int result1 = MpmcChan.recvWithTask(ch, task1);
+        Int result2 = MpmcChan.recvWithTask(ch, task2);
+        Int result3 = MpmcChan.recvWithTask(ch, task3);
+
+        Int multiWaiting = MpmcChan.waitingReceiverCount(ch);
+        println("Waiting receivers after 3 registrations: " + multiWaiting);
+
+        Int test5aPass = 0;
+        if (multiWaiting == 3) {
+            println("Test 5a (multiple waiting receivers): PASS");
+            test5aPass = 1;
+        } else {
+            println("Test 5a FAIL: expected 3 waiting receivers, got " + multiWaiting);
+        }
+
+        // Wake them one by one with sendAndWake
+        Int sw1 = MpmcChan.sendAndWake(ch, 301);
+        Int woken1 = MpmcChan.getWokenReceiver();
+        println("After 1st send: woken=" + woken1);
+
+        Int sw2 = MpmcChan.sendAndWake(ch, 302);
+        Int woken2 = MpmcChan.getWokenReceiver();
+        println("After 2nd send: woken=" + woken2);
+
+        Int sw3 = MpmcChan.sendAndWake(ch, 303);
+        Int woken3 = MpmcChan.getWokenReceiver();
+        println("After 3rd send: woken=" + woken3);
+
+        Int finalWaiting = MpmcChan.waitingReceiverCount(ch);
+        println("Final waiting count: " + finalWaiting);
+
+        // All should have been woken (FIFO order: task1, task2, task3)
+        Int test5bPass = 0;
+        if (woken1 == task1) {
+            if (woken2 == task2) {
+                if (woken3 == task3) {
+                    if (finalWaiting == 0) {
+                        println("Test 5b (FIFO wake order): PASS");
+                        test5bPass = 1;
+                    }
+                }
+            }
+        }
+        if (test5bPass == 0) {
+            println("Test 5b FAIL: expected FIFO order 101,102,103");
+        }
+
+        // Drain the sent values
+        Int d1 = MpmcChan.recv(ch);
+        Int d2 = MpmcChan.recv(ch);
+        Int d3 = MpmcChan.recv(ch);
+        println("Drained: " + d1 + ", " + d2 + ", " + d3);
+
+        Int test5cPass = 0;
+        if (d1 == 301) {
+            if (d2 == 302) {
+                if (d3 == 303) {
+                    println("Test 5c (sent values correct): PASS");
+                    test5cPass = 1;
+                }
+            }
+        }
+        if (test5cPass == 0) {
+            println("Test 5c FAIL: expected 301,302,303");
+        }
+
+        println("=== Test 6: getWokenReceiver Returns 0 When None ===");
+        // No pending wake, should return 0
+        Int noWoken = MpmcChan.getWokenReceiver();
+        println("getWokenReceiver (no pending): " + noWoken);
+
+        Int test6Pass = 0;
+        if (noWoken == 0) {
+            println("Test 6 (no woken receiver): PASS");
+            test6Pass = 1;
+        } else {
+            println("Test 6 FAIL: expected 0, got " + noWoken);
+        }
+
+        println("=== Test 7: Blocking recvBlocking ===");
+        // Test that recvBlocking actually works (non-empty channel)
+        Int swb = MpmcChan.send(ch, 777);
+        Int rb = MpmcChan.recvBlocking(ch);
+        println("recvBlocking result: " + rb);
+
+        Int test7Pass = 0;
+        if (rb == 777) {
+            println("Test 7 (recvBlocking): PASS");
+            test7Pass = 1;
+        } else {
+            println("Test 7 FAIL: expected 777, got " + rb);
+        }
+
+        println("=== Test 8: Channel Close Behavior ===");
+        // Close the channel
+        Int closeStatus = MpmcChan.close(ch);
+        println("Channel closed: " + closeStatus);
+
+        // recv on closed channel should return -3
+        Int closedRecv = MpmcChan.recv(ch);
+        println("recv on closed: " + closedRecv);
+
+        // sendAndWake on closed channel should return 2
+        Int closedSend = MpmcChan.sendAndWake(ch, 999);
+        println("sendAndWake on closed: " + closedSend);
+
+        Int test8Pass = 0;
+        if (closedRecv == -3) {
+            if (closedSend == 2) {
+                println("Test 8 (closed channel): PASS");
+                test8Pass = 1;
+            }
+        }
+        if (test8Pass == 0) {
+            println("Test 8 FAIL: expected recv=-3, send=2");
+        }
+
+        // Get work distribution stats
+        println("=== Work Distribution ===");
+        Int workersUsed = Executor.activeExecutorCount();
+        println("Workers that executed tasks: " + workersUsed);
+
+        Int w0 = Executor.workerTaskCount(0);
+        Int w1 = Executor.workerTaskCount(1);
+        Int w2 = Executor.workerTaskCount(2);
+        Int w3 = Executor.workerTaskCount(3);
+        println("Worker 0 tasks: " + w0);
+        println("Worker 1 tasks: " + w1);
+        println("Worker 2 tasks: " + w2);
+        println("Worker 3 tasks: " + w3);
+
+        // Summary
+        println("=== Summary ===");
+        Int totalPassed = test1Pass + test2Pass + test3Pass + test4Pass + test5aPass + test5bPass + test5cPass + test6Pass + test7Pass + test8Pass;
+        println("Tests passed: " + totalPassed + "/10");
+
+        if (totalPassed == 10) {
+            println("=== C08: PASSED - Blocking receive works correctly ===");
+        } else {
+            println("=== C08: FAILED ===");
+        }
+    }
+}

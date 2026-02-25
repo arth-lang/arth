@@ -1,0 +1,11 @@
+[package]
+name = "arth-sample"
+version = "0.1.0"
+edition = "2025"
+entry = "src/demo/MathDemo.arth"
+
+[dependencies]
+"org.example:net-http" = "^1.2.0"
+"org.example:log" = "^1.0.0"
+"org.example:encoding-json" = "^0.1.0"
+"org.example:concurrency" = "^0.1.0"

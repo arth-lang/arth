@@ -1,0 +1,13 @@
+package test;
+
+struct User {
+    public String id;
+    public int age;
+}
+
+module Test {
+    public void main() {
+        // This should fail: age should be int, not string
+        User u = User { id: "u1", age: "not a number" };
+    }
+}

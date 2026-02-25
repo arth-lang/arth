@@ -1,0 +1,61 @@
+package test.floats;
+
+// Test floating-point operations for LLVM backend
+module FloatOps {
+    public void main() {
+        println("Testing float operations...");
+
+        // Test float constants
+        float a = 3.5;
+        float b = 2.0;
+
+        // Test float arithmetic - using comparisons to ensure they're emitted
+        float sum = a + b;       // 5.5
+        if (sum > 5.0) {
+            println("sum > 5.0: true (add works)");
+        }
+
+        float diff = a - b;      // 1.5
+        if (diff > 1.0) {
+            println("diff > 1.0: true (sub works)");
+        }
+
+        float prod = a * b;      // 7.0
+        if (prod > 6.0) {
+            println("prod > 6.0: true (mul works)");
+        }
+
+        float quot = a / b;      // 1.75
+        if (quot > 1.5) {
+            println("quot > 1.5: true (div works)");
+        }
+
+        // Test chained float operations
+        float result = (a + b) * 2.0;  // 11.0
+        if (result > 10.0) {
+            println("result > 10.0: true (chained ops work)");
+        }
+
+        // Test float comparisons
+        if (a > b) {
+            println("a > b: true");
+        }
+        if (a < 10.0) {
+            println("a < 10.0: true");
+        }
+        if (b == 2.0) {
+            println("b == 2.0: true");
+        }
+        if (a != b) {
+            println("a != b: true");
+        }
+        if (a >= 3.0) {
+            println("a >= 3.0: true");
+        }
+        if (b <= 2.0) {
+            println("b <= 2.0: true");
+        }
+
+        println("Float operations test complete!");
+    }
+}

@@ -1,0 +1,22 @@
+package test;
+
+// Test: Enum declaration (compile test)
+// Expected output:
+//   enum declared
+
+public enum Color {
+    Red,
+    Green,
+    Blue
+}
+
+public enum Status {
+    Ok,
+    Error(Int)
+}
+
+module Main {
+    public static void main() {
+        println("enum declared");
+    }
+}

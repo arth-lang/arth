@@ -1,0 +1,41 @@
+package conformance;
+
+// @spec: spec.md §8 - Immutable and exclusive borrows
+// @expect: pass
+// @description: Validates basic borrow patterns - read access
+
+public struct Counter {
+    public Int val;
+}
+
+module CounterFns {
+    public Counter new(Int val) {
+        return Counter { val: val };
+    }
+
+    // Shared borrow - can read
+    public Int get(Counter c) {
+        return c.val;
+    }
+
+    // Create new counter with incremented value (no mutation)
+    public Counter incremented(Counter c) {
+        return Counter { val: c.val + 1 };
+    }
+}
+
+module Main {
+    public static void main() {
+        Counter c = CounterFns.new(0);
+
+        // Multiple shared borrows are allowed
+        Int v1 = CounterFns.get(c);
+        Int v2 = CounterFns.get(c);
+
+        // Create new counter (no exclusive borrow needed)
+        Counter c2 = CounterFns.incremented(c);
+        Int v3 = CounterFns.get(c2);  // Should be 1
+
+        println("borrows: pass");
+    }
+}

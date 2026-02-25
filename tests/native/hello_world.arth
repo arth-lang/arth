@@ -1,0 +1,29 @@
+package test.native;
+
+// Basic native compilation test
+// Tests: function calls, arithmetic, conditionals
+
+module Main {
+    public static void main() {
+        // Basic arithmetic
+        Int a = 10;
+        Int b = 20;
+        Int sum = a + b;
+
+        // Conditional
+        if (sum == 30) {
+            Int x = 1;
+        } else {
+            Int x = 0;
+        }
+
+        // Simple loop
+        Int i = 0;
+        while (i < 3) {
+            i = i + 1;
+        }
+
+        // Return (main returns void, but we can exit with code 0)
+        return;
+    }
+}

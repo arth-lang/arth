@@ -1,0 +1,21 @@
+package demo;
+
+import net.http.*;
+
+/**
+ * Simple HTTP server test - just verifies the server starts.
+ *
+ * Run with: arth run examples/arth-sample/src/demo/HttpServer.arth
+ */
+module HttpServer {
+    public void main() {
+        println("Starting HTTP server on port 8080...");
+        Int server = Http.serve(8080);
+        println("Server handle: " + server);
+        println("Server started! (Test with: curl http://localhost:8080/)");
+
+        // Note: Full request handling requires more stdlib/compiler work
+        // to properly bridge async Task<Request> with the VM's handle-based model.
+        // For now, this verifies the server binds to the port successfully.
+    }
+}

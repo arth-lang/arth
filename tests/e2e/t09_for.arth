@@ -1,0 +1,17 @@
+package test;
+
+// Test: for loop
+// Expected output:
+//   0
+//   1
+//   2
+//   done
+
+module Main {
+    public static void main() {
+        for (Int i = 0; i < 3; i = i + 1) {
+            println(i);
+        }
+        println("done");
+    }
+}

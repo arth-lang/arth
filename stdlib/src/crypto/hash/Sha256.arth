@@ -1,0 +1,134 @@
+package crypto.hash;
+
+import crypto.*;
+
+/**
+ * SHA-256 cryptographic hash function.
+ *
+ * SHA-256 is part of the SHA-2 family defined in NIST FIPS 180-4.
+ * It produces a 256-bit (32-byte) hash digest.
+ *
+ * Properties:
+ * - Output size: 32 bytes (256 bits)
+ * - Block size: 64 bytes (512 bits)
+ * - Security level: 128 bits (collision resistance)
+ *
+ * SHA-256 is widely used for:
+ * - Digital signatures
+ * - TLS/SSL certificates
+ * - Bitcoin and other cryptocurrencies
+ * - File integrity verification
+ * - HMAC construction
+ *
+ * Example usage:
+ * ```arth
+ * import crypto.hash.Sha256;
+ *
+ * module Example {
+ *     public void hashData() {
+ *         bytes data = "Hello, World!".toBytes();
+ *
+ *         // One-shot hash
+ *         Hash h = Sha256.hash(data);
+ *         String hex = Encoding.toHex(Hash.toBytes(h));
+ *         Console.println("SHA-256: " + hex);
+ *
+ *         // Incremental hashing
+ *         Hasher hasher = Sha256.newHasher();
+ *         Sha256.update(hasher, "Hello, ".toBytes());
+ *         Sha256.update(hasher, "World!".toBytes());
+ *         Hash result = Sha256.finalize(hasher);
+ *     }
+ * }
+ * ```
+ *
+ * @see crypto.Hash for the Hash type
+ * @see crypto.HashAlgorithm for algorithm constants
+ */
+
+/**
+ * Module for SHA-256 hashing operations.
+ */
+module Sha256 {
+    /// SHA-256 output size in bytes (32)
+    public static final int OUTPUT_SIZE = 32;
+
+    /// SHA-256 block size in bytes (64)
+    public static final int BLOCK_SIZE = 64;
+
+    // =========================================================================
+    // One-Shot Hashing
+    // =========================================================================
+
+    /**
+     * Computes the SHA-256 hash of the given data.
+     *
+     * @param data The data to hash
+     * @return The SHA-256 hash digest
+     */
+    public static Hash hash(bytes data) {
+        return Hash.hash(HashAlgorithm.SHA256, data);
+    }
+
+    /**
+     * Computes the SHA-256 hash of a string.
+     *
+     * Convenience method that converts the string to UTF-8 bytes first.
+     *
+     * @param str The string to hash
+     * @return The SHA-256 hash digest
+     */
+    public static Hash hashString(String str) {
+        return Hash.hash(HashAlgorithm.SHA256, str.toBytes());
+    }
+
+    // =========================================================================
+    // Incremental Hashing
+    // =========================================================================
+
+    /**
+     * Creates a new SHA-256 hasher for incremental hashing.
+     *
+     * @return A new Hasher instance configured for SHA-256
+     */
+    public static Hasher newHasher() {
+        return Hash.newHasher(HashAlgorithm.SHA256);
+    }
+
+    /**
+     * Feeds data into a SHA-256 hasher.
+     *
+     * @param hasher The hasher to update
+     * @param data The data to add to the hash computation
+     */
+    public static void update(Hasher hasher, bytes data) {
+        Hash.update(hasher, data);
+    }
+
+    /**
+     * Completes the SHA-256 hash computation.
+     *
+     * @param hasher The hasher to finalize
+     * @return The computed SHA-256 hash digest
+     */
+    public static Hash finalize(Hasher hasher) {
+        return Hash.finalize(hasher);
+    }
+
+    // =========================================================================
+    // Verification
+    // =========================================================================
+
+    /**
+     * Verifies that data matches a SHA-256 hash.
+     *
+     * Uses constant-time comparison to prevent timing attacks.
+     *
+     * @param expected The expected hash value
+     * @param data The data to verify
+     * @return true if the data hashes to the expected value
+     */
+    public static Bool verify(Hash expected, bytes data) {
+        return Hash.verify(expected, data);
+    }
+}

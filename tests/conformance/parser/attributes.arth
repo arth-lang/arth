@@ -1,0 +1,68 @@
+package conformance;
+
+// @spec: spec.md §4 - Attributes (compile-time metadata)
+// @expect: pass
+// @description: Validates attribute parsing on declarations
+
+// @deprecated(since="2025.1", note="Use NewStruct instead")
+public struct OldStruct {
+    public Int value;
+}
+
+// Multiple attributes stacked
+@deprecated(since="2025.1")
+public struct StackedAttrs {
+    public Int x;
+}
+
+// @derive attribute for codegen
+public struct User {
+    public final String id;
+    public final String name;
+}
+
+// @inline hint
+module OptimizedFns {
+    @inline
+    public Int fastAdd(Int a, Int b) {
+        return a + b;
+    }
+}
+
+// @must_use hint
+module ResultFns {
+    @must_use
+    public Int compute(Int x) {
+        return x * 2;
+    }
+}
+
+// @allow to suppress lints
+module LintSuppressed {
+    @allow("unused-variable")
+    public void example() {
+        Int unused = 42;
+    }
+}
+
+// @test attribute
+module TestFns {
+    @test
+    public void simpleTest() {
+        Int x = 1;
+    }
+
+    @bench
+    public void benchmarkTest() {
+        Int sum = 0;
+        for (Int i = 0; i < 1000; i = i + 1) {
+            sum = sum + i;
+        }
+    }
+}
+
+module Main {
+    public static void main() {
+        println("attributes: pass");
+    }
+}

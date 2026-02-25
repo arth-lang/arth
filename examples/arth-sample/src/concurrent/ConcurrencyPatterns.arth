@@ -1,0 +1,362 @@
+package concurrent.patterns;
+
+/// Concurrency Patterns Example
+///
+/// Demonstrates common concurrency patterns in Arth:
+/// - Fan-out / Fan-in (scatter-gather)
+/// - Timeout with cancellation
+/// - Worker pool with load balancing
+/// - Pipeline stages
+/// - Semaphore for concurrency limiting
+
+import concurrent.*;
+import net.http.*;
+import log.*;
+
+module ConcurrencyPatterns {
+  /// Fan-out / Fan-in pattern
+  /// Scatter work to multiple tasks, then gather results
+  public async List<Response> fetchAll(List<String> urls) throws (CancelledError, HttpError) {
+    Logger log = Logger.get("concurrent.patterns");
+
+    // Fan-out: spawn a task for each URL
+    List<Task<Response>> tasks = [];
+    for (String url : urls) {
+      tasks.add(async {
+        Request req = Request.get(url);
+        Response res = await Http.fetch(req);
+        return res;
+      });
+    }
+
+    log.info("fanout", "Spawned fetch tasks", Fields.of("count", tasks.size()));
+
+    // Fan-in: gather all results
+    List<Response> results = [];
+    for (Task<Response> t : tasks) {
+      Response res = await t;
+      results.add(res);
+    }
+
+    log.info("fanin", "Gathered results", Fields.of("count", results.size()));
+    return results;
+  }
+
+  /// Timeout pattern using Task.select
+  public async Response fetchWithTimeout(Request req, Duration timeout)
+      throws (CancelledError, TimeoutError, HttpError) {
+    Logger log = Logger.get("concurrent.patterns");
+
+    // Race between fetch and timer
+    Task<Response> fetchTask = Http.fetch(req);
+    Task<void> timerTask = Task.sleep(timeout);
+
+    switch (await Task.select(fetchTask, timerTask)) {
+      case Selected.First(response):
+        // Fetch completed first - cancel the timer
+        Task.cancel(timerTask);
+        log.info("success", "Fetch completed in time", Fields.of());
+        return response;
+
+      case Selected.Second(_):
+        // Timer fired first - cancel the fetch
+        Task.cancel(fetchTask);
+        log.info("timeout", "Fetch timed out", Fields.of("timeout", timeout));
+        throw TimeoutError.of(timeout);
+    }
+  }
+
+  /// Worker pool pattern
+  /// Fixed number of workers processing jobs from a queue
+  public async void workerPool(int numWorkers, List<Job> jobs) throws (CancelledError) {
+    Logger log = Logger.get("concurrent.patterns");
+
+    // Job queue channel
+    Channel<Job> jobQueue = Channel.create(jobs.size());
+    Sender<Job> jobTx = jobQueue.sender();
+    Receiver<Job> jobRx = jobQueue.receiver();
+
+    // Results channel
+    Channel<JobResult> results = Channel.create(jobs.size());
+    Sender<JobResult> resultTx = results.sender();
+
+    // Enqueue all jobs
+    for (Job job : jobs) {
+      await jobTx.send(job);
+    }
+    jobTx.close();
+
+    log.info("queued", "Jobs queued", Fields.of("count", jobs.size()));
+
+    // Spawn workers
+    List<Task<void>> workers = [];
+    for (int i = 0; i < numWorkers; i++) {
+      int workerId = i;
+      workers.add(async {
+        while (true) {
+          Optional<Job> job = await jobRx.recv();
+          if (job.isEmpty()) break;
+
+          // Process the job
+          log.info("processing", "Worker processing",
+            Fields.of("worker", workerId, "job", job.get().id));
+
+          int result = processJob(job.get());
+
+          await resultTx.send(JobResult { jobId: job.get().id, result: result });
+        }
+        log.info("done", "Worker finished", Fields.of("worker", workerId));
+      });
+    }
+
+    // Wait for all workers
+    for (Task<void> w : workers) {
+      await w;
+    }
+    resultTx.close();
+
+    // Collect results
+    int completed = 0;
+    while (true) {
+      Optional<JobResult> res = await results.receiver().recv();
+      if (res.isEmpty()) break;
+      completed++;
+    }
+
+    log.info("complete", "All jobs processed", Fields.of("completed", completed));
+  }
+
+  /// Process a single job
+  int processJob(Job job) {
+    // Simulate work
+    return job.id * 2;
+  }
+
+  /// Pipeline pattern
+  /// Chain of processing stages connected by channels
+  public async void pipeline(List<int> input) throws (CancelledError) {
+    Logger log = Logger.get("concurrent.patterns");
+
+    // Stage 1: Source -> Stage1
+    Channel<int> ch1 = Channel.create(10);
+    // Stage 2: Stage1 -> Stage2
+    Channel<int> ch2 = Channel.create(10);
+    // Stage 3: Stage2 -> Sink
+    Channel<int> ch3 = Channel.create(10);
+
+    // Source: emit input values
+    Task<void> source = async {
+      for (int v : input) {
+        await ch1.sender().send(v);
+      }
+      ch1.sender().close();
+      log.info("source", "Source done", Fields.of());
+    };
+
+    // Stage 1: double values
+    Task<void> stage1 = async {
+      while (true) {
+        Optional<int> v = await ch1.receiver().recv();
+        if (v.isEmpty()) break;
+        await ch2.sender().send(v.get() * 2);
+      }
+      ch2.sender().close();
+      log.info("stage1", "Stage 1 done", Fields.of());
+    };
+
+    // Stage 2: add 10
+    Task<void> stage2 = async {
+      while (true) {
+        Optional<int> v = await ch2.receiver().recv();
+        if (v.isEmpty()) break;
+        await ch3.sender().send(v.get() + 10);
+      }
+      ch3.sender().close();
+      log.info("stage2", "Stage 2 done", Fields.of());
+    };
+
+    // Sink: collect results
+    Task<List<int>> sink = async {
+      List<int> results = [];
+      while (true) {
+        Optional<int> v = await ch3.receiver().recv();
+        if (v.isEmpty()) break;
+        results.add(v.get());
+      }
+      log.info("sink", "Sink done", Fields.of("count", results.size()));
+      return results;
+    };
+
+    List<int> output = await sink;
+    log.info("pipeline", "Pipeline complete", Fields.of("output", output));
+  }
+
+  /// Semaphore pattern for limiting concurrency
+  public async void semaphore(int maxConcurrent, List<Job> jobs) throws (CancelledError) {
+    Logger log = Logger.get("concurrent.patterns");
+
+    // Semaphore channel - capacity limits concurrency
+    Channel<void> sem = Channel.create(maxConcurrent);
+
+    // Pre-fill semaphore with permits
+    for (int i = 0; i < maxConcurrent; i++) {
+      await sem.sender().send(void);
+    }
+
+    // Process all jobs with limited concurrency
+    List<Task<void>> tasks = [];
+    for (Job job : jobs) {
+      int jobId = job.id;
+      tasks.add(async {
+        // Acquire permit
+        await sem.receiver().recv();
+        log.info("acquired", "Acquired permit", Fields.of("job", jobId));
+
+        try {
+          // Do work
+          processJob(Job { id: jobId });
+          log.info("processed", "Job processed", Fields.of("job", jobId));
+        } finally {
+          // Release permit
+          await sem.sender().send(void);
+          log.info("released", "Released permit", Fields.of("job", jobId));
+        }
+      });
+    }
+
+    // Wait for all
+    for (Task<void> t : tasks) {
+      await t;
+    }
+
+    log.info("complete", "All jobs complete", Fields.of());
+  }
+
+  /// Retry with exponential backoff
+  public async Response fetchWithRetry(Request req, int maxRetries) throws (HttpError) {
+    Logger log = Logger.get("concurrent.patterns");
+
+    int attempt = 0;
+    Duration delay = Duration.ofMillis(100);
+
+    while (attempt < maxRetries) {
+      try {
+        Response res = await Http.fetch(req);
+        if (res.status() < 500) {
+          return res;
+        }
+        log.info("retry", "Server error, retrying",
+          Fields.of("attempt", attempt, "status", res.status()));
+      } catch (HttpError e) {
+        log.info("error", "Fetch error, retrying",
+          Fields.of("attempt", attempt, "error", e.message()));
+      }
+
+      attempt++;
+      if (attempt < maxRetries) {
+        await Task.sleep(delay);
+        delay = Duration.ofMillis(delay.toMillis() * 2);  // Exponential backoff
+      }
+    }
+
+    throw HttpError.of(0, "Max retries exceeded");
+  }
+
+  /// Broadcast pattern - one sender, multiple receivers
+  public async void broadcast(List<int> values) throws (CancelledError) {
+    Logger log = Logger.get("concurrent.patterns");
+
+    // Create channels for each subscriber
+    List<Sender<int>> subscribers = [];
+    List<Task<void>> subTasks = [];
+
+    for (int i = 0; i < 3; i++) {
+      Channel<int> ch = Channel.create(10);
+      subscribers.add(ch.sender());
+
+      int subId = i;
+      subTasks.add(async {
+        while (true) {
+          Optional<int> v = await ch.receiver().recv();
+          if (v.isEmpty()) break;
+          log.info("received", "Subscriber got value",
+            Fields.of("sub", subId, "value", v.get()));
+        }
+      });
+    }
+
+    // Broadcast values to all subscribers
+    for (int v : values) {
+      for (Sender<int> sub : subscribers) {
+        await sub.send(v);
+      }
+    }
+
+    // Close all subscriber channels
+    for (Sender<int> sub : subscribers) {
+      sub.close();
+    }
+
+    // Wait for all subscribers
+    for (Task<void> t : subTasks) {
+      await t;
+    }
+
+    log.info("done", "Broadcast complete", Fields.of());
+  }
+
+  /// First-to-finish pattern
+  public async int firstOf(List<Task<int>> tasks) throws (CancelledError) {
+    Logger log = Logger.get("concurrent.patterns");
+
+    // Create a channel to receive the first result
+    Channel<int> resultCh = Channel.create(1);
+    Sender<int> resultTx = resultCh.sender();
+
+    // Wrap each task to send result to channel
+    for (Task<int> t : tasks) {
+      Task.spawn(async {
+        int result = await t;
+        // Only the first send succeeds (capacity 1)
+        resultTx.trySend(result);
+      });
+    }
+
+    // Wait for first result
+    Optional<int> first = await resultCh.receiver().recv();
+
+    // Cancel remaining tasks
+    for (Task<int> t : tasks) {
+      Task.cancel(t);
+    }
+
+    log.info("first", "Got first result", Fields.of("value", first.getOrDefault(-1)));
+    return first.getOrDefault(-1);
+  }
+}
+
+/// Job struct for examples
+struct Job {
+  final int id;
+}
+
+/// Job result struct
+struct JobResult {
+  final int jobId;
+  final int result;
+}
+
+/// Selection result for Task.select
+enum Selected<A, B> {
+  First(A),
+  Second(B)
+}
+
+/// Timeout error
+struct TimeoutError {
+  final Duration timeout;
+
+  public static TimeoutError of(Duration timeout) {
+    return TimeoutError { timeout: timeout };
+  }
+}

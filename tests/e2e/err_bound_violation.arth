@@ -1,0 +1,32 @@
+package test;
+
+interface Bound {
+    void mustHave();
+}
+
+struct Valid {}
+module ValidFns implements Bound {
+    public static void mustHave(Valid self) {}
+}
+
+struct Invalid {}
+module InvalidFns {
+    // Does not implement Bound
+    public static void other(Invalid self) {}
+}
+
+module Utils {
+    public static T check<T extends Bound>(T val) {
+        return val;
+    }
+}
+
+module Main {
+    public static void main() {
+        Valid v = Valid {};
+        Utils.check(v); // OK
+
+        Invalid i = Invalid {};
+        Utils.check(i); // ERROR: Invalid does not satisfy Bound
+    }
+}

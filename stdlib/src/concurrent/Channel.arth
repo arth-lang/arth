@@ -1,0 +1,189 @@
+/**
+ * INTRINSIC-BACKED STUB for IDE/tooling support.
+ *
+ * This module provides typed channels for message passing between tasks.
+ * Actual implementation is handled by compiler intrinsics and VM runtime.
+ *
+ * @see src/compiler/lower/hir_to_ir.rs - channel lowering
+ * @see crates/arth-vm/src/runtime.rs - channel runtime functions
+ */
+package concurrent;
+
+/**
+ * Channel<T> represents a bounded channel for sending messages of type T.
+ *
+ * Channels are created with a capacity and split into Sender and Receiver ends.
+ * They provide safe, typed message passing between concurrent tasks.
+ *
+ * Example:
+ * ```
+ * Channel<Message> ch = Channels.create(Message.class);
+ * Sender<Message> tx = ch.sender();
+ * Receiver<Message> rx = ch.receiver();
+ *
+ * Task.spawn(fn() { tx.send(Message.hello()); tx.close(); });
+ * Optional<Message> msg = await rx.recv();
+ * ```
+ */
+struct Channel<T> {
+    /** Internal handle to the runtime channel. */
+    private final int handle;
+}
+
+/**
+ * Sender<T> is the sending half of a Channel<T>.
+ *
+ * Multiple senders can be cloned from a single channel.
+ * The channel closes when all senders are closed or dropped.
+ */
+struct Sender<T> {
+    /** Internal handle to the runtime channel. */
+    private final int handle;
+}
+
+/**
+ * Receiver<T> is the receiving half of a Channel<T>.
+ *
+ * Only one receiver exists per channel (single consumer).
+ * Receivers are awaitable and return Optional<T>.
+ */
+struct Receiver<T> {
+    /** Internal handle to the runtime channel. */
+    private final int handle;
+}
+
+/**
+ * Factory module for creating channels.
+ */
+module Channels {
+    /**
+     * Creates a new bounded channel with default capacity.
+     *
+     * @param elementType The class of elements this channel will carry
+     * @return A new Channel that can be split into Sender and Receiver
+     */
+    @intrinsic("channel.create")
+    public Channel<T> create<T>(Class<T> elementType) {
+        // Intrinsic: creates channel with default capacity (typically 16)
+        return Channel { handle: 0 };
+    }
+
+    /**
+     * Creates a new bounded channel with specified capacity.
+     *
+     * @param elementType The class of elements this channel will carry
+     * @param capacity The maximum number of buffered messages
+     * @return A new Channel that can be split into Sender and Receiver
+     */
+    @intrinsic("channel.create")
+    public Channel<T> createWithCapacity<T>(Class<T> elementType, int capacity) {
+        // Intrinsic: creates channel with given capacity
+        return Channel { handle: 0 };
+    }
+}
+
+module ChannelFns {
+    /**
+     * Gets the sender end of the channel.
+     *
+     * @param self The channel
+     * @return The Sender for this channel
+     */
+    public Sender<T> sender<T>(Channel<T> self) {
+        return Sender { handle: self.handle };
+    }
+
+    /**
+     * Gets the receiver end of the channel.
+     *
+     * @param self The channel
+     * @return The Receiver for this channel
+     */
+    public Receiver<T> receiver<T>(Channel<T> self) {
+        return Receiver { handle: self.handle };
+    }
+}
+
+module SenderFns {
+    /**
+     * Sends a value through the channel.
+     *
+     * This may block if the channel is full.
+     *
+     * @param self The sender
+     * @param value The value to send
+     * @throws ClosedError if the channel has been closed
+     */
+    @intrinsic("channel.send")
+    public void send<T>(Sender<T> self, T value) throws ClosedError {
+        // Intrinsic: sends value, may block
+    }
+
+    /**
+     * Tries to send a value without blocking.
+     *
+     * @param self The sender
+     * @param value The value to send
+     * @return true if sent, false if channel was full
+     */
+    @intrinsic("channel.try_send")
+    public bool trySend<T>(Sender<T> self, T value) {
+        // Intrinsic: non-blocking send attempt
+        return false;
+    }
+
+    /**
+     * Closes the sender end of the channel.
+     *
+     * After closing, no more values can be sent.
+     * The receiver will receive Optional.empty() after draining buffered values.
+     *
+     * @param self The sender to close
+     */
+    @intrinsic("channel.close")
+    public void close<T>(Sender<T> self) {
+        // Intrinsic: closes sender
+    }
+}
+
+module ReceiverFns {
+    /**
+     * Receives a value from the channel asynchronously.
+     *
+     * Returns Optional.empty() when the channel is closed and drained.
+     * This is the primary way to receive values and is awaitable.
+     *
+     * @param self The receiver
+     * @return Optional containing the value, or empty if channel is closed
+     */
+    @intrinsic("channel.recv")
+    public async Optional<T> recv<T>(Receiver<T> self) {
+        // Intrinsic: awaits next value or returns empty on close
+        return Optional.empty();
+    }
+
+    /**
+     * Tries to receive a value without blocking.
+     *
+     * @param self The receiver
+     * @return Optional containing the value, or empty if none available
+     */
+    @intrinsic("channel.try_recv")
+    public Optional<T> tryRecv<T>(Receiver<T> self) {
+        // Intrinsic: non-blocking receive attempt
+        return Optional.empty();
+    }
+}
+
+/**
+ * Error thrown when attempting to send on a closed channel.
+ */
+struct ClosedError {
+    public final String message;
+}
+
+module ClosedErrorFns {
+    public ClosedError new(String message) {
+        return ClosedError { message: message };
+    }
+}

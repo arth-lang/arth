@@ -1,0 +1,89 @@
+package test;
+
+// Test: C01 - Concurrent Thread Pool Creation
+//
+// This test verifies the work-stealing thread pool infrastructure:
+// - Pool initialization with configurable thread count
+// - Thread count and active worker queries
+// - Basic task spawn/join (MVP - stores result immediately)
+//
+// Expected output:
+//   === C01: Thread Pool Infrastructure ===
+//   Initializing pool with 4 threads...
+//   Pool initialized: 1
+//   Thread count: 4
+//   Active workers: 4
+//   === Basic Task Spawn/Join ===
+//   Spawning task 1...
+//   Task 1 spawned with id: X
+//   Joining task 1...
+//   Task 1 result: 42
+//   Spawning task 2...
+//   Task 2 spawned with id: Y
+//   Joining task 2...
+//   Task 2 result: 100
+//   === Multiple Concurrent Tasks ===
+//   Spawning 3 tasks...
+//   All tasks spawned
+//   Joining all tasks...
+//   Results: 1, 2, 3
+//   === C01: All tests passed ===
+
+module Executor {
+    // Executor intrinsics are recognized by HIR-to-IR lowering
+    // and mapped to __arth_executor_* VM calls
+}
+
+module Main {
+    public static void main() {
+        println("=== C01: Thread Pool Infrastructure ===");
+
+        // Test 1: Initialize thread pool with 4 threads
+        println("Initializing pool with 4 threads...");
+        Int initResult = Executor.init(4);
+        println("Pool initialized: " + initResult);
+
+        // Test 2: Query thread count
+        Int threadCount = Executor.threadCount();
+        println("Thread count: " + threadCount);
+
+        // Test 3: Query active workers (should be 4 initially)
+        Int activeWorkers = Executor.activeWorkers();
+        println("Active workers: " + activeWorkers);
+
+        // Test 4: Basic task spawn/join
+        // For MVP, spawn just creates a task ID and stores fn_id as result
+        println("=== Basic Task Spawn/Join ===");
+        println("Spawning task 1...");
+        Int task1 = Executor.spawn(42);  // fn_id=42 becomes result for MVP
+        println("Task 1 spawned with id: " + task1);
+
+        println("Joining task 1...");
+        Int result1 = Executor.join(task1);
+        println("Task 1 result: " + result1);
+
+        println("Spawning task 2...");
+        Int task2 = Executor.spawn(100);  // fn_id=100 becomes result for MVP
+        println("Task 2 spawned with id: " + task2);
+
+        println("Joining task 2...");
+        Int result2 = Executor.join(task2);
+        println("Task 2 result: " + result2);
+
+        // Test 5: Multiple concurrent tasks
+        println("=== Multiple Concurrent Tasks ===");
+        println("Spawning 3 tasks...");
+        Int taskA = Executor.spawn(1);
+        Int taskB = Executor.spawn(2);
+        Int taskC = Executor.spawn(3);
+        println("All tasks spawned");
+
+        println("Joining all tasks...");
+        Int resA = Executor.join(taskA);
+        Int resB = Executor.join(taskB);
+        Int resC = Executor.join(taskC);
+        println("Results: " + resA + ", " + resB + ", " + resC);
+
+        println("=== C01: All tests passed ===");
+    }
+}

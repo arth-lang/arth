@@ -1,0 +1,311 @@
+package conc_19_atomic;
+
+// ============================================================================
+// C19: Atomic<T> Operations Test Suite
+// Tests: create, load, store, cas, fetchAdd, fetchSub, swap, inc, dec
+// Verifies: Atomic is both Sendable AND Shareable
+// ============================================================================
+
+module Main {
+
+    public void main() {
+        println("=== C19: Atomic<T> Operations Test ===");
+
+        int passed = 0;
+        int total = 0;
+
+        // Test 1: Atomic.create and Atomic.load
+        total = total + 1;
+        println("=== Test 1: Atomic.create and load ===");
+        int atomicHandle = Atomic.create(42);
+        int value = Atomic.load(atomicHandle);
+        if (value == 42) {
+            println("Test 1 (create/load): PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 1 FAIL: expected 42, got " + value);
+        }
+
+        // Test 2: Atomic.store (returns 0 on success, not old value - use swap for that)
+        total = total + 1;
+        println("=== Test 2: Atomic.store ===");
+        int storeResult = Atomic.store(atomicHandle, 100);
+        int newVal = Atomic.load(atomicHandle);
+        if (storeResult == 0 && newVal == 100) {
+            println("Test 2 (store): PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 2 FAIL: expected result=0 new=100, got result=" + storeResult + " new=" + newVal);
+        }
+
+        // Test 3: Atomic.get (alias for load)
+        total = total + 1;
+        println("=== Test 3: Atomic.get ===");
+        int getVal = Atomic.get(atomicHandle);
+        if (getVal == 100) {
+            println("Test 3 (get): PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 3 FAIL: expected 100, got " + getVal);
+        }
+
+        // Test 4: Atomic.set (alias for store - returns 0 on success)
+        total = total + 1;
+        println("=== Test 4: Atomic.set ===");
+        int setResult = Atomic.set(atomicHandle, 200);
+        int afterSet = Atomic.get(atomicHandle);
+        if (setResult == 0 && afterSet == 200) {
+            println("Test 4 (set): PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 4 FAIL: expected result=0 after=200, got result=" + setResult + " after=" + afterSet);
+        }
+
+        // Test 5: Atomic.cas (compare-and-swap) success
+        total = total + 1;
+        println("=== Test 5: Atomic.cas success ===");
+        Atomic.set(atomicHandle, 50);
+        int casResult = Atomic.cas(atomicHandle, 50, 60);
+        int afterCas = Atomic.load(atomicHandle);
+        if (casResult == 1 && afterCas == 60) {
+            println("Test 5 (cas success): PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 5 FAIL: expected success=1 val=60, got success=" + casResult + " val=" + afterCas);
+        }
+
+        // Test 6: Atomic.cas failure (expected doesn't match)
+        total = total + 1;
+        println("=== Test 6: Atomic.cas failure ===");
+        int casFailResult = Atomic.cas(atomicHandle, 999, 1000);
+        int afterCasFail = Atomic.load(atomicHandle);
+        if (casFailResult == 0 && afterCasFail == 60) {
+            println("Test 6 (cas failure): PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 6 FAIL: expected success=0 val=60, got success=" + casFailResult + " val=" + afterCasFail);
+        }
+
+        // Test 7: Atomic.fetchAdd
+        total = total + 1;
+        println("=== Test 7: Atomic.fetchAdd ===");
+        Atomic.set(atomicHandle, 100);
+        int oldBeforeAdd = Atomic.fetchAdd(atomicHandle, 25);
+        int afterAdd = Atomic.load(atomicHandle);
+        if (oldBeforeAdd == 100 && afterAdd == 125) {
+            println("Test 7 (fetchAdd): PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 7 FAIL: expected old=100 new=125, got old=" + oldBeforeAdd + " new=" + afterAdd);
+        }
+
+        // Test 8: Atomic.fetchSub
+        total = total + 1;
+        println("=== Test 8: Atomic.fetchSub ===");
+        int oldBeforeSub = Atomic.fetchSub(atomicHandle, 25);
+        int afterSub = Atomic.load(atomicHandle);
+        if (oldBeforeSub == 125 && afterSub == 100) {
+            println("Test 8 (fetchSub): PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 8 FAIL: expected old=125 new=100, got old=" + oldBeforeSub + " new=" + afterSub);
+        }
+
+        // Test 9: Atomic.swap
+        total = total + 1;
+        println("=== Test 9: Atomic.swap ===");
+        int swapOld = Atomic.swap(atomicHandle, 999);
+        int afterSwap = Atomic.load(atomicHandle);
+        if (swapOld == 100 && afterSwap == 999) {
+            println("Test 9 (swap): PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 9 FAIL: expected old=100 new=999, got old=" + swapOld + " new=" + afterSwap);
+        }
+
+        // Test 10: Atomic.inc
+        total = total + 1;
+        println("=== Test 10: Atomic.inc ===");
+        Atomic.set(atomicHandle, 0);
+        int oldBeforeInc = Atomic.inc(atomicHandle);
+        int afterInc = Atomic.load(atomicHandle);
+        if (oldBeforeInc == 0 && afterInc == 1) {
+            println("Test 10 (inc): PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 10 FAIL: expected old=0 new=1, got old=" + oldBeforeInc + " new=" + afterInc);
+        }
+
+        // Test 11: Atomic.dec
+        total = total + 1;
+        println("=== Test 11: Atomic.dec ===");
+        Atomic.set(atomicHandle, 10);
+        int oldBeforeDec = Atomic.dec(atomicHandle);
+        int afterDec = Atomic.load(atomicHandle);
+        if (oldBeforeDec == 10 && afterDec == 9) {
+            println("Test 11 (dec): PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 11 FAIL: expected old=10 new=9, got old=" + oldBeforeDec + " new=" + afterDec);
+        }
+
+        // Test 12: Atomic.new (alias for create)
+        total = total + 1;
+        println("=== Test 12: Atomic.new ===");
+        int newHandle = Atomic.new(777);
+        int newVal12 = Atomic.load(newHandle);
+        if (newVal12 == 777) {
+            println("Test 12 (new): PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 12 FAIL: expected 777, got " + newVal12);
+        }
+
+        // Test 13: Atomic.compareAndSwap (alias for cas)
+        total = total + 1;
+        println("=== Test 13: Atomic.compareAndSwap ===");
+        int casAliasResult = Atomic.compareAndSwap(newHandle, 777, 888);
+        int afterCasAlias = Atomic.load(newHandle);
+        if (casAliasResult == 1 && afterCasAlias == 888) {
+            println("Test 13 (compareAndSwap): PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 13 FAIL: expected success=1 val=888, got success=" + casAliasResult + " val=" + afterCasAlias);
+        }
+
+        // Test 14: Atomic.increment and Atomic.decrement (aliases)
+        total = total + 1;
+        println("=== Test 14: Atomic.increment/decrement ===");
+        Atomic.set(newHandle, 50);
+        int incOld = Atomic.increment(newHandle);
+        int afterIncAlias = Atomic.load(newHandle);
+        int decOld = Atomic.decrement(newHandle);
+        int afterDecAlias = Atomic.load(newHandle);
+        if (incOld == 50 && afterIncAlias == 51 && decOld == 51 && afterDecAlias == 50) {
+            println("Test 14 (increment/decrement): PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 14 FAIL: increment or decrement alias failed");
+        }
+
+        // Test 15: Multiple Atomics independent
+        total = total + 1;
+        println("=== Test 15: Multiple independent Atomics ===");
+        int a1 = Atomic.create(100);
+        int a2 = Atomic.create(200);
+        int a3 = Atomic.create(300);
+        Atomic.fetchAdd(a1, 1);
+        Atomic.fetchAdd(a2, 2);
+        Atomic.fetchAdd(a3, 3);
+        int v1 = Atomic.load(a1);
+        int v2 = Atomic.load(a2);
+        int v3 = Atomic.load(a3);
+        if (v1 == 101 && v2 == 202 && v3 == 303) {
+            println("Test 15 (multiple atomics): PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 15 FAIL: expected 101,202,303 got " + v1 + "," + v2 + "," + v3);
+        }
+
+        // Test 16: Multiple sequential fetchAdd (simulating concurrent access)
+        total = total + 1;
+        println("=== Test 16: Sequential fetchAdd operations ===");
+        int counter = Atomic.create(0);
+        // Simulate what concurrent threads would do
+        int i = 0;
+        while (i < 100) {
+            Atomic.fetchAdd(counter, 1);
+            i = i + 1;
+        }
+        int finalCount = Atomic.load(counter);
+        if (finalCount == 100) {
+            println("Test 16 (sequential fetchAdd): PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 16 FAIL: expected 100, got " + finalCount);
+        }
+
+        // Test 17: Atomic handle via MpmcChan (handle is just an int)
+        total = total + 1;
+        println("=== Test 17: Atomic handle via MpmcChan ===");
+        int atomicChan = Atomic.create(1000);
+        int chan = MpmcChan.create(10);
+        MpmcChan.send(chan, atomicChan);
+        int receivedHandle = MpmcChan.recv(chan);
+        int receivedVal = Atomic.load(receivedHandle);
+        if (receivedVal == 1000) {
+            println("Test 17 (Atomic handle via channel): PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 17 FAIL: expected 1000, got " + receivedVal);
+        }
+
+        // Test 18: CAS loop pattern (common use case)
+        total = total + 1;
+        println("=== Test 18: CAS loop pattern ===");
+        int casLoopAtomic = Atomic.create(0);
+        // Simulate CAS loop: increment until we succeed
+        int expected18 = 0;
+        int desired18 = 1;
+        int maxAttempts = 10;
+        int attempts = 0;
+        int success18 = 0;
+        while (attempts < maxAttempts && success18 == 0) {
+            success18 = Atomic.cas(casLoopAtomic, expected18, desired18);
+            if (success18 == 0) {
+                expected18 = Atomic.load(casLoopAtomic);
+                desired18 = expected18 + 1;
+            }
+            attempts = attempts + 1;
+        }
+        int finalCasVal = Atomic.load(casLoopAtomic);
+        if (finalCasVal == 1) {
+            println("Test 18 (CAS loop): PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 18 FAIL: expected 1, got " + finalCasVal);
+        }
+
+        // Test 19: Negative values in Atomic
+        total = total + 1;
+        println("=== Test 19: Negative values ===");
+        int negAtomic = Atomic.create(-100);
+        int negVal = Atomic.load(negAtomic);
+        Atomic.fetchAdd(negAtomic, -50);
+        int negValAfter = Atomic.load(negAtomic);
+        if (negVal == -100 && negValAfter == -150) {
+            println("Test 19 (negative values): PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 19 FAIL: expected -100, -150, got " + negVal + ", " + negValAfter);
+        }
+
+        // Test 20: Large value test
+        total = total + 1;
+        println("=== Test 20: Large values ===");
+        int largeAtomic = Atomic.create(1000000000);
+        Atomic.fetchAdd(largeAtomic, 1000000000);
+        int largeVal = Atomic.load(largeAtomic);
+        if (largeVal == 2000000000) {
+            println("Test 20 (large values): PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 20 FAIL: expected 2000000000, got " + largeVal);
+        }
+
+        // Summary
+        println("=== Summary ===");
+        println("Passed: " + passed + "/" + total);
+        if (passed == total) {
+            println("ALL TESTS PASSED");
+        } else {
+            println("SOME TESTS FAILED");
+        }
+
+        println("");
+        println("Note: Atomic<T> is now both Sendable AND Shareable (C19).");
+        println("This allows Atomic values to be safely:");
+        println("  - Sent across task boundaries (spawn, Actor.send, MpmcChan.send)");
+        println("  - Shared across threads for lock-free operations");
+    }
+}

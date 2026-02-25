@@ -1,0 +1,232 @@
+package test;
+
+// Test: Pattern matching (full)
+// This tests comprehensive pattern matching capabilities.
+//
+// Expected output:
+//   === Test 1: Basic Enum Pattern Matching ===
+//   Got OK with value: 42
+//   Test 1: PASS
+//   === Test 2: Wildcard Pattern ===
+//   Got something else
+//   Test 2: PASS
+//   === Test 3: Multiple Payload Extraction ===
+//   Pair values: 10, 20
+//   Test 3: PASS
+//   === Test 4: Pattern with Default ===
+//   Got Blue via default
+//   Test 4: PASS
+//   === Test 5: Integer Switch ===
+//   Got two
+//   Test 5: PASS
+//   === Test 6: Unit Variant ===
+//   Got None
+//   Test 6: PASS
+//   === Test 7: Nested Switch ===
+//   Got nested OK: 100
+//   Test 7: PASS
+//   === Summary ===
+//   Tests passed: 7/7
+//   === P23: PASSED ===
+
+// Basic Result enum
+public enum Result {
+    Ok(Int),
+    Err(String)
+}
+
+// Option enum
+public enum Option {
+    Some(Int),
+    None
+}
+
+// Enum with multiple payloads
+public enum Pair {
+    Two(Int, Int),
+    One(Int),
+    Zero
+}
+
+// Nested enum for testing nested patterns
+public enum Nested {
+    Inner(Result),
+    Leaf(Int)
+}
+
+// Color enum for default testing
+public enum Color {
+    Red,
+    Green,
+    Blue
+}
+
+module Main {
+    public static void main() {
+        Int passed = 0;
+
+        // Test 1: Basic enum pattern matching with payload extraction
+        println("=== Test 1: Basic Enum Pattern Matching ===");
+        Result r1 = Result.Ok(42);
+        Int v1 = 0;
+        switch (r1) {
+            case Result.Ok(x):
+                println("Got OK with value: " + x);
+                v1 = x;
+            case Result.Err(msg):
+                println("Got error: " + msg);
+        }
+        if (v1 == 42) {
+            println("Test 1: PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 1: FAIL");
+        }
+
+        // Test 2: Wildcard pattern in enum matching
+        println("=== Test 2: Wildcard Pattern ===");
+        Result r2 = Result.Err("some error");
+        Int v2 = 0;
+        switch (r2) {
+            case Result.Ok(x):
+                println("Got OK: " + x);
+                v2 = 1;
+            case _:
+                println("Got something else");
+                v2 = 2;
+        }
+        if (v2 == 2) {
+            println("Test 2: PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 2: FAIL");
+        }
+
+        // Test 3: Multiple payload extraction
+        println("=== Test 3: Multiple Payload Extraction ===");
+        Pair p1 = Pair.Two(10, 20);
+        Int sum = 0;
+        switch (p1) {
+            case Pair.Two(a, b):
+                println("Pair values: " + a + ", " + b);
+                sum = a + b;
+            case Pair.One(x):
+                println("Single: " + x);
+                sum = x;
+            case Pair.Zero:
+                println("Zero");
+                sum = 0;
+        }
+        if (sum == 30) {
+            println("Test 3: PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 3: FAIL");
+        }
+
+        // Test 4: Pattern with default case
+        println("=== Test 4: Pattern with Default ===");
+        Color c1 = Color.Blue;
+        Int colorVal = 0;
+        switch (c1) {
+            case Color.Red:
+                println("Got Red");
+                colorVal = 1;
+            case Color.Green:
+                println("Got Green");
+                colorVal = 2;
+            default:
+                println("Got Blue via default");
+                colorVal = 3;
+        }
+        if (colorVal == 3) {
+            println("Test 4: PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 4: FAIL");
+        }
+
+        // Test 5: Integer switch (legacy pattern)
+        println("=== Test 5: Integer Switch ===");
+        Int num = 2;
+        Int intVal = 0;
+        switch (num) {
+            case 1:
+                println("Got one");
+                intVal = 1;
+            case 2:
+                println("Got two");
+                intVal = 2;
+            case 3:
+                println("Got three");
+                intVal = 3;
+            default:
+                println("Got other");
+                intVal = 0;
+        }
+        if (intVal == 2) {
+            println("Test 5: PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 5: FAIL");
+        }
+
+        // Test 6: Unit variant matching
+        println("=== Test 6: Unit Variant ===");
+        Option o1 = Option.None;
+        Int optVal = 0;
+        switch (o1) {
+            case Option.Some(x):
+                println("Got Some: " + x);
+                optVal = x;
+            case Option.None:
+                println("Got None");
+                optVal = -1;
+        }
+        if (optVal == -1) {
+            println("Test 6: PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 6: FAIL");
+        }
+
+        // Test 7: Nested switch (match inner value in nested enum)
+        println("=== Test 7: Nested Switch ===");
+        Nested n1 = Nested.Inner(Result.Ok(100));
+        Int nestedVal = 0;
+        switch (n1) {
+            case Nested.Inner(inner):
+                // Extract the Result and test with a helper
+                nestedVal = extractResult(inner);
+            case Nested.Leaf(x):
+                nestedVal = x;
+        }
+        if (nestedVal == 100) {
+            println("Test 7: PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 7: FAIL - got " + nestedVal);
+        }
+
+        // Summary
+        println("=== Summary ===");
+        println("Tests passed: " + passed + "/7");
+        if (passed == 7) {
+            println("=== P23: PASSED ===");
+        } else {
+            println("=== P23: FAILED ===");
+        }
+    }
+
+    public static Int extractResult(Result r) {
+        switch (r) {
+            case Result.Ok(x):
+                println("Got nested OK: " + x);
+                return x;
+            case Result.Err(msg):
+                println("Got nested error: " + msg);
+                return -1;
+        }
+        return 0;
+    }
+}

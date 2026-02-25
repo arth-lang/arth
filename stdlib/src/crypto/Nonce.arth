@@ -1,0 +1,171 @@
+package crypto;
+
+/**
+ * Cryptographic nonce (number used once) for AEAD encryption.
+ *
+ * A nonce must be unique for each encryption operation with the same key.
+ * Nonce reuse completely breaks the security of AEAD ciphers.
+ *
+ * Safe nonce strategies:
+ * 1. Random nonce: Generate a fresh random nonce for each message.
+ *    Safe with high probability for up to 2^32 messages.
+ * 2. Counter nonce: Use a monotonically increasing counter.
+ *    Safe for unlimited messages but requires state management.
+ * 3. Deterministic nonce: Derive from message ID using a PRF.
+ *    Safe if message IDs are unique.
+ *
+ * Example usage:
+ * ```arth
+ * import crypto.*;
+ *
+ * module Example {
+ *     public void encrypt() throws RandomError {
+ *         // Generate a random nonce (most common)
+ *         Nonce nonce = Nonce.random(AeadAlgorithm.AES_256_GCM);
+ *
+ *         // Or create from counter
+ *         Nonce nonce2 = Nonce.fromCounter(AeadAlgorithm.AES_256_GCM, 42);
+ *     }
+ * }
+ * ```
+ *
+ * @see crypto.Aead for encryption operations
+ */
+
+/**
+ * A nonce for AEAD encryption.
+ */
+public struct Nonce {
+    /// The AEAD algorithm this nonce is for
+    public final AeadAlgorithm algorithm;
+    /// The nonce bytes
+    public final bytes data;
+}
+
+/**
+ * Module for Nonce operations.
+ */
+module Nonce {
+    // =========================================================================
+    // Generation
+    // =========================================================================
+
+    /**
+     * Generates a random nonce for the given algorithm.
+     *
+     * Uses the system CSPRNG.
+     *
+     * @param algorithm The AEAD algorithm
+     * @return A new random nonce
+     * @throws RandomError if the CSPRNG fails
+     */
+    @intrinsic("crypto.nonce_random")
+    public static Nonce random(AeadAlgorithm algorithm) throws RandomError {
+        int size = AeadAlgorithm.nonceSize(algorithm);
+        return Nonce {
+            algorithm: algorithm,
+            data: bytes.allocate(size)
+        };
+    }
+
+    /**
+     * Creates a nonce from a 64-bit counter value.
+     *
+     * The counter is encoded as big-endian bytes, left-padded with zeros.
+     * This is suitable for counter-mode nonce generation.
+     *
+     * @param algorithm The AEAD algorithm
+     * @param counter The counter value
+     * @return A nonce derived from the counter
+     */
+    @intrinsic("crypto.nonce_from_counter")
+    public static Nonce fromCounter(AeadAlgorithm algorithm, long counter) {
+        int size = AeadAlgorithm.nonceSize(algorithm);
+        return Nonce {
+            algorithm: algorithm,
+            data: bytes.allocate(size)
+        };
+    }
+
+    // =========================================================================
+    // Import/Export
+    // =========================================================================
+
+    /**
+     * Creates a Nonce from raw bytes.
+     *
+     * @param algorithm The AEAD algorithm
+     * @param data The nonce bytes
+     * @return A new Nonce
+     * @throws InvalidNonceError if the size is wrong
+     */
+    public static Nonce fromBytes(AeadAlgorithm algorithm, bytes data) throws InvalidNonceError {
+        int expectedSize = AeadAlgorithm.nonceSize(algorithm);
+        if (data.length() != expectedSize) {
+            throw InvalidNonceError.withSize(
+                "Nonce size mismatch for " + AeadAlgorithm.name(algorithm),
+                expectedSize,
+                data.length()
+            );
+        }
+        return Nonce {
+            algorithm: algorithm,
+            data: data
+        };
+    }
+
+    /**
+     * Returns the raw nonce bytes.
+     *
+     * @param self The nonce
+     * @return The nonce bytes
+     */
+    public static bytes toBytes(Nonce self) {
+        return self.data;
+    }
+
+    // =========================================================================
+    // Properties
+    // =========================================================================
+
+    /**
+     * Returns the algorithm.
+     *
+     * @param self The nonce
+     * @return The AEAD algorithm
+     */
+    public static AeadAlgorithm algorithm(Nonce self) {
+        return self.algorithm;
+    }
+
+    /**
+     * Returns the nonce size in bytes.
+     *
+     * @param self The nonce
+     * @return The size
+     */
+    public static int size(Nonce self) {
+        return self.data.length();
+    }
+
+    // =========================================================================
+    // Operations
+    // =========================================================================
+
+    /**
+     * Increments a nonce in place (for counter mode).
+     *
+     * Treats the nonce as a big-endian integer and adds 1.
+     * Wraps around on overflow.
+     *
+     * @param self The nonce to increment
+     * @return A new nonce with the incremented value
+     */
+    @intrinsic("crypto.nonce_increment")
+    public static Nonce increment(Nonce self) {
+        return Nonce {
+            algorithm: self.algorithm,
+            data: self.data
+        };
+    }
+}

@@ -1,0 +1,231 @@
+package numeric;
+
+/**
+ * Arbitrary-precision integers.
+ *
+ * NOTE: This file is an INTRINSIC-BACKED STUB for IDE/tooling support.
+ * The function bodies are placeholders - actual implementation is provided
+ * by the compiler via intrinsic lowering to VM runtime functions.
+ *
+ * BigInt provides arbitrary-precision signed integers, useful for
+ * cryptographic operations, very large numbers, or any scenario where
+ * fixed-width integers would overflow.
+ *
+ * Example usage:
+ * ```
+ * import numeric.*;
+ *
+ * module Main {
+ *     public static void main() {
+ *         BigInt a = BigInt.new("123456789012345678901234567890");
+ *         BigInt b = BigInt.fromInt(42);
+ *         BigInt product = BigInt.mul(a, b);
+ *
+ *         // Cryptographic modular exponentiation
+ *         BigInt base = BigInt.new("2");
+ *         BigInt exp = BigInt.new("256");
+ *         BigInt modulus = BigInt.new("1000000007");
+ *         BigInt result = BigInt.modPow(base, exp, modulus);
+ *
+ *         // GCD for cryptographic applications
+ *         BigInt gcd = BigInt.gcd(a, b);
+ *     }
+ * }
+ * ```
+ *
+ * @see src/compiler/intrinsics.rs for intrinsic registry
+ * @see crates/arth-vm/src/runtime.rs for VM implementation
+ */
+
+/// Represents an arbitrary-precision integer.
+/// Used for cryptographic operations and very large numbers.
+public struct BigInt {
+    /// Internal handle to the integer value
+    public final Int handle;
+}
+
+module BigInt {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Construction
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Creates a BigInt from a string representation.
+    ///
+    /// @param value The string representation (e.g., "12345678901234567890")
+    /// @return A new BigInt
+    @intrinsic("bigint.new")
+    public static BigInt new(String value) { return BigInt { handle: 0 }; }
+
+    /// Creates a BigInt from a regular integer.
+    ///
+    /// @param value The integer value
+    /// @return A new BigInt
+    @intrinsic("bigint.from_int")
+    public static BigInt fromInt(Int value) { return BigInt { handle: 0 }; }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Arithmetic Operations
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Adds two BigInt values.
+    ///
+    /// @param a First operand
+    /// @param b Second operand
+    /// @return a + b
+    @intrinsic("bigint.add")
+    public static BigInt add(BigInt a, BigInt b) { return BigInt { handle: 0 }; }
+
+    /// Subtracts two BigInt values.
+    ///
+    /// @param a First operand
+    /// @param b Second operand
+    /// @return a - b
+    @intrinsic("bigint.sub")
+    public static BigInt sub(BigInt a, BigInt b) { return BigInt { handle: 0 }; }
+
+    /// Multiplies two BigInt values.
+    ///
+    /// @param a First operand
+    /// @param b Second operand
+    /// @return a * b
+    @intrinsic("bigint.mul")
+    public static BigInt mul(BigInt a, BigInt b) { return BigInt { handle: 0 }; }
+
+    /// Divides two BigInt values (integer division).
+    ///
+    /// @param a Dividend
+    /// @param b Divisor
+    /// @return a / b (truncated towards zero)
+    @intrinsic("bigint.div")
+    public static BigInt div(BigInt a, BigInt b) { return BigInt { handle: 0 }; }
+
+    /// Computes the remainder of division.
+    ///
+    /// @param a Dividend
+    /// @param b Divisor
+    /// @return a % b
+    @intrinsic("bigint.rem")
+    public static BigInt rem(BigInt a, BigInt b) { return BigInt { handle: 0 }; }
+
+    /// Raises a BigInt to an integer power.
+    ///
+    /// @param base The base value
+    /// @param exp The exponent (must be non-negative)
+    /// @return base^exp
+    @intrinsic("bigint.pow")
+    public static BigInt pow(BigInt base, Int exp) { return BigInt { handle: 0 }; }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Unary Operations
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns the absolute value.
+    ///
+    /// @param self The BigInt value
+    /// @return |self|
+    public static BigInt abs(BigInt self) {
+        BigInt zero = BigInt.fromInt(0);
+        if (BigInt.compare(self, zero) < 0) {
+            return BigInt.negate(self);
+        }
+        return self;
+    }
+
+    /// Returns the negation.
+    ///
+    /// @param self The BigInt value
+    /// @return -self
+    @intrinsic("bigint.negate")
+    public static BigInt negate(BigInt self) { return BigInt { handle: 0 }; }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Comparison
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Compares two BigInt values.
+    ///
+    /// @param a First value
+    /// @param b Second value
+    /// @return -1 if a < b, 0 if a == b, 1 if a > b
+    @intrinsic("bigint.compare")
+    public static Int compare(BigInt a, BigInt b) { return 0; }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Conversion
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Converts to string representation.
+    ///
+    /// @param self The BigInt value
+    /// @return String representation (e.g., "12345678901234567890")
+    @intrinsic("bigint.to_string")
+    public static String toString(BigInt self) { return ""; }
+
+    /// Converts to regular integer (may overflow).
+    ///
+    /// Warning: Returns truncated value if BigInt exceeds Int range.
+    ///
+    /// @param self The BigInt value
+    /// @return Integer representation (may lose precision)
+    @intrinsic("bigint.to_int")
+    public static Int toInt(BigInt self) { return 0; }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Number Theory Operations
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Computes the greatest common divisor using Euclidean algorithm.
+    ///
+    /// @param a First value
+    /// @param b Second value
+    /// @return The GCD of a and b
+    public static BigInt gcd(BigInt a, BigInt b) {
+        BigInt x = BigInt.abs(a);
+        BigInt y = BigInt.abs(b);
+        BigInt zero = BigInt.fromInt(0);
+        while (BigInt.compare(y, zero) != 0) {
+            BigInt temp = y;
+            y = BigInt.rem(x, y);
+            x = temp;
+        }
+        return x;
+    }
+
+    /// Computes modular exponentiation: (base^exp) mod modulus.
+    ///
+    /// This is the core operation for RSA and other cryptographic algorithms.
+    /// Computed efficiently using square-and-multiply algorithm.
+    ///
+    /// @param base The base value
+    /// @param exp The exponent (must be non-negative)
+    /// @param modulus The modulus
+    /// @return (base^exp) mod modulus
+    public static BigInt modPow(BigInt base, BigInt exp, BigInt modulus) {
+        BigInt zero = BigInt.fromInt(0);
+        BigInt one = BigInt.fromInt(1);
+        BigInt two = BigInt.fromInt(2);
+
+        // Handle edge cases
+        if (BigInt.compare(modulus, one) == 0) {
+            return zero;
+        }
+
+        BigInt result = one;
+        BigInt b = BigInt.rem(base, modulus);
+        BigInt e = exp;
+
+        // Square-and-multiply algorithm
+        while (BigInt.compare(e, zero) > 0) {
+            // If exp is odd, multiply result by base
+            if (BigInt.compare(BigInt.rem(e, two), one) == 0) {
+                result = BigInt.rem(BigInt.mul(result, b), modulus);
+            }
+            // Square the base
+            b = BigInt.rem(BigInt.mul(b, b), modulus);
+            // Divide exp by 2
+            e = BigInt.div(e, two);
+        }
+
+        return result;
+    }
+}

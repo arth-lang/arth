@@ -1,0 +1,66 @@
+package log;
+
+/// Log levels for structured logging.
+/// Levels are ordered from most verbose (TRACE) to least verbose (ERROR).
+public enum LogLevel {
+    /// Fine-grained debugging information, typically useful during development.
+    TRACE,
+    /// Debugging information useful for diagnosing problems.
+    DEBUG,
+    /// Informational messages that highlight progress of the application.
+    INFO,
+    /// Potentially harmful situations that should be investigated.
+    WARN,
+    /// Error events that might still allow the application to continue.
+    ERROR
+}
+
+module LogLevel {
+    /// Returns the numeric level value (0=TRACE, 1=DEBUG, 2=INFO, 3=WARN, 4=ERROR).
+    public static int ordinal(LogLevel level) {
+        match level {
+            LogLevel.TRACE => { return 0; }
+            LogLevel.DEBUG => { return 1; }
+            LogLevel.INFO => { return 2; }
+            LogLevel.WARN => { return 3; }
+            LogLevel.ERROR => { return 4; }
+        }
+    }
+
+    /// Returns the string name of the log level.
+    public static String name(LogLevel level) {
+        match level {
+            LogLevel.TRACE => { return "TRACE"; }
+            LogLevel.DEBUG => { return "DEBUG"; }
+            LogLevel.INFO => { return "INFO"; }
+            LogLevel.WARN => { return "WARN"; }
+            LogLevel.ERROR => { return "ERROR"; }
+        }
+    }
+
+    /// Parses a string into a LogLevel. Returns INFO if unrecognized.
+    public static LogLevel parse(String s) {
+        if s == "TRACE" || s == "trace" {
+            return LogLevel.TRACE;
+        }
+        if s == "DEBUG" || s == "debug" {
+            return LogLevel.DEBUG;
+        }
+        if s == "INFO" || s == "info" {
+            return LogLevel.INFO;
+        }
+        if s == "WARN" || s == "warn" {
+            return LogLevel.WARN;
+        }
+        if s == "ERROR" || s == "error" {
+            return LogLevel.ERROR;
+        }
+        return LogLevel.INFO;
+    }
+
+    /// Returns true if this level is enabled at the given minimum level.
+    /// A level is enabled if its ordinal is >= the minimum level's ordinal.
+    public static bool isEnabled(LogLevel level, LogLevel minLevel) {
+        return LogLevel.ordinal(level) >= LogLevel.ordinal(minLevel);
+    }
+}

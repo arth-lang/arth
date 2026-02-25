@@ -1,0 +1,28 @@
+package conformance;
+
+// @spec: spec.md §2 - String escapes (\n \r \t \0 \\ \" \' \xNN \uXXXX)
+// @expect: pass
+// @description: Validates all string escape sequences per spec §2
+
+module Main {
+    public static void main() {
+        // Standard escapes
+        String newline = "hello\nworld";
+        String tab = "hello\tworld";
+        String carriage = "line1\rline2";
+        String null_char = "null\0here";
+        String backslash = "back\\slash";
+        String double_quote = "say \"hello\"";
+        String single_quote = "it\'s";
+
+        // Hex escapes \xNN
+        String hex1 = "\x41";  // 'A'
+        String hex2 = "\x48\x69";  // "Hi"
+
+        // Unicode escapes \uXXXX
+        String unicode1 = "\u0041";  // 'A'
+        String unicode2 = "\u4E2D\u6587";  // Chinese characters
+
+        println("string_escapes: pass");
+    }
+}

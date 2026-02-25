@@ -1,0 +1,30 @@
+package test.e2e;
+
+// End-to-end test for lambda compilation
+module LambdaE2E {
+    public void main() {
+        println("Testing lambda compilation...");
+
+        // Test 1: Lambda with no captures
+        fn(int x) { return x * 2; }
+
+        // Test 2: Lambda with single capture
+        int multiplier = 5;
+        fn(int x) { return x * multiplier; }
+
+        // Test 3: Lambda with multiple captures
+        int offset = 10;
+        fn(int x) { return x * multiplier + offset; }
+
+        // Test 4: Nested lambda (inner captures from outer and its own scope)
+        int outer = 100;
+        fn(int x) {
+            int inner = 50;
+            fn(int y) {
+                return x + y + outer + inner;
+            }
+        }
+
+        println("Lambda compilation successful!");
+    }
+}

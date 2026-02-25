@@ -1,0 +1,48 @@
+package conformance;
+
+// @spec: spec.md §5 - Module interface implementation
+// @expect: pass
+// @description: Validates module implements clause for interfaces
+
+public struct Point {
+    public Int x;
+    public Int y;
+}
+
+// Interface without receiver (compiler injects it)
+public interface Describable {
+    String describe();
+}
+
+// Module implementing interface
+module PointDescribe implements Describable {
+    public String describe(Point p) {
+        return "Point";
+    }
+}
+
+// Companion module pattern (TypeNameFns for TypeName)
+module PointFns {
+    public Point new(Int x, Int y) {
+        return Point { x: x, y: y };
+    }
+
+    public Int getX(Point p) {
+        return p.x;
+    }
+
+    public Int getY(Point p) {
+        return p.y;
+    }
+}
+
+module Main {
+    public static void main() {
+        Point p = PointFns.new(3, 4);
+
+        // Call interface implementation
+        String desc = PointDescribe.describe(p);
+
+        println("interface_impl: pass");
+    }
+}

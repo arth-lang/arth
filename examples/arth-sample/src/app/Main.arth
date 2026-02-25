@@ -1,0 +1,43 @@
+package app;
+
+import net.http.*;
+import log.*;
+import encoding.json.*;
+import providers.*;
+
+@derive(JsonCodec)
+public struct User { public final String id; public final DateTime createdAt; }
+
+module Main {
+  public async void main() throws (HttpError, TimeoutError, Error) {
+    Logger log = Logger.get("app.main");
+    CacheProvider prov = CacheProviderFns.newDefault();
+
+    try {
+      String body = await fetchText("https://example.org", prov);
+      log.info("fetch.ok", "Fetched body", Fields.of("len", body.length()));
+
+      // JSON roundtrip using an explicit codec module
+      User u = User { id: "u1", createdAt: DateTime.now() };
+      bytes b = Json.serialize<User>(u, UserCodec.codec());
+      User u2 = Json.deserialize<User>(b, UserCodec.codec());
+      log.info("json.ok", "Roundtrip ok", Fields.of("id", u2.id));
+    } finally {
+      CacheProviderFns.deinit(prov);
+    }
+  }
+
+  public async String fetchText(String url, CacheProvider prov) throws (HttpError, TimeoutError) {
+    Request req = Request.get(url).header("Accept", "text/plain");
+    Response res = await Http.fetch(req);
+    if (res.status() != 200) throw HttpError.of(res.status(), res.reason());
+    String body = await res.body().text();
+    Shared<Map<String, Atomic<String>>> cache = CacheProviderFns.cache(prov);
+    cache.put(url, Atomic.copyOf(body));
+    return body;
+  }
+}
+
+module UserCodec {
+  public Codec<User> codec() { return Codec.of<User>(); }
+}

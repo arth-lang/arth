@@ -1,0 +1,27 @@
+package test;
+
+// Test: Functions with return values
+// Expected output:
+//   15
+//   120
+
+module Main {
+    public static Int add(Int a, Int b) {
+        return a + b;
+    }
+
+    public static Int factorial(Int n) {
+        if (n <= 1) {
+            return 1;
+        }
+        return n * factorial(n - 1);
+    }
+
+    public static void main() {
+        Int sum = add(10, 5);
+        println(sum);  // 15
+
+        Int fact = factorial(5);
+        println(fact);  // 120
+    }
+}

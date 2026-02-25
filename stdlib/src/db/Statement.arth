@@ -1,0 +1,304 @@
+package db;
+
+/**
+ * Prepared statement handling for parameterized queries.
+ *
+ * A Statement represents a pre-compiled SQL query that can be executed
+ * multiple times with different parameter values. Prepared statements
+ * provide:
+ * - Performance: SQL is parsed and planned once
+ * - Security: Automatic parameter escaping prevents SQL injection
+ * - Convenience: Typed parameter binding
+ *
+ * Example usage:
+ * ```arth
+ * // Prepare a statement
+ * Statement stmt = Sqlite.prepare(conn, "INSERT INTO users (name, age) VALUES (?, ?)");
+ *
+ * // Bind parameters and execute
+ * Statement.bindText(stmt, 1, "Alice");
+ * Statement.bindInt(stmt, 2, 30);
+ * int affected = Statement.execute(stmt);
+ *
+ * // Reset for reuse with different parameters
+ * Statement.reset(stmt);
+ * Statement.bindText(stmt, 1, "Bob");
+ * Statement.bindInt(stmt, 2, 25);
+ * affected = Statement.execute(stmt);
+ *
+ * // Finalize when done
+ * Statement.finalize(stmt);
+ * ```
+ *
+ * @see db.Connection for obtaining statements
+ * @see db.Param for parameter types
+ */
+
+/**
+ * Statement state enumeration.
+ *
+ * Variants:
+ * - PREPARED: Statement is prepared and ready for binding/execution
+ * - EXECUTED: Statement has been executed (for SELECT, results available)
+ * - HAS_ROW: Statement has been stepped and has results available
+ * - DONE: Statement has been stepped and has no more results
+ * - FINALIZED: Statement has been finalized and cannot be used
+ * - ERROR: Statement encountered an error
+ */
+public enum StatementState {
+    PREPARED,
+    EXECUTED,
+    HAS_ROW,
+    DONE,
+    FINALIZED,
+    ERROR
+}
+
+/**
+ * Module providing utilities for StatementState enumeration.
+ */
+module StatementState {
+    /// Returns the ordinal value (0=PREPARED, 1=EXECUTED, etc.).
+    public static int ordinal(StatementState s) {
+        match s {
+            StatementState.PREPARED => { return 0; }
+            StatementState.EXECUTED => { return 1; }
+            StatementState.HAS_ROW => { return 2; }
+            StatementState.DONE => { return 3; }
+            StatementState.FINALIZED => { return 4; }
+            StatementState.ERROR => { return 5; }
+        }
+    }
+}
+
+/**
+ * Represents a prepared SQL statement.
+ *
+ * A Statement is obtained by calling prepare() on a driver and must be
+ * finalized when no longer needed. The statement can be reused by calling
+ * reset() to clear bindings and state.
+ *
+ * Fields:
+ * - handle: Opaque statement handle (driver-specific)
+ * - connectionHandle: Handle to the parent connection
+ * - sql: The SQL query string
+ * - paramCount: Number of parameters in the statement
+ * - state: Current statement state
+ */
+public struct Statement {
+    /// Opaque statement handle (driver-specific)
+    public final int handle;
+    /// Handle to the parent connection
+    public final int connectionHandle;
+    /// The SQL query string
+    public final String sql;
+    /// Number of parameters (placeholders) in the statement
+    public final int paramCount;
+    /// Current state of the statement
+    public final StatementState state;
+}
+
+/**
+ * Module providing factory functions and operations for Statement instances.
+ *
+ * Parameter binding functions (bind*) attach values to positional placeholders.
+ * - SQLite: Uses `?` placeholders, 1-indexed
+ * - PostgreSQL: Uses `$1, $2, ...` placeholders, 1-indexed
+ *
+ * Execution functions:
+ * - execute(): For INSERT/UPDATE/DELETE, returns affected row count
+ * - query(): For SELECT, returns result set
+ * - step(): Low-level iteration for row-by-row processing
+ */
+module Statement {
+    /// Creates a new Statement with the given parameters.
+    public static Statement new(int handle, int connectionHandle, String sql, int paramCount) {
+        return Statement {
+            handle: handle,
+            connectionHandle: connectionHandle,
+            sql: sql,
+            paramCount: paramCount,
+            state: StatementState.PREPARED
+        };
+    }
+
+    /// Returns the SQL query string.
+    public static String getSql(Statement self) {
+        return self.sql;
+    }
+
+    /// Returns the number of parameters in the statement.
+    public static int getParamCount(Statement self) {
+        return self.paramCount;
+    }
+
+    /// Returns the current statement state.
+    public static StatementState getState(Statement self) {
+        return self.state;
+    }
+
+    /// Returns true if the statement is ready for use.
+    public static bool isReady(Statement s) {
+        return StatementState.ordinal(s.state) == 0;
+    }
+
+    /// Returns true if the statement has been finalized.
+    public static bool isFinalized(Statement s) {
+        return StatementState.ordinal(s.state) == 4;
+    }
+
+    /// Returns a new Statement with updated state.
+    public static Statement setState(Statement self, StatementState newState) {
+        return Statement {
+            handle: self.handle,
+            connectionHandle: self.connectionHandle,
+            sql: self.sql,
+            paramCount: self.paramCount,
+            state: newState
+        };
+    }
+
+    // Parameter binding functions (intrinsics - implemented by driver)
+
+    /// Binds a 32-bit integer to the parameter at the given index (1-based).
+    @intrinsic("db.stmt_bind_int")
+    public static void bindInt(Statement self, int index, int value) throws (BindError) {
+        // Intrinsic: binds int parameter
+    }
+
+    /// Binds a 64-bit integer to the parameter at the given index (1-based).
+    @intrinsic("db.stmt_bind_int64")
+    public static void bindInt64(Statement self, int index, int64 value) throws (BindError) {
+        // Intrinsic: binds int64 parameter
+    }
+
+    /// Binds a float to the parameter at the given index (1-based).
+    @intrinsic("db.stmt_bind_float")
+    public static void bindFloat(Statement self, int index, float value) throws (BindError) {
+        // Intrinsic: binds float parameter
+    }
+
+    /// Binds a double to the parameter at the given index (1-based).
+    @intrinsic("db.stmt_bind_double")
+    public static void bindDouble(Statement self, int index, double value) throws (BindError) {
+        // Intrinsic: binds double parameter
+    }
+
+    /// Binds a boolean to the parameter at the given index (1-based).
+    @intrinsic("db.stmt_bind_bool")
+    public static void bindBool(Statement self, int index, bool value) throws (BindError) {
+        // Intrinsic: binds bool parameter
+    }
+
+    /// Binds a text string to the parameter at the given index (1-based).
+    @intrinsic("db.stmt_bind_text")
+    public static void bindText(Statement self, int index, String value) throws (BindError) {
+        // Intrinsic: binds text parameter
+    }
+
+    /// Binds binary data to the parameter at the given index (1-based).
+    @intrinsic("db.stmt_bind_blob")
+    public static void bindBlob(Statement self, int index, bytes value) throws (BindError) {
+        // Intrinsic: binds blob parameter
+    }
+
+    /// Binds NULL to the parameter at the given index (1-based).
+    @intrinsic("db.stmt_bind_null")
+    public static void bindNull(Statement self, int index) throws (BindError) {
+        // Intrinsic: binds null parameter
+    }
+
+    /// Binds a ValueBox to the parameter at the given index (1-based).
+    public static void bindValue(Statement self, int index, ValueBox value) throws (BindError) {
+        match value.valueType {
+            ValueType.TYPE_INT => {
+                Statement.bindInt(self, index, value.intValue);
+            }
+            ValueType.TYPE_INT64 => {
+                Statement.bindInt64(self, index, value.int64Value);
+            }
+            ValueType.TYPE_FLOAT => {
+                Statement.bindFloat(self, index, value.floatValue);
+            }
+            ValueType.TYPE_DOUBLE => {
+                Statement.bindDouble(self, index, value.doubleValue);
+            }
+            ValueType.TYPE_BOOL => {
+                bool boolVal = value.intValue != 0;
+                Statement.bindBool(self, index, boolVal);
+            }
+            ValueType.TYPE_TEXT => {
+                Statement.bindText(self, index, value.textValue);
+            }
+            ValueType.TYPE_BLOB => {
+                Statement.bindBlob(self, index, value.blobValue);
+            }
+            ValueType.TYPE_NULL => {
+                Statement.bindNull(self, index);
+            }
+        }
+    }
+
+    /// Binds a Param to the statement.
+    public static void bindParam(Statement self, Param param) throws (BindError) {
+        match param.style {
+            ParamStyle.POSITIONAL => {
+                Statement.bindValue(self, param.index, param.value);
+            }
+            ParamStyle.NAMED => {
+                // Named parameters require index lookup - use bindNamed intrinsic
+                Statement.bindNamedValue(self, param.name, param.value);
+            }
+        }
+    }
+
+    /// Binds a ValueBox to a named parameter.
+    @intrinsic("db.stmt_bind_named")
+    public static void bindNamedValue(Statement self, String name, ValueBox value) throws (BindError) {
+        // Intrinsic: binds named parameter
+    }
+
+    // Execution functions (intrinsics - implemented by driver)
+
+    /// Executes the statement for INSERT/UPDATE/DELETE. Returns affected row count.
+    @intrinsic("db.stmt_execute")
+    public static int execute(Statement self) throws (QueryError) {
+        return 0;
+    }
+
+    /// Executes the statement for SELECT. Returns a QueryResult.
+    @intrinsic("db.stmt_query")
+    public static QueryResult query(Statement self) throws (QueryError) {
+        return QueryResult { handle: 0, columnCount: 0, rowCount: 0, consumed: false };
+    }
+
+    /// Steps to the next row. Returns true if a row is available.
+    @intrinsic("db.stmt_step")
+    public static bool step(Statement self) throws (QueryError) {
+        return false;
+    }
+
+    /// Gets the current row after step() returns true.
+    @intrinsic("db.stmt_get_row")
+    public static Row getRow(Statement self) {
+        return Row { columnsHandle: 0, valuesHandle: 0, columnCount: 0 };
+    }
+
+    /// Resets the statement for reuse. Clears bindings and state.
+    @intrinsic("db.stmt_reset")
+    public static void reset(Statement self) {
+        // Intrinsic: resets statement
+    }
+
+    /// Clears all parameter bindings.
+    @intrinsic("db.stmt_clear_bindings")
+    public static void clearBindings(Statement self) {
+        // Intrinsic: clears bindings
+    }
+
+    /// Finalizes (closes) the statement. Must be called when done.
+    @intrinsic("db.stmt_finalize")
+    public static void finalize(Statement self) {
+        // Intrinsic: finalizes statement
+    }
+}

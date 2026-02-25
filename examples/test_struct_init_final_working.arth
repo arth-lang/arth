@@ -1,0 +1,20 @@
+package test;
+
+struct Config {
+    public final String appName;
+    public final int version;
+    public String environment;
+}
+
+module Test {
+    public void main() {
+        // Direct initialization - allows final fields
+        Config cfg = { appName: "MyApp", version: 1, environment: "dev" };
+
+        // Should work: changing mutable field
+        cfg.environment = "prod";
+
+        // Should FAIL: reassigning final field via statement
+        // cfg.appName = "NewApp";  // Uncomment to test error
+    }
+}

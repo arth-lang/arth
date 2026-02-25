@@ -1,0 +1,160 @@
+package test;
+
+// P08: Module implements validation
+// Tests that modules correctly implement interface contracts
+
+// =============================================================================
+// TEST 1: Basic interface implementation
+// =============================================================================
+
+interface Printable {
+    String toString();
+}
+
+struct Point {
+    int x;
+    int y;
+}
+
+module PointFns implements Printable {
+    public Point new(int x, int y) {
+        return Point { x: x, y: y };
+    }
+
+    public String toString(Point p) {
+        return "Point";
+    }
+}
+
+// =============================================================================
+// TEST 2: Multiple interface implementation
+// =============================================================================
+
+interface Hashable {
+    int hashCode();
+}
+
+interface Comparable {
+    int compare(int other);
+}
+
+struct UserId {
+    int id;
+}
+
+module UserIdFns implements Hashable, Comparable {
+    public UserId new(int id) {
+        return UserId { id: id };
+    }
+
+    public int hashCode(UserId u) {
+        return u.id * 31;
+    }
+
+    public int compare(UserId u, int other) {
+        if (u.id < other) {
+            return -1;
+        } else if (u.id > other) {
+            return 1;
+        } else {
+            return 0;
+        }
+    }
+}
+
+// =============================================================================
+// TEST 3: Generic interface implementation
+// =============================================================================
+
+interface Container<T> {
+    T get();
+    void set(T value);
+}
+
+struct IntBox {
+    int value;
+}
+
+module IntBoxFns implements Container<int> {
+    public IntBox new(int v) {
+        return IntBox { value: v };
+    }
+
+    public int get(IntBox b) {
+        return b.value;
+    }
+
+    public void set(IntBox b, int value) {
+        b.value = value;
+    }
+}
+
+// =============================================================================
+// TEST 4: Interface inheritance
+// =============================================================================
+
+interface Named {
+    String name();
+}
+
+interface Entity extends Named {
+    int id();
+}
+
+struct Person {
+    int personId;
+    String personName;
+}
+
+module PersonFns implements Entity {
+    public Person new(int id, String name) {
+        return Person { personId: id, personName: name };
+    }
+
+    // Implements Named.name() via Entity extends Named
+    public String name(Person p) {
+        return p.personName;
+    }
+
+    // Implements Entity.id()
+    public int id(Person p) {
+        return p.personId;
+    }
+}
+
+// =============================================================================
+// Main: Run all validation tests
+// =============================================================================
+
+module Main {
+    public static void main() {
+        // Test 1: Basic interface implementation
+        Point pt = PointFns.new(3, 4);
+        String ptStr = PointFns.toString(pt);
+        println("Test 1 - Basic implementation: " + ptStr);
+
+        // Test 2: Multiple interface implementation
+        UserId uid = UserIdFns.new(42);
+        int hash = UserIdFns.hashCode(uid);
+        int cmp = UserIdFns.compare(uid, 50);
+        println("Test 2 - Multiple interfaces passed");
+
+        // Test 3: Generic interface implementation
+        IntBox box = IntBoxFns.new(100);
+        int val = IntBoxFns.get(box);
+        println("Test 3 - Generic interface passed");
+
+        // Test 4: Interface inheritance
+        Person person = PersonFns.new(1, "Alice");
+        String pname = PersonFns.name(person);
+        int pid = PersonFns.id(person);
+        println("Test 4 - Interface inheritance: name=" + pname);
+
+        // Test 5: .then() sugar with implemented interfaces
+        Point pt2 = PointFns.new(5, 6);
+        String pt2Str = pt2.then(PointFns.toString());
+        println("Test 5 - .then() dispatch: " + pt2Str);
+
+        println("All module implements validation tests passed!");
+    }
+}

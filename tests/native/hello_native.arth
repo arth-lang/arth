@@ -1,0 +1,11 @@
+package test;
+
+/**
+ * Simple native compilation test.
+ * Tests console output through arth-rt.
+ */
+module Main {
+    public static void main() {
+        print("Hello from native Arth!");
+    }
+}

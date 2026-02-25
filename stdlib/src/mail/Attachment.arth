@@ -1,0 +1,506 @@
+package mail;
+
+/**
+ * Email attachment handling.
+ *
+ * This module provides utilities for creating and working with email attachments.
+ *
+ * Attachments can be created from:
+ * - Files on disk
+ * - Byte arrays
+ * - Strings (for text attachments)
+ *
+ * Example usage:
+ * ```arth
+ * import mail.*;
+ * import io.*;
+ *
+ * // Create attachment from file
+ * Attachment fileAtt = Attachment.fromFile("/path/to/report.pdf");
+ *
+ * // Create attachment from bytes
+ * bytes csvData = File.readAll("/path/to/data.csv");
+ * Attachment bytesAtt = Attachment.fromBytes("data.csv", csvData, "text/csv");
+ *
+ * // Create inline attachment (for HTML emails)
+ * Attachment logo = Attachment.fromFile("/path/to/logo.png")
+ *     .then(Attachment.withContentId("logo123"));
+ *
+ * // Use in HTML: <img src="cid:logo123" />
+ * ```
+ *
+ * @see mail.MimeMessage for attaching to messages
+ */
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Attachment Structure
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Represents an email attachment.
+ *
+ * An attachment has:
+ * - filename: The name to use when downloading
+ * - contentType: MIME type of the content
+ * - content: The binary data
+ * - disposition: "attachment" or "inline"
+ * - contentId: For inline attachments (multipart/related)
+ */
+public struct Attachment {
+    /// Filename for the attachment
+    public final String filename;
+    /// MIME content type
+    public final ContentType contentType;
+    /// Binary content
+    public final bytes content;
+    /// Disposition ("attachment" or "inline")
+    public final String disposition;
+    /// Content-ID for inline attachments (without angle brackets)
+    public final String contentId;
+    /// Optional description
+    public final String description;
+}
+
+module Attachment {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Factory Methods
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Creates an attachment from a file.
+    ///
+    /// The filename is extracted from the path.
+    /// The content type is guessed from the file extension.
+    @intrinsic("mail.attachment.from_file")
+    public static Attachment fromFile(String path) throws (IoError) {
+        // Intrinsic implementation - placeholder
+        return Attachment {
+            filename: extractFilename(path),
+            contentType: guessContentType(path),
+            content: readFile(path),
+            disposition: "attachment",
+            contentId: "",
+            description: ""
+        };
+    }
+
+    /// Creates an attachment from a byte array.
+    public static Attachment fromBytes(String filename, bytes content, String contentType) {
+        ContentType ct;
+        try {
+            ct = ContentType.parse(contentType);
+        } catch (EncodingError e) {
+            ct = ContentType.OCTET_STREAM();
+        }
+
+        return Attachment {
+            filename: filename,
+            contentType: ct,
+            content: content,
+            disposition: "attachment",
+            contentId: "",
+            description: ""
+        };
+    }
+
+    /// Creates an attachment from a byte array with ContentType.
+    public static Attachment fromBytesTyped(String filename, bytes content, ContentType contentType) {
+        return Attachment {
+            filename: filename,
+            contentType: contentType,
+            content: content,
+            disposition: "attachment",
+            contentId: "",
+            description: ""
+        };
+    }
+
+    /// Creates a text attachment.
+    public static Attachment fromString(String filename, String text) {
+        return Attachment {
+            filename: filename,
+            contentType: ContentType.TEXT_PLAIN(),
+            content: stringToBytes(text),
+            disposition: "attachment",
+            contentId: "",
+            description: ""
+        };
+    }
+
+    /// Creates a text attachment with content type.
+    public static Attachment fromStringTyped(String filename, String text, String contentType) {
+        ContentType ct;
+        try {
+            ct = ContentType.parse(contentType);
+        } catch (EncodingError e) {
+            ct = ContentType.TEXT_PLAIN();
+        }
+
+        return Attachment {
+            filename: filename,
+            contentType: ct,
+            content: stringToBytes(text),
+            disposition: "attachment",
+            contentId: "",
+            description: ""
+        };
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Accessors
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns the filename.
+    public static String getFilename(Attachment self) {
+        return self.filename;
+    }
+
+    /// Returns the content type.
+    public static ContentType getContentType(Attachment self) {
+        return self.contentType;
+    }
+
+    /// Returns the content as bytes.
+    public static bytes getContent(Attachment self) {
+        return self.content;
+    }
+
+    /// Returns the content as a string (for text attachments).
+    public static String getText(Attachment self) {
+        return bytesToString(self.content);
+    }
+
+    /// Returns the disposition ("attachment" or "inline").
+    public static String getDisposition(Attachment self) {
+        return self.disposition;
+    }
+
+    /// Returns the Content-ID (for inline attachments).
+    public static String getContentId(Attachment self) {
+        return self.contentId;
+    }
+
+    /// Returns the description.
+    public static String getDescription(Attachment self) {
+        return self.description;
+    }
+
+    /// Returns the size in bytes.
+    public static int getSize(Attachment self) {
+        return bytesLength(self.content);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Type Checking
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns true if this is a regular attachment.
+    public static bool isAttachment(Attachment self) {
+        return self.disposition == "attachment";
+    }
+
+    /// Returns true if this is an inline attachment.
+    public static bool isInline(Attachment self) {
+        return self.disposition == "inline";
+    }
+
+    /// Returns true if this has a Content-ID.
+    public static bool hasContentId(Attachment self) {
+        return self.contentId != "";
+    }
+
+    /// Returns true if this is a text attachment.
+    public static bool isText(Attachment self) {
+        return ContentType.isText(self.contentType);
+    }
+
+    /// Returns true if this is an image.
+    public static bool isImage(Attachment self) {
+        return ContentType.getType(self.contentType) == "image";
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Modification (returns new Attachment)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns a new Attachment with a different filename.
+    public static Attachment withFilename(Attachment self, String filename) {
+        return Attachment {
+            filename: filename,
+            contentType: self.contentType,
+            content: self.content,
+            disposition: self.disposition,
+            contentId: self.contentId,
+            description: self.description
+        };
+    }
+
+    /// Returns a new Attachment with a Content-ID (makes it inline).
+    public static Attachment withContentId(Attachment self, String contentId) {
+        return Attachment {
+            filename: self.filename,
+            contentType: self.contentType,
+            content: self.content,
+            disposition: "inline",
+            contentId: contentId,
+            description: self.description
+        };
+    }
+
+    /// Returns a new Attachment with inline disposition.
+    public static Attachment asInline(Attachment self) {
+        return Attachment {
+            filename: self.filename,
+            contentType: self.contentType,
+            content: self.content,
+            disposition: "inline",
+            contentId: self.contentId,
+            description: self.description
+        };
+    }
+
+    /// Returns a new Attachment with attachment disposition.
+    public static Attachment asAttachment(Attachment self) {
+        return Attachment {
+            filename: self.filename,
+            contentType: self.contentType,
+            content: self.content,
+            disposition: "attachment",
+            contentId: self.contentId,
+            description: self.description
+        };
+    }
+
+    /// Returns a new Attachment with a description.
+    public static Attachment withDescription(Attachment self, String description) {
+        return Attachment {
+            filename: self.filename,
+            contentType: self.contentType,
+            content: self.content,
+            disposition: self.disposition,
+            contentId: self.contentId,
+            description: description
+        };
+    }
+
+    /// Returns a new Attachment with a different content type.
+    public static Attachment withContentType(Attachment self, ContentType contentType) {
+        return Attachment {
+            filename: self.filename,
+            contentType: contentType,
+            content: self.content,
+            disposition: self.disposition,
+            contentId: self.contentId,
+            description: self.description
+        };
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Conversion to MimePart
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Converts this attachment to a MimePart.
+    public static MimePart toPart(Attachment self) {
+        if (self.contentId != "") {
+            return MimePart.inline(self.content, self.contentId, self.contentType);
+        } else {
+            return MimePart.attachment(self.content, self.filename, self.contentType);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // File Utilities
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Saves the attachment to a file.
+    @intrinsic("io.file.write")
+    public static void saveTo(Attachment self, String path) throws (IoError) {
+        // Intrinsic implementation - placeholder
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Content Type Guessing
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Utilities for guessing content types from filenames.
+ */
+module ContentTypeGuesser {
+    /// Guesses content type from a filename extension.
+    public static ContentType guess(String filename) {
+        return guessContentType(filename);
+    }
+
+    /// Returns the MIME type string for a filename.
+    public static String guessMimeType(String filename) {
+        ContentType ct = guessContentType(filename);
+        return ContentType.getMediaType(ct);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Internal Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Extracts the filename from a path.
+static String extractFilename(String path) {
+    int lastSlash = lastIndexOf(path, "/");
+    int lastBackslash = lastIndexOf(path, "\\");
+    int start = lastSlash > lastBackslash ? lastSlash : lastBackslash;
+    if (start < 0) {
+        return path;
+    }
+    return substring(path, start + 1, length(path));
+}
+
+/// Guesses the content type from a filename.
+static ContentType guessContentType(String filename) {
+    String lower = toLowerCase(filename);
+
+    // Text
+    if (endsWith(lower, ".txt")) {
+        return ContentType.TEXT_PLAIN();
+    }
+    if (endsWith(lower, ".html") || endsWith(lower, ".htm")) {
+        return ContentType.TEXT_HTML();
+    }
+    if (endsWith(lower, ".css")) {
+        return ContentType.of("text", "css");
+    }
+    if (endsWith(lower, ".js")) {
+        return ContentType.of("text", "javascript");
+    }
+    if (endsWith(lower, ".json")) {
+        return ContentType.of("application", "json");
+    }
+    if (endsWith(lower, ".xml")) {
+        return ContentType.of("application", "xml");
+    }
+    if (endsWith(lower, ".csv")) {
+        return ContentType.of("text", "csv");
+    }
+
+    // Images
+    if (endsWith(lower, ".png")) {
+        return ContentType.of("image", "png");
+    }
+    if (endsWith(lower, ".jpg") || endsWith(lower, ".jpeg")) {
+        return ContentType.of("image", "jpeg");
+    }
+    if (endsWith(lower, ".gif")) {
+        return ContentType.of("image", "gif");
+    }
+    if (endsWith(lower, ".svg")) {
+        return ContentType.of("image", "svg+xml");
+    }
+    if (endsWith(lower, ".webp")) {
+        return ContentType.of("image", "webp");
+    }
+    if (endsWith(lower, ".ico")) {
+        return ContentType.of("image", "x-icon");
+    }
+
+    // Documents
+    if (endsWith(lower, ".pdf")) {
+        return ContentType.of("application", "pdf");
+    }
+    if (endsWith(lower, ".doc")) {
+        return ContentType.of("application", "msword");
+    }
+    if (endsWith(lower, ".docx")) {
+        return ContentType.of("application", "vnd.openxmlformats-officedocument.wordprocessingml.document");
+    }
+    if (endsWith(lower, ".xls")) {
+        return ContentType.of("application", "vnd.ms-excel");
+    }
+    if (endsWith(lower, ".xlsx")) {
+        return ContentType.of("application", "vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    }
+    if (endsWith(lower, ".ppt")) {
+        return ContentType.of("application", "vnd.ms-powerpoint");
+    }
+    if (endsWith(lower, ".pptx")) {
+        return ContentType.of("application", "vnd.openxmlformats-officedocument.presentationml.presentation");
+    }
+
+    // Archives
+    if (endsWith(lower, ".zip")) {
+        return ContentType.of("application", "zip");
+    }
+    if (endsWith(lower, ".tar")) {
+        return ContentType.of("application", "x-tar");
+    }
+    if (endsWith(lower, ".gz") || endsWith(lower, ".gzip")) {
+        return ContentType.of("application", "gzip");
+    }
+    if (endsWith(lower, ".rar")) {
+        return ContentType.of("application", "vnd.rar");
+    }
+    if (endsWith(lower, ".7z")) {
+        return ContentType.of("application", "x-7z-compressed");
+    }
+
+    // Audio
+    if (endsWith(lower, ".mp3")) {
+        return ContentType.of("audio", "mpeg");
+    }
+    if (endsWith(lower, ".wav")) {
+        return ContentType.of("audio", "wav");
+    }
+    if (endsWith(lower, ".ogg")) {
+        return ContentType.of("audio", "ogg");
+    }
+
+    // Video
+    if (endsWith(lower, ".mp4")) {
+        return ContentType.of("video", "mp4");
+    }
+    if (endsWith(lower, ".avi")) {
+        return ContentType.of("video", "x-msvideo");
+    }
+    if (endsWith(lower, ".mov")) {
+        return ContentType.of("video", "quicktime");
+    }
+    if (endsWith(lower, ".webm")) {
+        return ContentType.of("video", "webm");
+    }
+
+    // Default to octet-stream
+    return ContentType.OCTET_STREAM();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// String/IO Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Error type for I/O operations
+public struct IoError {
+    public final String message;
+}
+
+@intrinsic("io.file.read_all")
+static bytes readFile(String path) throws (IoError) { bytes b; return b; }
+
+@intrinsic("string.to_bytes")
+static bytes stringToBytes(String s) { bytes b; return b; }
+
+@intrinsic("bytes.to_string")
+static String bytesToString(bytes b) { return ""; }
+
+@intrinsic("bytes.length")
+static int bytesLength(bytes b) { return 0; }
+
+@intrinsic("string.last_index_of")
+static int lastIndexOf(String s, String sub) { return -1; }
+
+@intrinsic("string.substring")
+static String substring(String s, int start, int end) { return ""; }
+
+@intrinsic("string.length")
+static int length(String s) { return 0; }
+
+@intrinsic("string.to_lower_case")
+static String toLowerCase(String s) { return s; }
+
+@intrinsic("string.ends_with")
+static bool endsWith(String s, String suffix) { return false; }

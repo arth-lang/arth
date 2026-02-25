@@ -1,0 +1,17 @@
+package test.native;
+
+module Main {
+    public static async Int compute() {
+        return 21;
+    }
+
+    public static void main() {
+        var task = compute();
+        Int value = await task;
+        if (value == 21) {
+            println("PHASE1_ASYNC_OK");
+        } else {
+            println("PHASE1_ASYNC_BAD");
+        }
+    }
+}

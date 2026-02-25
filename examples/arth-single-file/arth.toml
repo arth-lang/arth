@@ -1,0 +1,8 @@
+[package]
+name = "arth-single"
+version = "0.1.0"
+edition = "2025"
+entry = "demo/single/QuickDemo.arth"
+
+[dependencies]
+"org.example:log" = "^1.0.0"

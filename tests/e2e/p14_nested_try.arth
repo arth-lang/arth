@@ -1,0 +1,225 @@
+package test;
+
+// P14: Nested try/catch - comprehensive testing
+// Tests: multiple nesting levels, exception propagation through nesting,
+//        inner/outer catching different types, finally execution order
+
+public struct ErrorA {
+    public String message;
+}
+
+public struct ErrorB {
+    public String message;
+}
+
+public struct ErrorC {
+    public String message;
+}
+
+module Thrower {
+    public static Int throwA(Bool shouldThrow) throws (ErrorA) {
+        if (shouldThrow) {
+            throw ErrorA { message: "error-a" };
+        }
+        return 1;
+    }
+
+    public static Int throwB(Bool shouldThrow) throws (ErrorB) {
+        if (shouldThrow) {
+            throw ErrorB { message: "error-b" };
+        }
+        return 2;
+    }
+
+    public static Int throwC(Bool shouldThrow) throws (ErrorC) {
+        if (shouldThrow) {
+            throw ErrorC { message: "error-c" };
+        }
+        return 3;
+    }
+}
+
+module Main {
+    public static void main() {
+        // Test 1: Inner try catches, outer try doesn't see exception
+        println("Test 1: Inner catch prevents outer");
+        try {
+            try {
+                Int r = Thrower.throwA(true);
+                println("BAD-1a");
+            } catch (ErrorA e) {
+                println("inner-caught-a");
+            }
+            println("outer-continues");
+        } catch (ErrorA e) {
+            println("BAD-outer-should-not-catch");
+        }
+        println("after-1");
+
+        // Test 2: Inner try doesn't catch, outer try catches
+        println("Test 2: Exception propagates to outer");
+        try {
+            try {
+                Int r = Thrower.throwA(true);
+                println("BAD-2a");
+            } catch (ErrorB e) {
+                println("BAD-inner-wrong-type");
+            }
+            println("BAD-inner-should-not-continue");
+        } catch (ErrorA e) {
+            println("outer-caught-a");
+        }
+        println("after-2");
+
+        // Test 3: Three levels of nesting - innermost catches
+        println("Test 3: Three levels - innermost catches");
+        try {
+            try {
+                try {
+                    Int r = Thrower.throwA(true);
+                    println("BAD-3a");
+                } catch (ErrorA e) {
+                    println("level-3-caught");
+                }
+                println("level-2-continues");
+            } catch (ErrorA e) {
+                println("BAD-level-2");
+            }
+            println("level-1-continues");
+        } catch (ErrorA e) {
+            println("BAD-level-1");
+        }
+        println("after-3");
+
+        // Test 4: Three levels - middle catches
+        println("Test 4: Three levels - middle catches");
+        try {
+            try {
+                try {
+                    Int r = Thrower.throwA(true);
+                    println("BAD-4a");
+                } catch (ErrorB e) {
+                    println("BAD-level-3-wrong-type");
+                }
+                println("BAD-level-2-should-not-continue");
+            } catch (ErrorA e) {
+                println("level-2-caught");
+            }
+            println("level-1-continues");
+        } catch (ErrorA e) {
+            println("BAD-level-1");
+        }
+        println("after-4");
+
+        // Test 5: Three levels - outermost catches
+        println("Test 5: Three levels - outermost catches");
+        try {
+            try {
+                try {
+                    Int r = Thrower.throwA(true);
+                    println("BAD-5a");
+                } catch (ErrorB e) {
+                    println("BAD-level-3");
+                }
+                println("BAD-level-2");
+            } catch (ErrorC e) {
+                println("BAD-level-2-wrong-type");
+            }
+            println("BAD-level-1");
+        } catch (ErrorA e) {
+            println("level-1-caught");
+        }
+        println("after-5");
+
+        // Test 6: Different exception types at different levels
+        println("Test 6: Different types at levels");
+        try {
+            try {
+                Int r = Thrower.throwB(true);
+                println("BAD-6a");
+            } catch (ErrorA e) {
+                println("BAD-inner-wrong-type-a");
+            }
+            println("BAD-should-not-reach");
+        } catch (ErrorB e) {
+            println("outer-caught-b");
+        }
+        println("after-6");
+
+        // Test 7: Nested finally blocks with exception
+        println("Test 7: Nested finally with exception");
+        try {
+            try {
+                Int r = Thrower.throwA(true);
+                println("BAD-7a");
+            } catch (ErrorB e) {
+                println("BAD-inner-wrong");
+            } finally {
+                println("inner-finally");
+            }
+            println("BAD-7b");
+        } catch (ErrorA e) {
+            println("outer-caught");
+        } finally {
+            println("outer-finally");
+        }
+        println("after-7");
+
+        // Test 8: Inner catches, both finally blocks run
+        println("Test 8: Inner catches, both finally run");
+        try {
+            try {
+                Int r = Thrower.throwA(true);
+                println("BAD-8a");
+            } catch (ErrorA e) {
+                println("inner-caught");
+            } finally {
+                println("inner-finally");
+            }
+            println("between");
+        } catch (ErrorA e) {
+            println("BAD-outer");
+        } finally {
+            println("outer-finally");
+        }
+        println("after-8");
+
+        // Test 9: No exception, all finally blocks run
+        println("Test 9: No exception, all finally run");
+        try {
+            try {
+                Int x = 42;
+                println("inner-ok");
+            } finally {
+                println("inner-finally");
+            }
+            println("between");
+        } finally {
+            println("outer-finally");
+        }
+        println("after-9");
+
+        // Test 10: Sequential nested blocks
+        println("Test 10: Sequential nested");
+        try {
+            try {
+                Int r = Thrower.throwA(true);
+            } catch (ErrorA e) {
+                println("first-inner-caught");
+            }
+            try {
+                Int r = Thrower.throwB(true);
+            } catch (ErrorB e) {
+                println("second-inner-caught");
+            }
+            println("outer-continues");
+        } catch (ErrorA e) {
+            println("BAD-outer-a");
+        } catch (ErrorB e) {
+            println("BAD-outer-b");
+        }
+        println("after-10");
+
+        println("All nested try/catch tests passed!");
+    }
+}

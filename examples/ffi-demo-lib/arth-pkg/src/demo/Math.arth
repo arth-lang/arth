@@ -1,0 +1,15 @@
+package demo;
+
+// FFI declarations for the native library
+extern "C" fn arth_demo_add_i64(int a, int b) -> int;
+extern "C" fn arth_demo_mul_f64(float a, float b) -> float;
+
+export module Math {
+  public int add(int a, int b) {
+    unsafe { return arth_demo_add_i64(a, b); }
+  }
+
+  public float mul(float a, float b) {
+    unsafe { return arth_demo_mul_f64(a, b); }
+  }
+}

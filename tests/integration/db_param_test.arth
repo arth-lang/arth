@@ -1,0 +1,27 @@
+package integration;
+
+/**
+ * Integration tests for db.Param type.
+ *
+ * NOTE: These tests are currently blocked by a cross-package type resolution
+ * issue where `db.Param` as a type annotation is treated as a different
+ * type than the `Param` returned by `db.Param.positional()`.
+ *
+ * This test file serves as documentation for the intended test cases.
+ * Actual testing is done through the Rust test `test_db_stdlib_parsing`
+ * which verifies the stdlib files parse correctly.
+ *
+ * Tests (to be enabled when cross-package imports work):
+ * - Positional parameter creation
+ * - Named parameter creation
+ * - Parameter accessor functions
+ * - Convenience factory functions
+ */
+
+module Main {
+    public void main() {
+        println("=== Database Param Integration Tests ===");
+        println("NOTE: Full integration tests pending cross-package type resolution fix");
+        println("=== Param Tests Skipped ===");
+    }
+}

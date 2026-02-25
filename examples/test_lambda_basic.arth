@@ -1,0 +1,9 @@
+package test;
+
+// Test 1: Basic lambda with no captures
+module LambdaTest {
+    public void testBasicLambda() {
+        // Lambda that doubles a number
+        fn(int x) { return x * 2; }
+    }
+}

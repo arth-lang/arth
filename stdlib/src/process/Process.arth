@@ -1,0 +1,96 @@
+package process;
+
+/**
+ * Process control operations for terminating the current process.
+ *
+ * NOTE: This file is an INTRINSIC-BACKED STUB for IDE/tooling support.
+ * The function bodies are placeholders - actual implementation is provided
+ * by the compiler via intrinsic lowering to VM runtime functions.
+ *
+ * Example usage:
+ * ```
+ * import process.*;
+ * import env.*;
+ *
+ * module Main {
+ *     public static void main() {
+ *         List<String> args = Env.args();
+ *
+ *         if (List.len(args) < 2) {
+ *             Console.writeErr("Usage: program <name>\n");
+ *             Process.exit(1);
+ *         }
+ *
+ *         Console.println("Hello, " + List.get(args, 1));
+ *         Process.exit(0);
+ *     }
+ * }
+ * ```
+ *
+ * @see src/compiler/intrinsics.rs for intrinsic registry
+ * @see crates/arth-vm/src/runtime.rs for VM implementation
+ */
+export module Process {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Exit Codes (conventional values)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Exit code indicating successful execution.
+    public static Int EXIT_SUCCESS = 0;
+
+    /// Exit code indicating general failure.
+    public static Int EXIT_FAILURE = 1;
+
+    /// Exit code indicating invalid command line arguments.
+    public static Int EXIT_USAGE = 64;
+
+    /// Exit code indicating input data was incorrect.
+    public static Int EXIT_DATAERR = 65;
+
+    /// Exit code indicating an input file did not exist or was not readable.
+    public static Int EXIT_NOINPUT = 66;
+
+    /// Exit code indicating internal software error.
+    public static Int EXIT_SOFTWARE = 70;
+
+    /// Exit code indicating system error (e.g., can't fork, can't create pipe).
+    public static Int EXIT_OSERR = 71;
+
+    /// Exit code indicating critical file was missing.
+    public static Int EXIT_IOERR = 74;
+
+    /// Exit code indicating permission denied.
+    public static Int EXIT_NOPERM = 77;
+
+    /// Exit code indicating configuration error.
+    public static Int EXIT_CONFIG = 78;
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Process Termination
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Terminates the current process with the specified exit code.
+    ///
+    /// This function never returns. The exit code is passed to the operating
+    /// system and can be checked by the parent process.
+    ///
+    /// Conventionally:
+    /// - 0 indicates success
+    /// - Non-zero indicates an error (use EXIT_* constants for common cases)
+    ///
+    /// @param code The exit code to return to the operating system
+    @intrinsic("process.exit")
+    public static void exit(Int code) {
+        // Intrinsic: terminates the process - never returns
+    }
+
+    /// Terminates the current process with a success exit code (0).
+    public static void exitSuccess() {
+        exit(EXIT_SUCCESS);
+    }
+
+    /// Terminates the current process with a failure exit code (1).
+    public static void exitFailure() {
+        exit(EXIT_FAILURE);
+    }
+}

@@ -1,0 +1,468 @@
+package mail;
+
+/**
+ * MIME encoding and decoding utilities.
+ *
+ * This module provides functions for encoding and decoding email content
+ * according to RFC 2045 (MIME Part One) and RFC 2047 (MIME Encoded-Word).
+ *
+ * Supported encodings:
+ * - Base64: For binary data (attachments, images)
+ * - Quoted-Printable: For text with some non-ASCII characters
+ * - 7bit/8bit: For plain ASCII/UTF-8 text
+ *
+ * Example usage:
+ * ```arth
+ * import mail.*;
+ *
+ * // Encode binary data as base64
+ * String encoded = Base64.encode(imageBytes);
+ *
+ * // Decode base64 string
+ * bytes decoded = Base64.decode(encoded);
+ *
+ * // Encode header with non-ASCII characters
+ * String encodedHeader = HeaderEncoding.encode("Ré: Test");
+ * // Result: "=?UTF-8?B?UsOpOiBUZXN0?="
+ * ```
+ *
+ * @see mail.Part for using encodings with message parts
+ */
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Base64 Encoding
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Base64 encoding/decoding (RFC 4648).
+ *
+ * Used for encoding binary data in email attachments.
+ */
+module Base64 {
+    /// Encodes bytes as a base64 string.
+    @intrinsic("mail.base64.encode")
+    public static String encode(bytes data) {
+        // Intrinsic implementation - placeholder
+        return "";
+    }
+
+    /// Encodes bytes as base64 with line wrapping at 76 characters.
+    @intrinsic("mail.base64.encode_wrapped")
+    public static String encodeWrapped(bytes data) {
+        // Intrinsic implementation - placeholder
+        return "";
+    }
+
+    /// Encodes bytes as base64 with custom line length.
+    @intrinsic("mail.base64.encode_line_length")
+    public static String encodeWithLineLength(bytes data, int lineLength) {
+        // Intrinsic implementation - placeholder
+        return "";
+    }
+
+    /// Decodes a base64 string to bytes.
+    ///
+    /// @throws EncodingError if the input is not valid base64
+    @intrinsic("mail.base64.decode")
+    public static bytes decode(String encoded) throws (EncodingError) {
+        // Intrinsic implementation - placeholder
+        bytes result;
+        return result;
+    }
+
+    /// Decodes a base64 string, ignoring whitespace and line breaks.
+    @intrinsic("mail.base64.decode_lenient")
+    public static bytes decodeLenient(String encoded) throws (EncodingError) {
+        // Intrinsic implementation - placeholder
+        bytes result;
+        return result;
+    }
+
+    /// Checks if a string is valid base64.
+    public static bool isValid(String s) {
+        try {
+            decode(s);
+            return true;
+        } catch (EncodingError e) {
+            return false;
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Quoted-Printable Encoding
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Quoted-Printable encoding/decoding (RFC 2045).
+ *
+ * Used for encoding text with some non-ASCII characters.
+ * Printable ASCII characters (33-126, except =) are left as-is.
+ * Other bytes are encoded as =XX where XX is the hex value.
+ */
+module QuotedPrintable {
+    /// Encodes bytes as quoted-printable.
+    @intrinsic("mail.qp.encode")
+    public static String encode(bytes data) {
+        // Intrinsic implementation - placeholder
+        return "";
+    }
+
+    /// Encodes a string as quoted-printable.
+    public static String encodeString(String s) {
+        return encode(stringToBytes(s));
+    }
+
+    /// Encodes bytes as quoted-printable with line wrapping at 76 characters.
+    @intrinsic("mail.qp.encode_wrapped")
+    public static String encodeWrapped(bytes data) {
+        // Intrinsic implementation - placeholder
+        return "";
+    }
+
+    /// Decodes a quoted-printable string to bytes.
+    ///
+    /// @throws EncodingError if the input is malformed
+    @intrinsic("mail.qp.decode")
+    public static bytes decode(String encoded) throws (EncodingError) {
+        // Intrinsic implementation - placeholder
+        bytes result;
+        return result;
+    }
+
+    /// Decodes quoted-printable to a string (assuming UTF-8).
+    public static String decodeString(String encoded) throws (EncodingError) {
+        return bytesToString(decode(encoded));
+    }
+
+    /// Checks if a string is valid quoted-printable.
+    public static bool isValid(String s) {
+        try {
+            decode(s);
+            return true;
+        } catch (EncodingError e) {
+            return false;
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Transfer Encoding
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Content-Transfer-Encoding values.
+ */
+public enum TransferEncoding {
+    /// 7-bit ASCII (default)
+    SEVEN_BIT,
+    /// 8-bit data (UTF-8 text)
+    EIGHT_BIT,
+    /// Binary data (no encoding)
+    BINARY,
+    /// Base64 encoded
+    BASE64,
+    /// Quoted-Printable encoded
+    QUOTED_PRINTABLE
+}
+
+module TransferEncoding {
+    /// Returns the header value for an encoding.
+    public static String toHeaderValue(TransferEncoding e) {
+        match e {
+            TransferEncoding.SEVEN_BIT => { return "7bit"; }
+            TransferEncoding.EIGHT_BIT => { return "8bit"; }
+            TransferEncoding.BINARY => { return "binary"; }
+            TransferEncoding.BASE64 => { return "base64"; }
+            TransferEncoding.QUOTED_PRINTABLE => { return "quoted-printable"; }
+        }
+    }
+
+    /// Parses a Content-Transfer-Encoding header value.
+    public static TransferEncoding parse(String value) {
+        String lower = toLowerCase(trim(value));
+        if (lower == "7bit") {
+            return TransferEncoding.SEVEN_BIT;
+        }
+        if (lower == "8bit") {
+            return TransferEncoding.EIGHT_BIT;
+        }
+        if (lower == "binary") {
+            return TransferEncoding.BINARY;
+        }
+        if (lower == "base64") {
+            return TransferEncoding.BASE64;
+        }
+        if (lower == "quoted-printable") {
+            return TransferEncoding.QUOTED_PRINTABLE;
+        }
+        return TransferEncoding.SEVEN_BIT;
+    }
+
+    /// Encodes data with the specified encoding.
+    public static String encode(bytes data, TransferEncoding encoding) {
+        match encoding {
+            TransferEncoding.BASE64 => { return Base64.encodeWrapped(data); }
+            TransferEncoding.QUOTED_PRINTABLE => { return QuotedPrintable.encodeWrapped(data); }
+            TransferEncoding.SEVEN_BIT => { return bytesToString(data); }
+            TransferEncoding.EIGHT_BIT => { return bytesToString(data); }
+            TransferEncoding.BINARY => { return bytesToString(data); }
+        }
+    }
+
+    /// Decodes data with the specified encoding.
+    public static bytes decode(String encoded, TransferEncoding encoding) throws (EncodingError) {
+        match encoding {
+            TransferEncoding.BASE64 => { return Base64.decodeLenient(encoded); }
+            TransferEncoding.QUOTED_PRINTABLE => { return QuotedPrintable.decode(encoded); }
+            TransferEncoding.SEVEN_BIT => { return stringToBytes(encoded); }
+            TransferEncoding.EIGHT_BIT => { return stringToBytes(encoded); }
+            TransferEncoding.BINARY => { return stringToBytes(encoded); }
+        }
+    }
+
+    /// Suggests the best encoding for data.
+    public static TransferEncoding suggest(bytes data) {
+        // Check if data is 7-bit safe
+        int len = bytesLength(data);
+        bool has8bit = false;
+        bool hasBinary = false;
+        int nonPrintable = 0;
+
+        for (int i = 0; i < len; i = i + 1) {
+            int b = byteAt(data, i) & 0xFF;
+
+            // Check for 8-bit bytes
+            if (b > 127) {
+                has8bit = true;
+            }
+
+            // Check for control characters (except CR, LF, TAB)
+            if (b < 32 && b != 9 && b != 10 && b != 13) {
+                hasBinary = true;
+            }
+
+            // Count non-printable characters
+            if (b < 32 || b > 126) {
+                nonPrintable = nonPrintable + 1;
+            }
+        }
+
+        if (hasBinary) {
+            return TransferEncoding.BASE64;
+        }
+
+        if (!has8bit && nonPrintable == 0) {
+            return TransferEncoding.SEVEN_BIT;
+        }
+
+        // If less than 10% non-printable, use quoted-printable
+        if (nonPrintable * 10 < len) {
+            return TransferEncoding.QUOTED_PRINTABLE;
+        }
+
+        return TransferEncoding.BASE64;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Charset Conversion
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Character set conversion utilities.
+ */
+module Charset {
+    /// Converts bytes from a charset to UTF-8 string.
+    @intrinsic("mail.charset.decode")
+    public static String decode(bytes data, String charset) throws (EncodingError) {
+        // Intrinsic implementation - placeholder
+        return "";
+    }
+
+    /// Converts a UTF-8 string to bytes in a charset.
+    @intrinsic("mail.charset.encode")
+    public static bytes encode(String s, String charset) throws (EncodingError) {
+        // Intrinsic implementation - placeholder
+        bytes result;
+        return result;
+    }
+
+    /// Returns true if a charset is supported.
+    @intrinsic("mail.charset.is_supported")
+    public static bool isSupported(String charset) {
+        // Intrinsic implementation - placeholder
+        return true;
+    }
+
+    /// Normalizes a charset name (e.g., "utf8" -> "UTF-8").
+    public static String normalize(String charset) {
+        String lower = toLowerCase(charset);
+
+        // Common aliases
+        if (lower == "utf8" || lower == "utf-8") {
+            return "UTF-8";
+        }
+        if (lower == "ascii" || lower == "us-ascii") {
+            return "US-ASCII";
+        }
+        if (lower == "latin1" || lower == "iso-8859-1" || lower == "iso8859-1") {
+            return "ISO-8859-1";
+        }
+        if (lower == "windows-1252" || lower == "cp1252") {
+            return "windows-1252";
+        }
+
+        return toUpperCase(charset);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Encoded Word (RFC 2047)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * RFC 2047 encoded-word handling for non-ASCII header values.
+ *
+ * Encoded-word syntax: =?charset?encoding?encoded_text?=
+ * - charset: Character set (e.g., UTF-8)
+ * - encoding: B (base64) or Q (quoted-printable)
+ * - encoded_text: The encoded content
+ */
+module EncodedWord {
+    /// Encodes a string as an RFC 2047 encoded-word using Base64.
+    @intrinsic("mail.encoded_word.encode_b")
+    public static String encodeB(String text, String charset) {
+        // Intrinsic implementation - placeholder
+        // Format: =?charset?B?base64_encoded_text?=
+        return "=?" + charset + "?B?" + Base64.encode(stringToBytes(text)) + "?=";
+    }
+
+    /// Encodes a string as an RFC 2047 encoded-word using Quoted-Printable.
+    @intrinsic("mail.encoded_word.encode_q")
+    public static String encodeQ(String text, String charset) {
+        // Intrinsic implementation - placeholder
+        // Format: =?charset?Q?qp_encoded_text?=
+        return "=?" + charset + "?Q?" + QuotedPrintable.encodeString(text) + "?=";
+    }
+
+    /// Encodes a string using the most compact encoding.
+    public static String encode(String text) {
+        // Check if encoding is needed
+        if (!needsEncoding(text)) {
+            return text;
+        }
+
+        // Use B or Q based on which is shorter
+        String bEncoded = encodeB(text, "UTF-8");
+        String qEncoded = encodeQ(text, "UTF-8");
+
+        if (length(bEncoded) <= length(qEncoded)) {
+            return bEncoded;
+        }
+        return qEncoded;
+    }
+
+    /// Decodes an RFC 2047 encoded-word.
+    @intrinsic("mail.encoded_word.decode")
+    public static String decode(String encoded) throws (EncodingError) {
+        // Intrinsic implementation - placeholder
+        // Parse =?charset?encoding?text?=
+        if (!startsWith(encoded, "=?") || !endsWith(encoded, "?=")) {
+            return encoded;
+        }
+
+        String inner = substring(encoded, 2, length(encoded) - 2);
+
+        // Find charset
+        int firstQ = indexOf(inner, "?");
+        if (firstQ < 0) {
+            throw EncodingError.new("Invalid encoded-word format");
+        }
+        String charset = substring(inner, 0, firstQ);
+
+        // Find encoding
+        int secondQ = indexOf(substring(inner, firstQ + 1, length(inner)), "?");
+        if (secondQ < 0) {
+            throw EncodingError.new("Invalid encoded-word format");
+        }
+        String encoding = substring(inner, firstQ + 1, firstQ + 1 + secondQ);
+        String text = substring(inner, firstQ + 2 + secondQ, length(inner));
+
+        // Decode based on encoding type
+        bytes decoded;
+        if (toUpperCase(encoding) == "B") {
+            decoded = Base64.decode(text);
+        } else if (toUpperCase(encoding) == "Q") {
+            decoded = QuotedPrintable.decode(text);
+        } else {
+            throw EncodingError.new("Unknown encoding: " + encoding);
+        }
+
+        // Convert to string with charset
+        return Charset.decode(decoded, charset);
+    }
+
+    /// Decodes a header value that may contain multiple encoded-words.
+    @intrinsic("mail.encoded_word.decode_header")
+    public static String decodeHeader(String header) throws (EncodingError) {
+        // Intrinsic implementation - placeholder
+        // Handles: "=?UTF-8?B?...?= =?UTF-8?B?...?="
+        return header;
+    }
+
+    /// Returns true if a string needs encoding.
+    public static bool needsEncoding(String s) {
+        int len = length(s);
+        for (int i = 0; i < len; i = i + 1) {
+            int c = charCodeAt(s, i);
+            if (c > 127) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helper Functions
+// ─────────────────────────────────────────────────────────────────────────────
+
+@intrinsic("string.to_bytes")
+static bytes stringToBytes(String s) { bytes b; return b; }
+
+@intrinsic("bytes.to_string")
+static String bytesToString(bytes b) { return ""; }
+
+@intrinsic("bytes.length")
+static int bytesLength(bytes b) { return 0; }
+
+@intrinsic("bytes.get")
+static int byteAt(bytes b, int index) { return 0; }
+
+@intrinsic("string.length")
+static int length(String s) { return 0; }
+
+@intrinsic("string.to_lower_case")
+static String toLowerCase(String s) { return s; }
+
+@intrinsic("string.to_upper_case")
+static String toUpperCase(String s) { return s; }
+
+@intrinsic("string.trim")
+static String trim(String s) { return s; }
+
+@intrinsic("string.starts_with")
+static bool startsWith(String s, String prefix) { return false; }
+
+@intrinsic("string.ends_with")
+static bool endsWith(String s, String suffix) { return false; }
+
+@intrinsic("string.index_of")
+static int indexOf(String s, String sub) { return -1; }
+
+@intrinsic("string.substring")
+static String substring(String s, int start, int end) { return ""; }
+
+@intrinsic("string.char_code_at")
+static int charCodeAt(String s, int index) { return 0; }

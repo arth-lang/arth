@@ -1,0 +1,67 @@
+package conformance;
+
+// @spec: spec.md §7 - Throws clause declarations
+// @expect: pass
+// @description: Validates throws clause on functions per spec §7
+
+public struct IoError {
+    public String message;
+}
+
+public struct TimeoutError {
+    public Int seconds;
+}
+
+// Single throws type
+module SingleThrows {
+    public String read(Bool shouldFail) throws (IoError) {
+        if (shouldFail) {
+            throw IoError { message: "read failed" };
+        }
+        return "data";
+    }
+}
+
+// Multiple throws types
+module MultipleThrows {
+    public String fetch(Int mode) throws (IoError, TimeoutError) {
+        if (mode == 1) {
+            throw IoError { message: "io error" };
+        }
+        if (mode == 2) {
+            throw TimeoutError { seconds: 30 };
+        }
+        return "response";
+    }
+}
+
+// Throws propagation
+module Propagator {
+    // Caller must handle or declare same throws
+    public String fetchAndProcess(Int mode) throws (IoError, TimeoutError) {
+        String data = MultipleThrows.fetch(mode);
+        return data;
+    }
+}
+
+// Catching all declared throws
+module Handler {
+    public String safeFetch(Int mode) {
+        try {
+            return MultipleThrows.fetch(mode);
+        } catch (IoError e) {
+            return "io error";
+        } catch (TimeoutError e) {
+            return "timeout";
+        }
+    }
+}
+
+module Main {
+    public static void main() {
+        // Call function that handles exceptions internally
+        String result = Handler.safeFetch(0);
+
+        println("throws_clause: pass");
+    }
+}

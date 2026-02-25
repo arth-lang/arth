@@ -1,0 +1,181 @@
+package test;
+
+// P09: Interface Inheritance
+// Tests interface inheritance scenarios including:
+// - Single inheritance (interface B extends A)
+// - Multiple inheritance (interface C extends A, B)
+// - Deep inheritance chains (A -> B -> C -> D)
+// - Generic interface inheritance (interface B<T> extends A<T>)
+// - Marker interfaces (no methods, inherits from parent)
+
+// =============================================================================
+// Interface inheritance hierarchy (4 levels deep with multiple inheritance)
+// =============================================================================
+
+// Level 1: Base interfaces
+interface Identifiable {
+    int getId();
+}
+
+interface Named {
+    String getName();
+}
+
+// Level 2: Single inheritance from Identifiable
+interface Entity extends Identifiable {
+    int getLevel();
+}
+
+// Level 3: Multiple inheritance (Entity + Named)
+interface FullEntity extends Entity, Named {
+    int getScore();
+}
+
+// Level 4: Deep + Multiple inheritance (adds own methods)
+interface CompleteEntity extends FullEntity {
+    int getTotal();
+}
+
+// Marker interface (no methods, inherits from parent)
+interface Trackable extends Identifiable {
+    // No additional methods - just requires getId() from Identifiable
+}
+
+// Generic interface inheritance
+interface Wrapper<T> {
+    T getValue();
+}
+
+interface MutableWrapper<T> extends Wrapper<T> {
+    void setValue(T value);
+}
+
+// =============================================================================
+// Implementation: Single struct implementing the full hierarchy
+// =============================================================================
+
+struct Record {
+    int id;
+    int level;
+    String name;
+    int score;
+}
+
+module RecordFns implements CompleteEntity {
+    public Record new(int id, int level, String name, int score) {
+        return Record { id: id, level: level, name: name, score: score };
+    }
+
+    // From Identifiable (via Entity -> FullEntity -> CompleteEntity)
+    public int getId(Record r) {
+        return r.id;
+    }
+
+    // From Entity (via FullEntity -> CompleteEntity)
+    public int getLevel(Record r) {
+        return r.level;
+    }
+
+    // From Named (via FullEntity -> CompleteEntity)
+    public String getName(Record r) {
+        return r.name;
+    }
+
+    // From FullEntity (via CompleteEntity)
+    public int getScore(Record r) {
+        return r.score;
+    }
+
+    // From CompleteEntity (own method)
+    public int getTotal(Record r) {
+        return r.id + r.level + r.score;
+    }
+}
+
+// Generic interface implementation
+struct IntBox {
+    int value;
+}
+
+module IntBoxFns implements MutableWrapper<int> {
+    public IntBox new(int v) {
+        return IntBox { value: v };
+    }
+
+    // From Wrapper<int>
+    public int getValue(IntBox b) {
+        return b.value;
+    }
+
+    // From MutableWrapper<int>
+    public void setValue(IntBox b, int value) {
+        b.value = value;
+    }
+}
+
+// Marker interface implementation
+struct Tag {
+    int tagId;
+}
+
+module TagFns implements Trackable {
+    public Tag new(int id) {
+        return Tag { tagId: id };
+    }
+
+    // From Identifiable (via Trackable)
+    public int getId(Tag t) {
+        return t.tagId;
+    }
+}
+
+// =============================================================================
+// Main: Run all tests
+// =============================================================================
+
+module Main {
+    public static void main() {
+        // Test 1: Deep inheritance chain (4 levels) + Multiple inheritance
+        // CompleteEntity extends FullEntity extends (Entity + Named)
+        // Entity extends Identifiable
+        Record r = RecordFns.new(1, 10, "Test", 100);
+        int rid = RecordFns.getId(r);
+        int rlevel = RecordFns.getLevel(r);
+        String rname = RecordFns.getName(r);
+        int rscore = RecordFns.getScore(r);
+        int rtotal = RecordFns.getTotal(r);
+        println("Test 1 - Deep + Multiple inheritance:");
+        println("  id=" + rid + " (from Identifiable via Entity->FullEntity->CompleteEntity)");
+        println("  level=" + rlevel + " (from Entity via FullEntity->CompleteEntity)");
+        println("  name=" + rname + " (from Named via FullEntity->CompleteEntity)");
+        println("  score=" + rscore + " (from FullEntity via CompleteEntity)");
+        println("  total=" + rtotal + " (from CompleteEntity)");
+
+        // Test 2: Generic interface inheritance
+        // MutableWrapper<int> extends Wrapper<int>
+        IntBox box = IntBoxFns.new(42);
+        int boxval = IntBoxFns.getValue(box);
+        println("Test 2 - Generic interface inheritance:");
+        println("  getValue=" + boxval + " (from Wrapper<int>)");
+        IntBoxFns.setValue(box, 99);
+        int boxval2 = IntBoxFns.getValue(box);
+        println("  after setValue=" + boxval2 + " (MutableWrapper<int>.setValue)");
+
+        // Test 3: Marker interface inheritance
+        // Trackable extends Identifiable (no new methods)
+        Tag tag = TagFns.new(777);
+        int tagId = TagFns.getId(tag);
+        println("Test 3 - Marker interface inheritance:");
+        println("  id=" + tagId + " (from Identifiable via Trackable)");
+
+        // Test 4: .then() syntax works with inherited interfaces
+        Record r2 = RecordFns.new(2, 20, "R2", 200);
+        int r2id = r2.then(RecordFns.getId());
+        int r2total = r2.then(RecordFns.getTotal());
+        println("Test 4 - .then() with inherited interfaces:");
+        println("  id=" + r2id + " (via .then())");
+        println("  total=" + r2total + " (via .then())");
+
+        println("All interface inheritance tests passed!");
+    }
+}

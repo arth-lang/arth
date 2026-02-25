@@ -1,0 +1,39 @@
+package conformance;
+
+// @spec: spec.md §3 - Type inference from literals and expressions
+// @expect: pass
+// @description: Validates type inference for literals and operators
+
+module Main {
+    public static void main() {
+        // Integer literal inference
+        Int a = 42;            // Int from literal
+
+        // Boolean literal inference
+        Bool b = true;         // Bool from literal
+
+        // String literal inference
+        String s = "hello";    // String from literal
+
+        // Char literal inference
+        Char c = 'A';          // Char from literal
+
+        // Binary operator type inference
+        Int sum = 1 + 2;       // Int from Int + Int
+        String concat = "a" + "b"; // String from String + String
+
+        // Comparison operator inference
+        Bool lt = 1 < 2;       // Bool from comparison
+        Bool eq = 1 == 1;      // Bool from equality
+
+        // Logical operator inference
+        Bool and = true && false; // Bool from Bool && Bool
+        Bool or = true || false;  // Bool from Bool || Bool
+        Bool not = !true;         // Bool from !Bool
+
+        // Unary minus
+        Int neg = -5;          // Int from -Int
+
+        println("inference: pass");
+    }
+}

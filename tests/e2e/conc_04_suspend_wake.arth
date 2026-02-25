@@ -1,0 +1,186 @@
+package test;
+
+// Test: C04 - Task Suspension and Wakeup
+//
+// This test verifies the task suspension/wakeup mechanism:
+// - A task can suspend while waiting for another task to complete
+// - The suspended task's local state is preserved (accumulator)
+// - When the awaited task completes, the parent task resumes
+// - The resumed task continues with its preserved state
+//
+// The test uses spawnAwait which:
+// 1. Spawns a sub-task with work_type=3 (spawn-and-await)
+// 2. The parent task suspends until the sub-task completes
+// 3. The parent task resumes with its local_accumulator preserved
+
+module Executor {
+    // Executor intrinsics are recognized by HIR-to-IR lowering
+    // and mapped to __arth_executor_* VM calls
+}
+
+module Main {
+    public static void main() {
+        println("=== C04: Task Suspension and Wakeup ===");
+
+        // Initialize thread pool with 4 threads
+        println("Initializing pool with 4 threads...");
+        Int initResult = Executor.init(4);
+        println("Pool initialized: " + initResult);
+
+        // Verify thread count
+        Int threadCount = Executor.threadCount();
+        println("Thread count: " + threadCount);
+
+        // Reset worker stats for clean measurement
+        println("Resetting stats...");
+        Int resetResult = Executor.resetStats();
+
+        println("=== Testing Task Suspension ===");
+
+        // Test 1: Simple spawn-and-await with fibonacci
+        // SpawnAwait: work_type 3 spawns a sub-task of type sub_fn_id with sub_arg
+        // The local_accumulator tracks preserved state across suspension
+        println("Test 1: Single spawn-await task");
+
+        // Work type 2 is fibonacci (sub-task type)
+        // local_accumulator starts at 0
+        Int subType = 2;
+        Int fibArg = 30;
+        Int accum1 = 100;
+
+        // spawnAwait(sub_fn_id, sub_arg, local_accumulator)
+        // This spawns a work_type=3 task that:
+        // 1. Spawns fibonacci(30) as sub-task
+        // 2. Suspends waiting for sub-task
+        // 3. Resumes when sub-task completes
+        // 4. Returns local_accumulator + sub_result
+        Int task1 = Executor.spawnAwait(subType, fibArg, accum1);
+
+        println("Spawned spawn-await task: " + task1);
+
+        // Test 2: Multiple spawn-await tasks
+        println("Test 2: Multiple spawn-await tasks");
+        Int accum2 = 200;
+        Int accum3 = 300;
+        Int accum4 = 400;
+        Int accum5 = 500;
+
+        Int task2 = Executor.spawnAwait(subType, fibArg, accum2);
+        Int task3 = Executor.spawnAwait(subType, fibArg, accum3);
+        Int task4 = Executor.spawnAwait(subType, fibArg, accum4);
+        Int task5 = Executor.spawnAwait(subType, fibArg, accum5);
+
+        println("Spawned tasks: " + task2 + ", " + task3 + ", " + task4 + ", " + task5);
+
+        // Join all tasks
+        println("=== Joining tasks ===");
+
+        Int res1 = Executor.join(task1);
+        println("Task 1 result: " + res1);
+
+        Int res2 = Executor.join(task2);
+        println("Task 2 result: " + res2);
+
+        Int res3 = Executor.join(task3);
+        println("Task 3 result: " + res3);
+
+        Int res4 = Executor.join(task4);
+        println("Task 4 result: " + res4);
+
+        Int res5 = Executor.join(task5);
+        println("Task 5 result: " + res5);
+
+        // Get work distribution stats
+        println("=== Work Distribution Stats ===");
+        Int workersUsed = Executor.activeExecutorCount();
+        println("Workers that executed tasks: " + workersUsed);
+
+        // Get per-worker counts
+        Int w0 = Executor.workerTaskCount(0);
+        Int w1 = Executor.workerTaskCount(1);
+        Int w2 = Executor.workerTaskCount(2);
+        Int w3 = Executor.workerTaskCount(3);
+        println("Worker 0 tasks: " + w0);
+        println("Worker 1 tasks: " + w1);
+        println("Worker 2 tasks: " + w2);
+        println("Worker 3 tasks: " + w3);
+
+        Int totalExecuted = w0 + w1 + w2 + w3;
+        println("Total executed: " + totalExecuted);
+
+        // Verification
+        println("=== Verification ===");
+
+        // fibonacci(30) = 832040
+        // Expected results: local_accumulator + fibonacci(30)
+        Int fib30 = 832040;
+
+        Int expected1 = accum1 + fib30;
+        Int expected2 = accum2 + fib30;
+        Int expected3 = accum3 + fib30;
+        Int expected4 = accum4 + fib30;
+        Int expected5 = accum5 + fib30;
+
+        Int passCount = 0;
+
+        // Check task 1
+        if (res1 == expected1) {
+            println("Task 1 (100 + fib30): PASS");
+            passCount = passCount + 1;
+        } else {
+            println("Task 1 FAIL: expected " + expected1 + " got " + res1);
+        }
+
+        // Check task 2
+        if (res2 == expected2) {
+            println("Task 2 (200 + fib30): PASS");
+            passCount = passCount + 1;
+        } else {
+            println("Task 2 FAIL: expected " + expected2 + " got " + res2);
+        }
+
+        // Check task 3
+        if (res3 == expected3) {
+            println("Task 3 (300 + fib30): PASS");
+            passCount = passCount + 1;
+        } else {
+            println("Task 3 FAIL: expected " + expected3 + " got " + res3);
+        }
+
+        // Check task 4
+        if (res4 == expected4) {
+            println("Task 4 (400 + fib30): PASS");
+            passCount = passCount + 1;
+        } else {
+            println("Task 4 FAIL: expected " + expected4 + " got " + res4);
+        }
+
+        // Check task 5
+        if (res5 == expected5) {
+            println("Task 5 (500 + fib30): PASS");
+            passCount = passCount + 1;
+        } else {
+            println("Task 5 FAIL: expected " + expected5 + " got " + res5);
+        }
+
+        // Each spawn-await task spawns a sub-task, so:
+        // 5 parent tasks + 5 sub-tasks = 10 total tasks
+        Int expectedTotal = 10;
+        if (totalExecuted >= expectedTotal) {
+            println("Total tasks executed (>=10): PASS (" + totalExecuted + ")");
+            passCount = passCount + 1;
+        } else {
+            println("Total tasks executed: FAIL (expected >=" + expectedTotal + " got " + totalExecuted + ")");
+        }
+
+        // Final verdict
+        println("=== Results ===");
+        println("Tests passed: " + passCount + "/6");
+
+        if (passCount == 6) {
+            println("=== C04: All tests passed ===");
+        } else {
+            println("=== C04: FAILED ===");
+        }
+    }
+}

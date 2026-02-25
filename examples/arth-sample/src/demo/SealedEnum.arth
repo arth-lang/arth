@@ -1,0 +1,13 @@
+package demo.enums;
+
+enum Status { OK, Busy, Fail }
+
+module SealedEnumDemo {
+  public String describe(Status s) {
+    switch (s) {
+      case Status.OK: return "ok";
+      case Status.Busy: return "busy";
+      case Status.Fail: return "fail";
+    }
+  }
+}

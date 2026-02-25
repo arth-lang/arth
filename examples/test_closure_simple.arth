@@ -1,0 +1,18 @@
+package test.closure;
+
+// Simple test for closure execution
+module ClosureSimple {
+    public void main() {
+        println("Testing basic lambda...");
+
+        // Create a simple lambda that adds 10
+        int adder = 10;
+        // TODO: Store lambda in a variable and call it
+        // For now, just create the lambda to test compilation
+        fn(int x) {
+            return x + adder;
+        }
+
+        println("Lambda created successfully!");
+    }
+}

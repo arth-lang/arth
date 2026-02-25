@@ -1,0 +1,57 @@
+package cli;
+
+/**
+ * Test program for environment and CLI functionality.
+ */
+module Main {
+    // Direct intrinsics - these bypass the module pattern matching
+    @intrinsic("list.len")
+    static Int listLen(Int handle) { return 0; }
+
+    @intrinsic("list.get")
+    static String listGet(Int handle, Int index) { return ""; }
+
+    @intrinsic("env.args")
+    static Int envArgs() { return 0; }
+
+    @intrinsic("env.get_var")
+    static String envGetVar(String name) { return ""; }
+
+    @intrinsic("env.current_dir")
+    static String envCurrentDir() { return ""; }
+
+    public void main() {
+        // Print welcome message
+        println("=== Environment Test ===");
+
+        // Test env.args()
+        println("Command line arguments:");
+        Int args = envArgs();
+        Int argc = listLen(args);
+        println("  Count: " + argc);
+
+        Int i = 0;
+        while (i < argc) {
+            String arg = listGet(args, i);
+            println("  [" + i + "]: " + arg);
+            i = i + 1;
+        }
+
+        // Test env.currentDir()
+        println("");
+        println("Current directory:");
+        String cwd = envCurrentDir();
+        println("  " + cwd);
+
+        // Test env.getVar()
+        println("");
+        println("Environment variables:");
+        String home = envGetVar("HOME");
+        println("  HOME = " + home);
+        String user = envGetVar("USER");
+        println("  USER = " + user);
+
+        println("");
+        println("=== Test Complete ===");
+    }
+}

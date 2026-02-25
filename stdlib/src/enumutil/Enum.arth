@@ -1,0 +1,33 @@
+package enumutil;
+
+/**
+ * Low-level enum introspection utilities.
+ *
+ * NOTE: This file is an INTRINSIC-BACKED STUB for IDE/tooling support.
+ * The function bodies are placeholders - actual implementation is provided
+ * by the compiler via intrinsic lowering to VM runtime functions.
+ *
+ * This file exists to provide:
+ * - Go-to-definition support in IDEs
+ * - Hover documentation and signature help
+ * - Autocomplete suggestions
+ * - User-readable API documentation
+ *
+ * These functions operate on enum values at a low level using handles.
+ * Most user code should use pattern matching instead.
+ *
+ * @see src/compiler/lower/hir_to_ir.rs for intrinsic lowering
+ * @see crates/arth-vm/src/runtime.rs for VM implementation
+ */
+module Enum {
+    /// Returns the discriminant tag of an enum value.
+    /// The tag is a zero-based index corresponding to the variant's
+    /// position in the enum declaration.
+    @intrinsic("enum.tag")
+    public static Int tag(Int e) { return 0; }
+
+    /// Returns the i-th payload field of an enum value (0-based).
+    /// Only valid for enum variants that carry associated data.
+    @intrinsic("enum.get")
+    public static Int get(Int e, Int index) { return 0; }
+}

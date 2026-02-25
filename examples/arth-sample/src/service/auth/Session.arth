@@ -1,0 +1,52 @@
+package service.auth;
+
+/**
+ * Simple session value type and helpers.
+ *
+ * This is a small library-style example wired into the
+ * examples/arth-sample project so that code using Session
+ * lowers all the way to the VM and runs.
+ *
+ * A Session is modeled as:
+ * - user: the logical user identifier
+ * - issuedAtMillis: milliseconds since some epoch (caller-defined)
+ *
+ * Callers are expected to decide how to obtain time (e.g. a
+ * monotonic clock or wall-clock) and pass it in explicitly.
+ */
+public struct Session {
+    /// Logical user identifier (e.g. username or user ID).
+    public final String user;
+    /// Timestamp in milliseconds when the session was issued.
+    public Int issuedAtMillis;
+}
+
+module SessionFns {
+    /**
+     * Creates a new Session for the given user at the supplied timestamp.
+     *
+     * The caller is responsible for providing a sensible timestamp
+     * (for example from a time/Instant or time/DateTime helper).
+     */
+    public Session new(String user, Int issuedAtMillis) {
+        Session s = { user: user, issuedAtMillis: issuedAtMillis };
+        return s;
+    }
+
+    /**
+     * Updates the issuedAtMillis field to reflect a refreshed session.
+     */
+    public void refresh(Session self, Int nowMillis) {
+        self.issuedAtMillis = nowMillis;
+    }
+
+    /**
+     * Derives a cache key for the session.
+     *
+     * This mirrors the CacheKey<T> pattern in the docs where
+     * Session values are keyed by their user field.
+     */
+    public String key(Session self) {
+        return self.user;
+    }
+}

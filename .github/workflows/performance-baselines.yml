@@ -1,0 +1,78 @@
+name: Performance Baselines
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * 1'  # Weekly Monday 6 AM UTC
+
+jobs:
+  benchmarks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: bench-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run compiler benchmarks
+        run: cargo bench --bench compiler_benchmarks -- --output-format bencher | tee compiler_bench.txt
+
+      - name: Run VM benchmarks
+        run: cargo bench --bench vm_benchmarks -- --output-format bencher | tee vm_bench.txt
+
+      - name: Run end-to-end benchmarks
+        run: cargo bench --bench end_to_end_benchmarks -- --output-format bencher | tee e2e_bench.txt
+
+      - name: Run runtime benchmarks
+        run: cargo bench --bench runtime_benchmarks -- --output-format bencher | tee runtime_bench.txt
+
+      - name: Upload Criterion reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: criterion-reports-vm-${{ github.sha }}
+          path: |
+            target/criterion/
+            *_bench.txt
+          retention-days: 90
+
+  native-benchmarks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install LLVM toolchain
+        run: sudo apt-get update && sudo apt-get install -y clang lld
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: bench-native-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run native integration benchmarks
+        run: cargo test --release --test native_integration -- --ignored --test-threads=1 2>&1 | tee native_bench.txt
+
+      - name: Upload native benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-bench-${{ github.sha }}
+          path: native_bench.txt
+          retention-days: 90

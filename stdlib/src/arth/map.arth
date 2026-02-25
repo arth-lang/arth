@@ -1,0 +1,630 @@
+package arth;
+
+/**
+ * Map operations.
+ *
+ * This file contains:
+ * 1. The `Map` module with intrinsic-backed core operations
+ * 2. The `map` module with higher-level helper functions
+ *
+ * NOTE: This file uses a minimal set of intrinsics. Many operations that were
+ * previously intrinsics are now pure Arth code built on the core primitives.
+ *
+ * Core intrinsics (7):
+ * - map.new, map.put, map.get, map.len, map.keys - fundamental operations
+ * - map.contains_key - essential for existence checks (get returns 0 for missing)
+ * - map.remove - efficient in-place mutation
+ *
+ * Derived operations (pure Arth):
+ * - containsValue, clear, isEmpty, getOrDefault, values
+ *
+ * @see src/compiler/intrinsics.rs for intrinsic registry
+ * @see crates/arth-vm/src/runtime.rs for VM implementation
+ */
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Core Map Module (Intrinsic-backed)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Core map operations backed by VM intrinsics.
+ */
+module Map {
+    /// Creates a new empty map and returns its handle.
+    @intrinsic("map.new")
+    public static Int new() { return 0; }
+
+    /// Associates a value with a key in the map.
+    @intrinsic("map.put")
+    public static Int put(Int map, Int key, Int value) { return map; }
+
+    /// Returns the value associated with a key, or 0 if not found.
+    @intrinsic("map.get")
+    public static Int get(Int map, Int key) { return 0; }
+
+    /// Returns the number of key-value pairs in the map.
+    @intrinsic("map.len")
+    public static Int len(Int map) { return 0; }
+
+    /// Checks if the map contains the specified key (1 if found, 0 otherwise).
+    @intrinsic("map.contains_key")
+    public static Int containsKey(Int map, Int key) { return 0; }
+
+    /// Removes the entry for the specified key, returns removed value or 0.
+    @intrinsic("map.remove")
+    public static Int remove(Int map, Int key) { return 0; }
+
+    /// Returns a list handle containing all keys in the map.
+    @intrinsic("map.keys")
+    public static Int keys(Int map) { return 0; }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // String key overloads (same intrinsics, different type signature)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Associates a value with a String key in the map.
+    @intrinsic("map.put")
+    public static Int put(Int map, String key, Int value) { return map; }
+
+    /// Returns the value associated with a String key, or 0 if not found.
+    @intrinsic("map.get")
+    public static Int get(Int map, String key) { return 0; }
+
+    /// Checks if the map contains the specified String key (1 if found, 0 otherwise).
+    @intrinsic("map.contains_key")
+    public static Int containsKey(Int map, String key) { return 0; }
+
+    /// Removes the entry for the specified String key, returns removed value or 0.
+    @intrinsic("map.remove")
+    public static Int remove(Int map, String key) { return 0; }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Derived operations (pure Arth code)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Checks if the map contains the specified value (1 if found, 0 otherwise).
+    public static Int containsValue(Int map, Int value) {
+        Int keys = Map.keys(map);
+        Int count = List.len(keys);
+        Int i = 0;
+        while (i < count) {
+            Int k = List.get(keys, i);
+            if (Map.get(map, k) == value) {
+                return 1;
+            }
+            i = i + 1;
+        }
+        return 0;
+    }
+
+    /// Removes all entries from the map (returns new empty map).
+    public static Int clear(Int map) {
+        return Map.new();
+    }
+
+    /// Checks if the map is empty (1 if empty, 0 otherwise).
+    public static Int isEmpty(Int map) {
+        if (Map.len(map) == 0) {
+            return 1;
+        }
+        return 0;
+    }
+
+    /// Returns the value for a key, or a default value if not found.
+    public static Int getOrDefault(Int map, Int key, Int defaultValue) {
+        if (Map.containsKey(map, key) == 1) {
+            return Map.get(map, key);
+        }
+        return defaultValue;
+    }
+
+    /// Returns a list handle containing all values in the map.
+    public static Int values(Int map) {
+        Int keys = Map.keys(map);
+        Int count = List.len(keys);
+        Int out = List.new();
+        Int i = 0;
+        while (i < count) {
+            Int k = List.get(keys, i);
+            List.push(out, Map.get(map, k));
+            i = i + 1;
+        }
+        return out;
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Map Helper Module
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/// Result of partitioning a map into entries that match a predicate and the remaining entries.
+public struct MapPartitionResult {
+    /// Handle to a map containing all entries that satisfied the predicate.
+    public final Int matches;
+    /// Handle to a map containing all entries that did not satisfy the predicate.
+    public final Int rest;
+}
+
+/**
+ * Higher-level map helpers that wrap the core Map intrinsics.
+ */
+module map {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Constructors
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Creates an empty map.
+    public static Int empty() {
+        return Map.new();
+    }
+
+    /// Creates an empty map.
+    public static Int mapOf() {
+        return Map.new();
+    }
+
+    /// Creates a map with one key-value pair.
+    public static Int mapOf(Int k1, Int v1) {
+        Int m = Map.new();
+        Map.put(m, k1, v1);
+        return m;
+    }
+
+    /// Creates a map with two key-value pairs.
+    public static Int mapOf(Int k1, Int v1, Int k2, Int v2) {
+        Int m = Map.new();
+        Map.put(m, k1, v1);
+        Map.put(m, k2, v2);
+        return m;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Element Access & Mutation
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Associates the specified value with the specified key.
+    public static void put(Int map, Int key, Int value) {
+        Map.put(map, key, value);
+        return;
+    }
+
+    /// Returns the value associated with the specified key, or 0 if not found.
+    public static Int get(Int map, Int key) {
+        return Map.get(map, key);
+    }
+
+    /// Returns the number of key-value pairs in the map.
+    public static Int len(Int map) {
+        return Map.len(map);
+    }
+
+    /// Returns the value for key if present, otherwise returns defaultValue.
+    public static Int getOrDefault(Int map, Int key, Int defaultValue) {
+        return Map.getOrDefault(map, key, defaultValue);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // String key overloads
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Associates the specified value with the specified String key.
+    public static void put(Int map, String key, Int value) {
+        Map.put(map, key, value);
+        return;
+    }
+
+    /// Returns the value associated with the specified String key, or 0 if not found.
+    public static Int get(Int map, String key) {
+        return Map.get(map, key);
+    }
+
+    /// Returns 1 if the map contains the specified String key, 0 otherwise.
+    public static Int containsKey(Int map, String key) {
+        return Map.containsKey(map, key);
+    }
+
+    /// Removes the mapping for the specified String key if present.
+    public static Int remove(Int map, String key) {
+        return Map.remove(map, key);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Search
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns 1 if the map contains the specified key, 0 otherwise.
+    public static Int containsKey(Int map, Int key) {
+        return Map.containsKey(map, key);
+    }
+
+    /// Returns 1 if the map contains the specified value, 0 otherwise.
+    public static Int containsValue(Int map, Int value) {
+        return Map.containsValue(map, value);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Removal & State
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Removes the mapping for the specified key if present.
+    /// Returns the previous value, or 0 if not found.
+    public static Int remove(Int map, Int key) {
+        return Map.remove(map, key);
+    }
+
+    /// Removes all mappings from the map.
+    public static void clear(Int map) {
+        Map.clear(map);
+        return;
+    }
+
+    /// Returns 1 if the map contains no key-value pairs, 0 otherwise.
+    public static Int isEmpty(Int map) {
+        return Map.isEmpty(map);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Views
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns a list handle containing all keys in the map.
+    public static Int keys(Int map) {
+        return Map.keys(map);
+    }
+
+    /// Returns a list handle containing all values in the map.
+    public static Int values(Int map) {
+        return Map.values(map);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Views over entries
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Returns a list handle containing all key-value entries in the map.
+     *
+     * Each entry is represented as a 2-element list: [key, value].
+     * The iteration order matches {@link #keys} / {@link #values} and is
+     * unspecified (HashMap-based).
+     */
+    public static Int entries(Int map) {
+        Int keys = Map.keys(map);
+        Int count = List.len(keys);
+        Int out = List.new();
+        Int i = 0;
+        while (i < count) {
+            Int k = List.get(keys, i);
+            Int v = Map.get(map, k);
+            Int entry = List.new();
+            List.push(entry, k);
+            List.push(entry, v);
+            List.push(out, entry);
+            i = i + 1;
+        }
+        return out;
+    }
+
+    /**
+     * Alias for {@link #entries}: returns a list of [key, value] entry lists.
+     */
+    public static Int toEntries(Int map) {
+        return entries(map);
+    }
+
+    /**
+     * Builds a new map from a list of [key, value] entry lists.
+     *
+     * For each entry list, the first element is treated as the key and the
+     * second element as the value. Missing elements default to 0 via the
+     * underlying List.get semantics. Later entries for the same key overwrite
+     * earlier ones.
+     */
+    public static Int fromEntries(Int entries) {
+        Int out = Map.new();
+        Int count = List.len(entries);
+        Int i = 0;
+        while (i < count) {
+            Int entry = List.get(entries, i);
+            Int k = List.get(entry, 0);
+            Int v = List.get(entry, 1);
+            Map.put(out, k, v);
+            i = i + 1;
+        }
+        return out;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Merge and update helpers
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Merges two maps into a new map, with entries from {@code right}
+     * overwriting entries from {@code left} on key conflicts.
+     *
+     * Neither input map is modified.
+     */
+    public static Int merge(Int left, Int right) {
+        Int out = Map.new();
+
+        // Copy all entries from left.
+        Int leftKeys = Map.keys(left);
+        Int leftCount = List.len(leftKeys);
+        Int i = 0;
+        while (i < leftCount) {
+            Int k = List.get(leftKeys, i);
+            Int v = Map.get(left, k);
+            Map.put(out, k, v);
+            i = i + 1;
+        }
+
+        // Overlay entries from right; right wins on conflicts.
+        Int rightKeys = Map.keys(right);
+        Int rightCount = List.len(rightKeys);
+        i = 0;
+        while (i < rightCount) {
+            Int k = List.get(rightKeys, i);
+            Int v = Map.get(right, k);
+            Map.put(out, k, v);
+            i = i + 1;
+        }
+
+        return out;
+    }
+
+    /**
+     * Merges two maps into a new map using a conflict resolution function.
+     *
+     * For keys present in both maps, {@code conflictFn(key, leftValue, rightValue)}
+     * is invoked to produce the merged value. Keys present in only one map are
+     * copied as-is. Neither input map is modified.
+     */
+    public static Int merge(Int left, Int right, Fn conflictFn) {
+        Int out = Map.new();
+
+        // Copy all entries from left.
+        Int leftKeys = Map.keys(left);
+        Int leftCount = List.len(leftKeys);
+        Int i = 0;
+        while (i < leftCount) {
+            Int k = List.get(leftKeys, i);
+            Int v = Map.get(left, k);
+            Map.put(out, k, v);
+            i = i + 1;
+        }
+
+        // Merge entries from right, resolving conflicts via conflictFn.
+        Int rightKeys = Map.keys(right);
+        Int rightCount = List.len(rightKeys);
+        i = 0;
+        while (i < rightCount) {
+            Int k = List.get(rightKeys, i);
+            Int newVal = Map.get(right, k);
+            if (Map.containsKey(out, k) == 1) {
+                Int oldVal = Map.get(out, k);
+                Int mergedVal = conflictFn(k, oldVal, newVal);
+                Map.put(out, k, mergedVal);
+            } else {
+                Map.put(out, k, newVal);
+            }
+            i = i + 1;
+        }
+
+        return out;
+    }
+
+    /**
+     * Updates the value for {@code key} in-place using the provided function.
+     *
+     * The updater is invoked as {@code f(oldValue)} and its result is stored
+     * back into the map via {@link #put}. If the key is absent, {@code oldValue}
+     * is the default returned by {@code Map.get} (currently 0).
+     */
+    public static void update(Int map, Int key, Fn updater) {
+        Int oldValue = Map.get(map, key);
+        Int newValue = updater(oldValue);
+        Map.put(map, key, newValue);
+        return;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Predicate-based helpers (require closures)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Applies {@code callback} to each entry in the map.
+     *
+     * The callback is invoked as {@code callback(key, value)} for every entry.
+     * Iteration order is unspecified.
+     */
+    public static void forEach(Int map, Fn callback) {
+        Int keys = Map.keys(map);
+        Int count = List.len(keys);
+        Int i = 0;
+        while (i < count) {
+            Int k = List.get(keys, i);
+            Int v = Map.get(map, k);
+            callback(k, v);
+            i = i + 1;
+        }
+        return;
+    }
+
+    /**
+     * Returns true if any entry in the map satisfies the given predicate.
+     *
+     * The predicate is invoked as {@code pred(key, value)} and the search
+     * short-circuits on the first match.
+     */
+    public static Bool any(Int map, Fn pred) {
+        Int keys = Map.keys(map);
+        Int count = List.len(keys);
+        Int i = 0;
+        while (i < count) {
+            Int k = List.get(keys, i);
+            Int v = Map.get(map, k);
+            if (pred(k, v)) {
+                return true;
+            }
+            i = i + 1;
+        }
+        return false;
+    }
+
+    /**
+     * Returns true if all entries in the map satisfy the given predicate.
+     * An empty map returns true.
+     *
+     * The predicate is invoked as {@code pred(key, value)}.
+     */
+    public static Bool all(Int map, Fn pred) {
+        Int keys = Map.keys(map);
+        Int count = List.len(keys);
+        Int i = 0;
+        while (i < count) {
+            Int k = List.get(keys, i);
+            Int v = Map.get(map, k);
+            if (!pred(k, v)) {
+                return false;
+            }
+            i = i + 1;
+        }
+        return true;
+    }
+
+    /**
+     * Finds the first entry in the map that satisfies the given predicate.
+     *
+     * Returns an Optional containing a handle to a 2-element entry list
+     * [key, value], or Optional.empty() if no entry matches.
+     */
+    public static Optional<Int> find(Int map, Fn pred) {
+        Int keys = Map.keys(map);
+        Int count = List.len(keys);
+        Int i = 0;
+        while (i < count) {
+            Int k = List.get(keys, i);
+            Int v = Map.get(map, k);
+            if (pred(k, v)) {
+                Int entry = List.new();
+                List.push(entry, k);
+                List.push(entry, v);
+                return Optional.of(entry);
+            }
+            i = i + 1;
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * Finds the key of the first entry in the map that satisfies the given predicate.
+     *
+     * Returns an Optional containing the key, or Optional.empty() if no entry matches.
+     */
+    public static Optional<Int> findKey(Int map, Fn pred) {
+        Int keys = Map.keys(map);
+        Int count = List.len(keys);
+        Int i = 0;
+        while (i < count) {
+            Int k = List.get(keys, i);
+            Int v = Map.get(map, k);
+            if (pred(k, v)) {
+                return Optional.of(k);
+            }
+            i = i + 1;
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * Filters the map by a predicate over entries, returning a new map.
+     *
+     * The predicate is invoked as {@code pred(key, value)} and only entries
+     * where it returns true are included.
+     */
+    public static Int filter(Int map, Fn pred) {
+        Int out = Map.new();
+        Int keys = Map.keys(map);
+        Int count = List.len(keys);
+        Int i = 0;
+        while (i < count) {
+            Int k = List.get(keys, i);
+            Int v = Map.get(map, k);
+            if (pred(k, v)) {
+                Map.put(out, k, v);
+            }
+            i = i + 1;
+        }
+        return out;
+    }
+
+    /**
+     * Filters the map by keys only, returning a new map.
+     *
+     * The predicate is invoked as {@code pred(key)}; values are not passed.
+     */
+    public static Int filterKeys(Int map, Fn pred) {
+        Int out = Map.new();
+        Int keys = Map.keys(map);
+        Int count = List.len(keys);
+        Int i = 0;
+        while (i < count) {
+            Int k = List.get(keys, i);
+            if (pred(k)) {
+                Int v = Map.get(map, k);
+                Map.put(out, k, v);
+            }
+            i = i + 1;
+        }
+        return out;
+    }
+
+    /**
+     * Applies a value-mapping function to each entry, returning a new map.
+     *
+     * The mapper is invoked as {@code mapper(key, value)} and its result is stored
+     * as the new value for that key.
+     */
+    public static Int mapValues(Int map, Fn mapper) {
+        Int out = Map.new();
+        Int keys = Map.keys(map);
+        Int count = List.len(keys);
+        Int i = 0;
+        while (i < count) {
+            Int k = List.get(keys, i);
+            Int v = Map.get(map, k);
+            Int newVal = mapper(k, v);
+            Map.put(out, k, newVal);
+            i = i + 1;
+        }
+        return out;
+    }
+
+    /**
+     * Partitions the map into two maps based on the given predicate.
+     *
+     * The returned MapPartitionResult contains:
+     * - matches: all entries where pred(key, value) is true
+     * - rest:   all entries where pred(key, value) is false
+     *
+     * The relative iteration order within each partition follows Map.keys.
+     */
+    public static MapPartitionResult partition(Int map, Fn pred) {
+        Int matches = Map.new();
+        Int rest = Map.new();
+        Int keys = Map.keys(map);
+        Int count = List.len(keys);
+        Int i = 0;
+        while (i < count) {
+            Int k = List.get(keys, i);
+            Int v = Map.get(map, k);
+            if (pred(k, v)) {
+                Map.put(matches, k, v);
+            } else {
+                Map.put(rest, k, v);
+            }
+            i = i + 1;
+        }
+        return MapPartitionResult { matches: matches, rest: rest };
+    }
+}

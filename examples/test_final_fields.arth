@@ -1,0 +1,32 @@
+package test.finalfields;
+
+// Test struct with final (immutable) fields
+struct Config {
+    public final String appName;     // Can only be set once
+    public final int version;        // Immutable
+    public String environment;       // Mutable
+}
+
+module ConfigOps {
+    public void test() {
+        Config cfg;
+
+        // First initialization - should work
+        cfg.appName = "MyApp";
+        cfg.version = 1;
+        cfg.environment = "dev";
+
+        // Should work: changing mutable field
+        cfg.environment = "prod";
+
+        // Should FAIL: reassigning final field
+        // cfg.appName = "NewApp";  // Uncomment to test error
+
+        // Should FAIL: reassigning final field
+        // cfg.version = 2;  // Uncomment to test error
+
+        // Reading final fields should always work
+        String name = cfg.appName;
+        int ver = cfg.version;
+    }
+}

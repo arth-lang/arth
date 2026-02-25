@@ -1,0 +1,34 @@
+package conformance;
+
+// @spec: spec.md §2 - Comments (line, block, nested block, doc)
+// @expect: pass
+// @description: Validates all comment forms including nested block comments
+
+// Single line comment
+
+/* Block comment on one line */
+
+/*
+   Multi-line
+   block comment
+*/
+
+/* Nested /* block */ comments /* are */ allowed */
+
+/// Doc comment for module
+module Main {
+    /** Block doc comment for function */
+    public static void main() {
+        // Inline comment
+        Int x = 1; // trailing comment
+        /* mid-expression */ Int y = 2;
+
+        /*
+         * Formatted block comment
+         * with asterisk prefix
+         */
+        Int z = 3;
+
+        println("comments: pass");
+    }
+}

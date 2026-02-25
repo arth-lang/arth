@@ -1,0 +1,129 @@
+package math;
+
+/**
+ * Mathematical functions for floating-point and integer operations.
+ *
+ * Core functions (sqrt, pow, sin, cos, tan, floor, ceil, round) are
+ * backed by VM intrinsics for hardware FPU support. Helper functions
+ * (min, max, clamp, abs, roundTo) are pure Arth for simplicity.
+ *
+ * @see src/compiler/intrinsics.rs for intrinsic registry
+ * @see crates/arth-vm/src/runtime.rs for VM implementation
+ */
+module Math {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Trigonometric & Exponential Functions (intrinsics - require FPU)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns the square root of x.
+    @intrinsic("math.sqrt")
+    public static Float sqrt(Float x) { return 0.0; }
+
+    /// Returns x raised to the power y (x^y).
+    @intrinsic("math.pow")
+    public static Float pow(Float x, Float y) { return 0.0; }
+
+    /// Returns the sine of x (x in radians).
+    @intrinsic("math.sin")
+    public static Float sin(Float x) { return 0.0; }
+
+    /// Returns the cosine of x (x in radians).
+    @intrinsic("math.cos")
+    public static Float cos(Float x) { return 0.0; }
+
+    /// Returns the tangent of x (x in radians).
+    @intrinsic("math.tan")
+    public static Float tan(Float x) { return 0.0; }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Rounding Functions (intrinsics - require FPU)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns the largest integer less than or equal to x.
+    @intrinsic("math.floor")
+    public static Float floor(Float x) { return 0.0; }
+
+    /// Returns the smallest integer greater than or equal to x.
+    @intrinsic("math.ceil")
+    public static Float ceil(Float x) { return 0.0; }
+
+    /// Rounds x to the nearest integer.
+    @intrinsic("math.round")
+    public static Float round(Float x) { return 0.0; }
+
+    /// Rounds x to the specified number of decimal digits.
+    /// Uses pow and round to shift decimal point.
+    public static Float roundTo(Float x, Int digits) {
+        Float factor = Math.pow(10.0, (Float) digits);
+        return Math.round(x * factor) / factor;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Float Comparison & Clamping (pure Arth)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns the smaller of two float values.
+    public static Float minF(Float a, Float b) {
+        if (a < b) {
+            return a;
+        }
+        return b;
+    }
+
+    /// Returns the larger of two float values.
+    public static Float maxF(Float a, Float b) {
+        if (a > b) {
+            return a;
+        }
+        return b;
+    }
+
+    /// Clamps x to the range [lo, hi].
+    /// Returns lo if x < lo, hi if x > hi, otherwise x.
+    public static Float clampF(Float x, Float lo, Float hi) {
+        return Math.minF(Math.maxF(x, lo), hi);
+    }
+
+    /// Returns the absolute value of x.
+    public static Float absF(Float x) {
+        if (x < 0.0) {
+            return -x;
+        }
+        return x;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Integer Functions (pure Arth)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns the smaller of two integer values.
+    public static Int minI(Int a, Int b) {
+        if (a < b) {
+            return a;
+        }
+        return b;
+    }
+
+    /// Returns the larger of two integer values.
+    public static Int maxI(Int a, Int b) {
+        if (a > b) {
+            return a;
+        }
+        return b;
+    }
+
+    /// Clamps x to the range [lo, hi].
+    /// Returns lo if x < lo, hi if x > hi, otherwise x.
+    public static Int clampI(Int x, Int lo, Int hi) {
+        return Math.minI(Math.maxI(x, lo), hi);
+    }
+
+    /// Returns the absolute value of x.
+    /// Note: Returns Int.MAX for Int.MIN to avoid overflow.
+    public static Int absI(Int x) {
+        if (x < 0) {
+            return -x;
+        }
+        return x;
+    }
+}

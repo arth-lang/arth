@@ -1,0 +1,635 @@
+package db;
+
+/**
+ * Database exception hierarchy.
+ *
+ * All database operations that can fail throw typed exceptions from this
+ * hierarchy. The base interface DbError is sealed, meaning all exception
+ * types are defined here and exhaustive matching is possible.
+ *
+ * Exception hierarchy:
+ * ```
+ * DbError (sealed interface)
+ * ├── ConnectionError      # Failed to connect/disconnect
+ * ├── QueryError           # Query execution failed
+ * ├── PrepareError         # Statement preparation failed
+ * ├── BindError            # Parameter binding failed
+ * ├── TypeMismatchError    # Type conversion failed
+ * ├── TransactionError     # Transaction commit/rollback failed
+ * ├── PoolExhaustedError   # No connections available
+ * └── TimeoutError         # Operation timed out
+ * ```
+ *
+ * Example usage:
+ * ```arth
+ * try {
+ *     Connection conn = Sqlite.connect("file:./mydb.sqlite");
+ *     // ...
+ * } catch (ConnectionError e) {
+ *     // Handle connection failure
+ *     print("Failed to connect: " + e.message);
+ * } catch (QueryError e) {
+ *     // Handle query failure
+ *     print("Query failed: " + e.message + " (code: " + e.errorCode + ")");
+ * }
+ * ```
+ *
+ * @see db.Connection for connection operations
+ * @see db.Statement for query operations
+ */
+
+/**
+ * Base interface for all database errors.
+ *
+ * This is a sealed interface - all implementations are defined in this file.
+ * This allows exhaustive catch matching for database errors.
+ */
+// Note: Semantically sealed - all implementations defined in this file
+public interface DbError {
+    /// Returns the error message.
+    String getMessage();
+
+    /// Returns the driver-specific error code, or 0 if not applicable.
+    int getErrorCode();
+}
+
+/**
+ * Error thrown when a database connection cannot be established or closed.
+ *
+ * Common causes:
+ * - Invalid connection string
+ * - Database file not found (SQLite)
+ * - Server unreachable (PostgreSQL)
+ * - Authentication failure
+ * - Connection limit reached
+ */
+public struct ConnectionError {
+    /// Human-readable error message
+    public final String message;
+    /// Driver-specific error code (0 if not applicable)
+    public final int errorCode;
+    /// The connection string that was attempted
+    public final String connectionString;
+}
+
+/**
+ * Module for ConnectionError providing factory and accessor functions.
+ */
+module ConnectionError implements DbError {
+    /// Creates a new ConnectionError with message only.
+    public static ConnectionError new(String message) {
+        return ConnectionError {
+            message: message,
+            errorCode: 0,
+            connectionString: ""
+        };
+    }
+
+    /// Creates a new ConnectionError with message and error code.
+    public static ConnectionError withCode(String message, int errorCode) {
+        return ConnectionError {
+            message: message,
+            errorCode: errorCode,
+            connectionString: ""
+        };
+    }
+
+    /// Creates a new ConnectionError with full details.
+    public static ConnectionError full(String message, int errorCode, String connectionString) {
+        return ConnectionError {
+            message: message,
+            errorCode: errorCode,
+            connectionString: connectionString
+        };
+    }
+
+    /// Returns the error message.
+    public String getMessage(ConnectionError self) {
+        return self.message;
+    }
+
+    /// Returns the error code.
+    public int getErrorCode(ConnectionError self) {
+        return self.errorCode;
+    }
+
+    /// Returns the connection string that failed.
+    public static String getConnectionString(ConnectionError self) {
+        return self.connectionString;
+    }
+}
+
+/**
+ * Error thrown when a query execution fails.
+ *
+ * Common causes:
+ * - Syntax error in SQL
+ * - Constraint violation (unique, foreign key, check)
+ * - Table or column not found
+ * - Permission denied
+ */
+public struct QueryError {
+    /// Human-readable error message
+    public final String message;
+    /// Driver-specific error code (SQLITE_* or SQLSTATE)
+    public final int errorCode;
+    /// The SQL query that failed
+    public final String sql;
+}
+
+/**
+ * Module for QueryError providing factory and accessor functions.
+ */
+module QueryError implements DbError {
+    /// Creates a new QueryError with message only.
+    public static QueryError new(String message) {
+        return QueryError {
+            message: message,
+            errorCode: 0,
+            sql: ""
+        };
+    }
+
+    /// Creates a new QueryError with message and error code.
+    public static QueryError withCode(String message, int errorCode) {
+        return QueryError {
+            message: message,
+            errorCode: errorCode,
+            sql: ""
+        };
+    }
+
+    /// Creates a new QueryError with full details.
+    public static QueryError full(String message, int errorCode, String sql) {
+        return QueryError {
+            message: message,
+            errorCode: errorCode,
+            sql: sql
+        };
+    }
+
+    /// Returns the error message.
+    public String getMessage(QueryError self) {
+        return self.message;
+    }
+
+    /// Returns the error code.
+    public int getErrorCode(QueryError self) {
+        return self.errorCode;
+    }
+
+    /// Returns the SQL that failed.
+    public static String getSql(QueryError self) {
+        return self.sql;
+    }
+}
+
+/**
+ * Error thrown when statement preparation fails.
+ *
+ * Common causes:
+ * - Syntax error in SQL
+ * - Unknown table or column reference
+ * - Invalid parameter placeholder
+ */
+public struct PrepareError {
+    /// Human-readable error message
+    public final String message;
+    /// Driver-specific error code
+    public final int errorCode;
+    /// The SQL that failed to prepare
+    public final String sql;
+}
+
+/**
+ * Module for PrepareError providing factory and accessor functions.
+ */
+module PrepareError implements DbError {
+    /// Creates a new PrepareError with message only.
+    public static PrepareError new(String message) {
+        return PrepareError {
+            message: message,
+            errorCode: 0,
+            sql: ""
+        };
+    }
+
+    /// Creates a new PrepareError with message and error code.
+    public static PrepareError withCode(String message, int errorCode) {
+        return PrepareError {
+            message: message,
+            errorCode: errorCode,
+            sql: ""
+        };
+    }
+
+    /// Creates a new PrepareError with full details.
+    public static PrepareError full(String message, int errorCode, String sql) {
+        return PrepareError {
+            message: message,
+            errorCode: errorCode,
+            sql: sql
+        };
+    }
+
+    /// Returns the error message.
+    public String getMessage(PrepareError self) {
+        return self.message;
+    }
+
+    /// Returns the error code.
+    public int getErrorCode(PrepareError self) {
+        return self.errorCode;
+    }
+
+    /// Returns the SQL that failed to prepare.
+    public static String getSql(PrepareError self) {
+        return self.sql;
+    }
+}
+
+/**
+ * Error thrown when parameter binding fails.
+ *
+ * Common causes:
+ * - Invalid parameter index (out of range)
+ * - Invalid parameter name (not found)
+ * - Type mismatch between value and expected type
+ */
+public struct BindError {
+    /// Human-readable error message
+    public final String message;
+    /// Driver-specific error code
+    public final int errorCode;
+    /// The parameter index that failed (0 if named)
+    public final int paramIndex;
+    /// The parameter name that failed (empty if positional)
+    public final String paramName;
+}
+
+/**
+ * Module for BindError providing factory and accessor functions.
+ */
+module BindError implements DbError {
+    /// Creates a new BindError with message only.
+    public static BindError new(String message) {
+        return BindError {
+            message: message,
+            errorCode: 0,
+            paramIndex: 0,
+            paramName: ""
+        };
+    }
+
+    /// Creates a new BindError for a positional parameter.
+    public static BindError forIndex(String message, int paramIndex) {
+        return BindError {
+            message: message,
+            errorCode: 0,
+            paramIndex: paramIndex,
+            paramName: ""
+        };
+    }
+
+    /// Creates a new BindError for a named parameter.
+    public static BindError forName(String message, String paramName) {
+        return BindError {
+            message: message,
+            errorCode: 0,
+            paramIndex: 0,
+            paramName: paramName
+        };
+    }
+
+    /// Creates a new BindError with error code.
+    public static BindError withCode(String message, int errorCode, int paramIndex) {
+        return BindError {
+            message: message,
+            errorCode: errorCode,
+            paramIndex: paramIndex,
+            paramName: ""
+        };
+    }
+
+    /// Returns the error message.
+    public String getMessage(BindError self) {
+        return self.message;
+    }
+
+    /// Returns the error code.
+    public int getErrorCode(BindError self) {
+        return self.errorCode;
+    }
+
+    /// Returns the parameter index.
+    public static int getParamIndex(BindError self) {
+        return self.paramIndex;
+    }
+
+    /// Returns the parameter name.
+    public static String getParamName(BindError self) {
+        return self.paramName;
+    }
+}
+
+/**
+ * Error thrown when type conversion fails.
+ *
+ * Common causes:
+ * - Attempting to read TEXT as INTEGER
+ * - Attempting to read BLOB as TEXT
+ * - Overflow during numeric conversion
+ */
+public struct TypeMismatchError {
+    /// Human-readable error message
+    public final String message;
+    /// Driver-specific error code
+    public final int errorCode;
+    /// The expected type name
+    public final String expectedType;
+    /// The actual type name
+    public final String actualType;
+    /// The column index where mismatch occurred
+    public final int columnIndex;
+}
+
+/**
+ * Module for TypeMismatchError providing factory and accessor functions.
+ */
+module TypeMismatchError implements DbError {
+    /// Creates a new TypeMismatchError with message only.
+    public static TypeMismatchError new(String message) {
+        return TypeMismatchError {
+            message: message,
+            errorCode: 0,
+            expectedType: "",
+            actualType: "",
+            columnIndex: -1
+        };
+    }
+
+    /// Creates a new TypeMismatchError with type information.
+    public static TypeMismatchError withTypes(String message, String expectedType, String actualType) {
+        return TypeMismatchError {
+            message: message,
+            errorCode: 0,
+            expectedType: expectedType,
+            actualType: actualType,
+            columnIndex: -1
+        };
+    }
+
+    /// Creates a new TypeMismatchError with full details.
+    public static TypeMismatchError full(String message, String expectedType, String actualType, int columnIndex) {
+        return TypeMismatchError {
+            message: message,
+            errorCode: 0,
+            expectedType: expectedType,
+            actualType: actualType,
+            columnIndex: columnIndex
+        };
+    }
+
+    /// Returns the error message.
+    public String getMessage(TypeMismatchError self) {
+        return self.message;
+    }
+
+    /// Returns the error code.
+    public int getErrorCode(TypeMismatchError self) {
+        return self.errorCode;
+    }
+
+    /// Returns the expected type name.
+    public static String getExpectedType(TypeMismatchError self) {
+        return self.expectedType;
+    }
+
+    /// Returns the actual type name.
+    public static String getActualType(TypeMismatchError self) {
+        return self.actualType;
+    }
+
+    /// Returns the column index where mismatch occurred.
+    public static int getColumnIndex(TypeMismatchError self) {
+        return self.columnIndex;
+    }
+}
+
+/**
+ * Error thrown when a transaction operation fails.
+ *
+ * Common causes:
+ * - BEGIN when already in transaction
+ * - COMMIT with constraint violations
+ * - ROLLBACK failure
+ * - Deadlock detected
+ */
+public struct TransactionError {
+    /// Human-readable error message
+    public final String message;
+    /// Driver-specific error code
+    public final int errorCode;
+    /// The transaction operation that failed (BEGIN, COMMIT, ROLLBACK, SAVEPOINT)
+    public final String operation;
+}
+
+/**
+ * Module for TransactionError providing factory and accessor functions.
+ */
+module TransactionError implements DbError {
+    /// Creates a new TransactionError with message only.
+    public static TransactionError new(String message) {
+        return TransactionError {
+            message: message,
+            errorCode: 0,
+            operation: ""
+        };
+    }
+
+    /// Creates a new TransactionError with operation.
+    public static TransactionError forOperation(String message, String operation) {
+        return TransactionError {
+            message: message,
+            errorCode: 0,
+            operation: operation
+        };
+    }
+
+    /// Creates a new TransactionError with full details.
+    public static TransactionError full(String message, int errorCode, String operation) {
+        return TransactionError {
+            message: message,
+            errorCode: errorCode,
+            operation: operation
+        };
+    }
+
+    /// Returns the error message.
+    public String getMessage(TransactionError self) {
+        return self.message;
+    }
+
+    /// Returns the error code.
+    public int getErrorCode(TransactionError self) {
+        return self.errorCode;
+    }
+
+    /// Returns the transaction operation that failed.
+    public static String getOperation(TransactionError self) {
+        return self.operation;
+    }
+}
+
+/**
+ * Error thrown when a connection pool has no available connections.
+ *
+ * This error occurs when:
+ * - All connections in the pool are in use
+ * - The acquire timeout has been exceeded
+ * - The pool is shutting down
+ */
+public struct PoolExhaustedError {
+    /// Human-readable error message
+    public final String message;
+    /// The maximum pool size
+    public final int maxConnections;
+    /// The number of connections currently in use
+    public final int activeConnections;
+    /// The timeout that was exceeded (in milliseconds)
+    public final int timeoutMs;
+}
+
+/**
+ * Module for PoolExhaustedError providing factory and accessor functions.
+ */
+module PoolExhaustedError implements DbError {
+    /// Creates a new PoolExhaustedError with message only.
+    public static PoolExhaustedError new(String message) {
+        return PoolExhaustedError {
+            message: message,
+            maxConnections: 0,
+            activeConnections: 0,
+            timeoutMs: 0
+        };
+    }
+
+    /// Creates a new PoolExhaustedError with pool status.
+    public static PoolExhaustedError withStatus(String message, int maxConnections, int activeConnections) {
+        return PoolExhaustedError {
+            message: message,
+            maxConnections: maxConnections,
+            activeConnections: activeConnections,
+            timeoutMs: 0
+        };
+    }
+
+    /// Creates a new PoolExhaustedError with full details.
+    public static PoolExhaustedError full(String message, int maxConnections, int activeConnections, int timeoutMs) {
+        return PoolExhaustedError {
+            message: message,
+            maxConnections: maxConnections,
+            activeConnections: activeConnections,
+            timeoutMs: timeoutMs
+        };
+    }
+
+    /// Returns the error message.
+    public String getMessage(PoolExhaustedError self) {
+        return self.message;
+    }
+
+    /// Returns the error code (always 0 for pool errors).
+    public int getErrorCode(PoolExhaustedError self) {
+        return 0;
+    }
+
+    /// Returns the maximum pool size.
+    public static int getMaxConnections(PoolExhaustedError self) {
+        return self.maxConnections;
+    }
+
+    /// Returns the number of active connections.
+    public static int getActiveConnections(PoolExhaustedError self) {
+        return self.activeConnections;
+    }
+
+    /// Returns the timeout that was exceeded.
+    public static int getTimeoutMs(PoolExhaustedError self) {
+        return self.timeoutMs;
+    }
+}
+
+/**
+ * Error thrown when a database operation times out.
+ *
+ * This error occurs when:
+ * - Query execution exceeds timeout
+ * - Connection attempt exceeds timeout
+ * - Lock acquisition exceeds timeout
+ */
+public struct TimeoutError {
+    /// Human-readable error message
+    public final String message;
+    /// Driver-specific error code
+    public final int errorCode;
+    /// The operation that timed out
+    public final String operation;
+    /// The timeout duration (in milliseconds)
+    public final int timeoutMs;
+}
+
+/**
+ * Module for TimeoutError providing factory and accessor functions.
+ */
+module TimeoutError implements DbError {
+    /// Creates a new TimeoutError with message only.
+    public static TimeoutError new(String message) {
+        return TimeoutError {
+            message: message,
+            errorCode: 0,
+            operation: "",
+            timeoutMs: 0
+        };
+    }
+
+    /// Creates a new TimeoutError with operation.
+    public static TimeoutError forOperation(String message, String operation, int timeoutMs) {
+        return TimeoutError {
+            message: message,
+            errorCode: 0,
+            operation: operation,
+            timeoutMs: timeoutMs
+        };
+    }
+
+    /// Creates a new TimeoutError with full details.
+    public static TimeoutError full(String message, int errorCode, String operation, int timeoutMs) {
+        return TimeoutError {
+            message: message,
+            errorCode: errorCode,
+            operation: operation,
+            timeoutMs: timeoutMs
+        };
+    }
+
+    /// Returns the error message.
+    public String getMessage(TimeoutError self) {
+        return self.message;
+    }
+
+    /// Returns the error code.
+    public int getErrorCode(TimeoutError self) {
+        return self.errorCode;
+    }
+
+    /// Returns the operation that timed out.
+    public static String getOperation(TimeoutError self) {
+        return self.operation;
+    }
+
+    /// Returns the timeout duration.
+    public static int getTimeoutMs(TimeoutError self) {
+        return self.timeoutMs;
+    }
+}

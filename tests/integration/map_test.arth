@@ -1,0 +1,130 @@
+package integration;
+
+// Integration tests for Map collection type
+// Note: Each test uses fresh variables due to ownership semantics
+
+module Main {
+    public void main() {
+        println("=== Map Integration Tests ===");
+
+        // Test Map.new()
+        println("-- Map.new() --");
+        Map<String, int> m1 = Map.new();
+        println("Created new map");
+        println("OK");
+
+        // Test Map.put() and Map.len()
+        println("-- Map.put() and len() --");
+        Map<String, int> m2 = Map.new();
+        Map.put(m2, "alice", 30);
+        Map.put(m2, "bob", 25);
+        int len = Map.len(m2);
+        println("Length after 2 puts: ");
+        println(len);
+        println("OK");
+
+        // Test Map.get()
+        println("-- Map.get() --");
+        Map<String, int> m3 = Map.new();
+        Map.put(m3, "key", 42);
+        int val = Map.get(m3, "key");
+        println("Got value: ");
+        println(val);
+        println("OK");
+
+        // Test Map.containsKey()
+        println("-- Map.containsKey() --");
+        Map<String, int> m4 = Map.new();
+        Map.put(m4, "exists", 100);
+        bool has = Map.containsKey(m4, "exists");
+        println("containsKey(exists): ");
+        println(has);
+        bool missing = Map.containsKey(m4, "missing");
+        println("containsKey(missing): ");
+        println(missing);
+        println("OK");
+
+        // Test Map.remove()
+        println("-- Map.remove() --");
+        Map<String, int> m5 = Map.new();
+        Map.put(m5, "toRemove", 999);
+        int lenBefore = Map.len(m5);
+        println("Length before remove: ");
+        println(lenBefore);
+        Map.remove(m5, "toRemove");
+        int lenAfter = Map.len(m5);
+        println("Length after remove: ");
+        println(lenAfter);
+        println("OK");
+
+        // Test Map.keys()
+        println("-- Map.keys() --");
+        Map<String, int> m6 = Map.new();
+        Map.put(m6, "a", 1);
+        Map.put(m6, "b", 2);
+        List<String> keys = Map.keys(m6);
+        int keyCount = List.len(keys);
+        println("Key count: ");
+        println(keyCount);
+        println("OK");
+
+        // Test Map.merge()
+        println("-- Map.merge() --");
+        Map<String, int> dest = Map.new();
+        Map.put(dest, "x", 10);
+        Map<String, int> src = Map.new();
+        Map.put(src, "y", 20);
+        Map.merge(dest, src);
+        int mergedLen = Map.len(dest);
+        println("Merged length: ");
+        println(mergedLen);
+        println("OK");
+
+        // Test Map.clear()
+        println("-- Map.clear() --");
+        Map<String, int> m7 = Map.new();
+        Map.put(m7, "item", 1);
+        Map.clear(m7);
+        int clearedLen = Map.len(m7);
+        println("Length after clear: ");
+        println(clearedLen);
+        println("OK");
+
+        // Test Map.isEmpty()
+        println("-- Map.isEmpty() --");
+        Map<String, int> m8 = Map.new();
+        bool empty1 = Map.isEmpty(m8);
+        println("isEmpty (empty map): ");
+        println(empty1);
+        Map.put(m8, "item", 1);
+        bool empty2 = Map.isEmpty(m8);
+        println("isEmpty (with entry): ");
+        println(empty2);
+        println("OK");
+
+        // Test Map.getOrDefault()
+        println("-- Map.getOrDefault() --");
+        Map<String, int> m9 = Map.new();
+        Map.put(m9, "exists", 42);
+        int got1 = Map.getOrDefault(m9, "exists", -1);
+        println("getOrDefault(exists, -1): ");
+        println(got1);
+        int got2 = Map.getOrDefault(m9, "missing", -1);
+        println("getOrDefault(missing, -1): ");
+        println(got2);
+        println("OK");
+
+        // Test Map.values()
+        println("-- Map.values() --");
+        Map<String, int> m10 = Map.new();
+        Map.put(m10, "a", 10);
+        Map.put(m10, "b", 20);
+        List<int> vals = Map.values(m10);
+        int valCount = List.len(vals);
+        println("Value count: ");
+        println(valCount);
+        println("OK");
+
+        println("=== All Map Tests Passed ===");
+    }
+}

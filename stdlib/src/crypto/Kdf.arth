@@ -1,0 +1,406 @@
+package crypto;
+
+/**
+ * Key Derivation Functions (KDF).
+ *
+ * This module provides functions for deriving cryptographic keys from
+ * various input materials. Use cases include:
+ *
+ * - **HKDF**: Derive keys from shared secrets (after key exchange)
+ * - **PBKDF2**: Derive keys from passwords (legacy, use Argon2 for new code)
+ * - **Argon2id**: Derive keys from passwords (modern, recommended)
+ *
+ * Algorithm selection guide:
+ * - For deriving keys from key exchange shared secrets: Use HKDF
+ * - For password-based key derivation (new code): Use Argon2id
+ * - For password-based key derivation (interop): Use PBKDF2
+ *
+ * IMPORTANT: Always use a random salt with password-based KDFs!
+ *
+ * Example usage:
+ * ```arth
+ * import crypto.*;
+ *
+ * module Example {
+ *     public void deriveEncryptionKey() throws (KdfError, RandomError) {
+ *         // After key exchange, derive an encryption key using HKDF
+ *         bytes sharedSecret = ...; // From KeyExchange.agree()
+ *         bytes salt = Kdf.generateSalt(32);
+ *         bytes info = "encryption key".toBytes();
+ *
+ *         bytes encryptionKey = Kdf.hkdf(
+ *             KdfAlgorithm.HKDF_SHA256,
+ *             sharedSecret,
+ *             salt,
+ *             info,
+ *             32  // 256-bit key
+ *         );
+ *     }
+ *
+ *     public void deriveKeyFromPassword() throws (KdfError, RandomError) {
+ *         // Derive a key from a password using Argon2id
+ *         String password = "user password";
+ *         bytes salt = Kdf.generateSalt(16);
+ *
+ *         bytes key = Kdf.argon2id(
+ *             password.toBytes(),
+ *             salt,
+ *             Argon2Params.recommended()
+ *         );
+ *     }
+ * }
+ * ```
+ *
+ * @see crypto.KeyExchange for Diffie-Hellman key exchange
+ * @see crypto.Aead for authenticated encryption with the derived key
+ */
+
+/**
+ * KDF algorithm identifiers.
+ */
+public enum KdfAlgorithm {
+    /// HKDF with SHA-256 (RFC 5869)
+    HKDF_SHA256,
+
+    /// HKDF with SHA-384
+    HKDF_SHA384,
+
+    /// HKDF with SHA-512
+    HKDF_SHA512,
+
+    /// PBKDF2 with HMAC-SHA256 (RFC 8018)
+    PBKDF2_SHA256,
+
+    /// PBKDF2 with HMAC-SHA512
+    PBKDF2_SHA512,
+
+    /// Argon2id (RFC 9106) - recommended for password hashing
+    ARGON2ID
+}
+
+/**
+ * Module for KdfAlgorithm utilities.
+ */
+module KdfAlgorithm {
+    /**
+     * Returns the name of the algorithm as a string.
+     *
+     * @param algorithm The KDF algorithm
+     * @return Algorithm name
+     */
+    public static String name(KdfAlgorithm algorithm) {
+        match (algorithm) {
+            KdfAlgorithm.HKDF_SHA256 => return "HKDF-SHA256";
+            KdfAlgorithm.HKDF_SHA384 => return "HKDF-SHA384";
+            KdfAlgorithm.HKDF_SHA512 => return "HKDF-SHA512";
+            KdfAlgorithm.PBKDF2_SHA256 => return "PBKDF2-SHA256";
+            KdfAlgorithm.PBKDF2_SHA512 => return "PBKDF2-SHA512";
+            KdfAlgorithm.ARGON2ID => return "Argon2id";
+        }
+    }
+
+    /**
+     * Returns the PRK (pseudorandom key) size for HKDF algorithms.
+     *
+     * @param algorithm The HKDF algorithm
+     * @return PRK size in bytes, or 0 for non-HKDF algorithms
+     */
+    public static int prkSize(KdfAlgorithm algorithm) {
+        match (algorithm) {
+            KdfAlgorithm.HKDF_SHA256 => return 32;
+            KdfAlgorithm.HKDF_SHA384 => return 48;
+            KdfAlgorithm.HKDF_SHA512 => return 64;
+            _ => return 0;
+        }
+    }
+}
+
+/**
+ * Parameters for Argon2id password hashing.
+ *
+ * Security recommendations (OWASP):
+ * - Memory: At least 64 MB (65536 KiB)
+ * - Iterations: At least 3
+ * - Parallelism: 4 (or number of CPU cores)
+ */
+public struct Argon2Params {
+    /// Memory usage in KiB
+    public final int memoryKib;
+    /// Number of iterations (time cost)
+    public final int iterations;
+    /// Degree of parallelism (lanes)
+    public final int parallelism;
+    /// Output length in bytes
+    public final int outputLength;
+}
+
+/**
+ * Module for Argon2Params construction.
+ */
+module Argon2Params {
+    /**
+     * Creates Argon2 parameters with OWASP-recommended values.
+     *
+     * Uses: 64 MB memory, 3 iterations, 4 parallel lanes, 32-byte output.
+     *
+     * @return Recommended Argon2 parameters
+     */
+    public static Argon2Params recommended() {
+        return Argon2Params {
+            memoryKib: 65536,   // 64 MB
+            iterations: 3,
+            parallelism: 4,
+            outputLength: 32   // 256-bit key
+        };
+    }
+
+    /**
+     * Creates Argon2 parameters for interactive use (faster, less secure).
+     *
+     * Uses: 64 MB memory, 1 iteration, 4 parallel lanes, 32-byte output.
+     * Suitable for interactive login where response time matters.
+     *
+     * @return Interactive Argon2 parameters
+     */
+    public static Argon2Params interactive() {
+        return Argon2Params {
+            memoryKib: 65536,   // 64 MB
+            iterations: 1,
+            parallelism: 4,
+            outputLength: 32
+        };
+    }
+
+    /**
+     * Creates Argon2 parameters for sensitive data (slower, more secure).
+     *
+     * Uses: 256 MB memory, 4 iterations, 4 parallel lanes, 32-byte output.
+     * Suitable for encrypting highly sensitive data.
+     *
+     * @return Sensitive Argon2 parameters
+     */
+    public static Argon2Params sensitive() {
+        return Argon2Params {
+            memoryKib: 262144,  // 256 MB
+            iterations: 4,
+            parallelism: 4,
+            outputLength: 32
+        };
+    }
+
+    /**
+     * Creates custom Argon2 parameters.
+     *
+     * @param memoryKib Memory usage in KiB (minimum 8192 = 8 MB)
+     * @param iterations Number of iterations (minimum 1)
+     * @param parallelism Degree of parallelism (minimum 1)
+     * @param outputLength Output length in bytes (minimum 4)
+     * @return Custom Argon2 parameters
+     */
+    public static Argon2Params custom(int memoryKib, int iterations, int parallelism, int outputLength) {
+        return Argon2Params {
+            memoryKib: memoryKib,
+            iterations: iterations,
+            parallelism: parallelism,
+            outputLength: outputLength
+        };
+    }
+}
+
+/**
+ * Module for Key Derivation Functions.
+ *
+ * NOTE: This file is an INTRINSIC-BACKED STUB for IDE/tooling support.
+ * The function bodies are placeholders - actual implementation is provided
+ * by the compiler via intrinsic lowering to C FFI runtime functions.
+ */
+module Kdf {
+    // =========================================================================
+    // Salt Generation
+    // =========================================================================
+
+    /**
+     * Generates a cryptographically secure random salt.
+     *
+     * @param length The length of salt to generate (recommended: 16-32 bytes)
+     * @return A random salt
+     * @throws RandomError if the CSPRNG fails
+     */
+    @intrinsic("crypto.kdf_generate_salt")
+    public static bytes generateSalt(int length) throws RandomError {
+        // Intrinsic: generates random salt via C FFI
+        return bytes.allocate(length);
+    }
+
+    // =========================================================================
+    // HKDF (HMAC-based Key Derivation Function)
+    // =========================================================================
+
+    /**
+     * Derives key material using HKDF (RFC 5869).
+     *
+     * HKDF is designed for deriving keys from high-entropy input material
+     * like shared secrets from key exchange. It should NOT be used directly
+     * with passwords (use Argon2id or PBKDF2 instead).
+     *
+     * @param algorithm The HKDF algorithm (SHA-256, SHA-384, or SHA-512)
+     * @param ikm Input key material (e.g., shared secret)
+     * @param salt Optional salt (can be empty, but recommended)
+     * @param info Optional context/application info
+     * @param outputLength Desired output length in bytes
+     * @return Derived key material
+     * @throws KdfError if the operation fails
+     */
+    @intrinsic("crypto.hkdf_derive")
+    public static bytes hkdf(
+        KdfAlgorithm algorithm,
+        bytes ikm,
+        bytes salt,
+        bytes info,
+        int outputLength
+    ) throws KdfError {
+        // Intrinsic: performs HKDF via C FFI
+        return bytes.allocate(outputLength);
+    }
+
+    /**
+     * Derives key material using HKDF with default empty info.
+     *
+     * @param algorithm The HKDF algorithm
+     * @param ikm Input key material
+     * @param salt Optional salt
+     * @param outputLength Desired output length in bytes
+     * @return Derived key material
+     * @throws KdfError if the operation fails
+     */
+    public static bytes hkdf(
+        KdfAlgorithm algorithm,
+        bytes ikm,
+        bytes salt,
+        int outputLength
+    ) throws KdfError {
+        return Kdf.hkdf(algorithm, ikm, salt, bytes.empty(), outputLength);
+    }
+
+    /**
+     * HKDF Extract phase only.
+     *
+     * Extracts a pseudorandom key (PRK) from input key material.
+     * Use this when you need to derive multiple keys from the same IKM.
+     *
+     * @param algorithm The HKDF algorithm
+     * @param ikm Input key material
+     * @param salt Optional salt
+     * @return The pseudorandom key (PRK)
+     * @throws KdfError if the operation fails
+     */
+    @intrinsic("crypto.hkdf_extract")
+    public static bytes hkdfExtract(
+        KdfAlgorithm algorithm,
+        bytes ikm,
+        bytes salt
+    ) throws KdfError {
+        // Intrinsic: performs HKDF extract via C FFI
+        return bytes.allocate(KdfAlgorithm.prkSize(algorithm));
+    }
+
+    // =========================================================================
+    // PBKDF2 (Password-Based Key Derivation Function 2)
+    // =========================================================================
+
+    /**
+     * Derives key material from a password using PBKDF2.
+     *
+     * PBKDF2 is a legacy algorithm. For new code, prefer Argon2id which
+     * provides better resistance to GPU/ASIC attacks.
+     *
+     * IMPORTANT: Use a high iteration count:
+     * - SHA-256: At least 600,000 iterations (OWASP 2023)
+     * - SHA-512: At least 210,000 iterations
+     *
+     * @param algorithm The PBKDF2 algorithm (SHA-256 or SHA-512)
+     * @param password The password bytes
+     * @param salt Random salt (at least 16 bytes)
+     * @param iterations Number of iterations (higher = slower, more secure)
+     * @param outputLength Desired output length in bytes
+     * @return Derived key material
+     * @throws KdfError if the operation fails
+     */
+    @intrinsic("crypto.pbkdf2_derive")
+    public static bytes pbkdf2(
+        KdfAlgorithm algorithm,
+        bytes password,
+        bytes salt,
+        int iterations,
+        int outputLength
+    ) throws KdfError {
+        // Intrinsic: performs PBKDF2 via C FFI
+        return bytes.allocate(outputLength);
+    }
+
+    // =========================================================================
+    // Argon2id (Memory-Hard Password Hashing)
+    // =========================================================================
+
+    /**
+     * Derives key material from a password using Argon2id.
+     *
+     * Argon2id is the recommended algorithm for password-based key derivation.
+     * It is memory-hard, making it resistant to GPU and ASIC attacks.
+     *
+     * @param password The password bytes
+     * @param salt Random salt (at least 16 bytes)
+     * @param params Argon2 parameters (use Argon2Params.recommended())
+     * @return Derived key material
+     * @throws KdfError if the operation fails
+     */
+    @intrinsic("crypto.argon2_derive")
+    public static bytes argon2id(
+        bytes password,
+        bytes salt,
+        Argon2Params params
+    ) throws KdfError {
+        // Intrinsic: performs Argon2id via C FFI
+        return bytes.allocate(params.outputLength);
+    }
+
+    /**
+     * Derives key material from a password using Argon2id with recommended params.
+     *
+     * Uses OWASP-recommended parameters: 64 MB memory, 3 iterations, 4 lanes.
+     *
+     * @param password The password bytes
+     * @param salt Random salt (at least 16 bytes)
+     * @param outputLength Desired output length in bytes
+     * @return Derived key material
+     * @throws KdfError if the operation fails
+     */
+    public static bytes argon2id(
+        bytes password,
+        bytes salt,
+        int outputLength
+    ) throws KdfError {
+        Argon2Params params = Argon2Params {
+            memoryKib: 65536,
+            iterations: 3,
+            parallelism: 4,
+            outputLength: outputLength
+        };
+        return Kdf.argon2id(password, salt, params);
+    }
+
+    // =========================================================================
+    // Utility Functions
+    // =========================================================================
+
+    /**
+     * Validates that a salt meets minimum requirements.
+     *
+     * @param salt The salt to validate
+     * @param minLength Minimum required length
+     * @return true if the salt is valid
+     */
+    public static Bool validateSalt(bytes salt, int minLength) {
+        return salt.length() >= minLength;
+    }
+}

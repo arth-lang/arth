@@ -1,0 +1,79 @@
+package io;
+
+/**
+ * Console I/O operations for reading from stdin and writing to stdout/stderr.
+ *
+ * NOTE: This file is an INTRINSIC-BACKED STUB for IDE/tooling support.
+ * The function bodies are placeholders - actual implementation is provided
+ * by the compiler via intrinsic lowering to VM runtime functions.
+ *
+ * Example usage:
+ * ```
+ * import io.*;
+ *
+ * module Main {
+ *     public static void main() {
+ *         Console.print("Enter your name: ");
+ *         String name = Console.readLine();
+ *         Console.println("Hello, " + name + "!");
+ *     }
+ * }
+ * ```
+ *
+ * @see src/compiler/intrinsics.rs for intrinsic registry
+ * @see crates/arth-vm/src/runtime.rs for VM implementation
+ */
+module Console {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Output Operations
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Prints a string to stdout without a trailing newline.
+    ///
+    /// @param s The string to print
+    @intrinsic("io.print")
+    public static void print(String s) {
+        // Intrinsic: writes to stdout
+    }
+
+    /// Prints a newline to stdout.
+    ///
+    /// Use `Console.print(s)` followed by `Console.println()` for explicit control,
+    /// or use string concatenation with print for single-line output.
+    @intrinsic("io.println")
+    public static void println() {
+        // Intrinsic: writes newline to stdout
+    }
+
+    /// Writes a string to stdout (alias for print).
+    ///
+    /// @param s The string to write
+    @intrinsic("io.console_write")
+    public static void write(String s) {
+        // Intrinsic: writes to stdout
+    }
+
+    /// Writes a string to stderr.
+    ///
+    /// @param s The string to write to standard error
+    @intrinsic("io.console_write_err")
+    public static void writeErr(String s) {
+        // Intrinsic: writes to stderr
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Input Operations
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Reads a line from stdin, blocking until input is available.
+    ///
+    /// Returns the line without the trailing newline character.
+    /// Returns an empty string on EOF.
+    ///
+    /// @return The line read from stdin
+    @intrinsic("io.console_read_line")
+    public static String readLine() {
+        // Intrinsic: reads from stdin
+        return "";
+    }
+}

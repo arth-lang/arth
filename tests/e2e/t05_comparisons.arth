@@ -1,0 +1,24 @@
+package test;
+
+// Test: Comparison operators
+// Expected output:
+//   false
+//   true
+//   true
+//   false
+//   true
+//   true
+
+module Main {
+    public static void main() {
+        Int a = 5;
+        Int b = 10;
+
+        println(a == b);  // false
+        println(a != b);  // true
+        println(a < b);   // true
+        println(a > b);   // false
+        println(a <= b);  // true
+        println(b >= a);  // true
+    }
+}

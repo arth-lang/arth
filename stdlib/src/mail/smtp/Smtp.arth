@@ -1,0 +1,152 @@
+package mail.smtp;
+
+import mail.*;
+
+/**
+ * SMTP transport implementation.
+ *
+ * This module provides the SMTP protocol implementation for sending mail.
+ *
+ * Example usage:
+ * ```arth
+ * import mail.*;
+ * import mail.smtp.*;
+ *
+ * Session session = SessionBuilder.new()
+ *     .smtp("smtp.gmail.com", 587)
+ *     .startTls(true)
+ *     .auth("user@gmail.com", "app-password")
+ *     .build();
+ *
+ * Transport transport = await Smtp.connect(session);
+ * try {
+ *     await Transport.send(transport, message);
+ * } finally {
+ *     Transport.disconnect(transport);
+ * }
+ * ```
+ *
+ * @see mail.Transport for the transport interface
+ * @see mail.Session for configuration
+ */
+
+module Smtp {
+    /// Connects to an SMTP server.
+    ///
+    /// This establishes a TCP connection, performs EHLO/HELO,
+    /// upgrades to TLS if configured, and authenticates if credentials are set.
+    @intrinsic("mail.smtp.connect")
+    public static async Transport connect(Session session)
+        throws (ConnectionError, AuthenticationError, TlsError, TimeoutError) {
+        // Validate session
+        if (session.host == "") {
+            throw ConnectionError.new("SMTP host not configured");
+        }
+
+        // Connect and return transport
+        return Transport {
+            handle: 0,
+            session: session,
+            state: TransportState.AUTHENTICATED,
+            capabilities: new String[0]
+        };
+    }
+
+    /// Connects with explicit credentials.
+    @intrinsic("mail.smtp.connect_auth")
+    public static async Transport connectWithAuth(Session session, String username, String password)
+        throws (ConnectionError, AuthenticationError, TlsError, TimeoutError) {
+        // Intrinsic implementation
+        return Transport {
+            handle: 0,
+            session: session,
+            state: TransportState.AUTHENTICATED,
+            capabilities: new String[0]
+        };
+    }
+
+    /// Connects without authentication.
+    @intrinsic("mail.smtp.connect_no_auth")
+    public static async Transport connectNoAuth(Session session)
+        throws (ConnectionError, TlsError, TimeoutError) {
+        // Intrinsic implementation
+        return Transport {
+            handle: 0,
+            session: session,
+            state: TransportState.CONNECTED,
+            capabilities: new String[0]
+        };
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SMTP Configuration
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * SMTP-specific configuration options.
+ */
+public struct SmtpConfig {
+    /// Local hostname for EHLO/HELO
+    public final String localHostname;
+    /// Use ESMTP (EHLO) instead of HELO
+    public final bool useEsmtp;
+    /// Require STARTTLS (fail if not available)
+    public final bool requireStartTls;
+    /// Allowed authentication mechanisms (empty = any)
+    public final String[] allowedAuthMechanisms;
+    /// Send QUIT on disconnect
+    public final bool sendQuit;
+    /// Pipeline commands (send multiple commands before reading responses)
+    public final bool pipelining;
+}
+
+module SmtpConfig {
+    /// Returns default SMTP configuration.
+    public static SmtpConfig defaults() {
+        return SmtpConfig {
+            localHostname: "localhost",
+            useEsmtp: true,
+            requireStartTls: false,
+            allowedAuthMechanisms: new String[0],
+            sendQuit: true,
+            pipelining: false
+        };
+    }
+
+    /// Returns a new config with local hostname set.
+    public static SmtpConfig withLocalHostname(SmtpConfig self, String hostname) {
+        return SmtpConfig {
+            localHostname: hostname,
+            useEsmtp: self.useEsmtp,
+            requireStartTls: self.requireStartTls,
+            allowedAuthMechanisms: self.allowedAuthMechanisms,
+            sendQuit: self.sendQuit,
+            pipelining: self.pipelining
+        };
+    }
+
+    /// Returns a new config with STARTTLS required.
+    public static SmtpConfig withRequireStartTls(SmtpConfig self, bool required) {
+        return SmtpConfig {
+            localHostname: self.localHostname,
+            useEsmtp: self.useEsmtp,
+            requireStartTls: required,
+            allowedAuthMechanisms: self.allowedAuthMechanisms,
+            sendQuit: self.sendQuit,
+            pipelining: self.pipelining
+        };
+    }
+
+    /// Returns a new config with pipelining enabled.
+    public static SmtpConfig withPipelining(SmtpConfig self, bool enabled) {
+        return SmtpConfig {
+            localHostname: self.localHostname,
+            useEsmtp: self.useEsmtp,
+            requireStartTls: self.requireStartTls,
+            allowedAuthMechanisms: self.allowedAuthMechanisms,
+            sendQuit: self.sendQuit,
+            pipelining: enabled
+        };
+    }
+}

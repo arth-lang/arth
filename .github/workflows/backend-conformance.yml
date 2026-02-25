@@ -1,0 +1,54 @@
+name: Backend Conformance
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  vm-conformance:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Verify lockfile freshness
+        run: cargo update --locked
+
+      - name: Build Arth CLI
+        run: cargo build --bin arth
+
+      - name: Run VM conformance suite
+        run: cargo test --test conformance_runner run_all_conformance_tests_vm -- --ignored
+
+  native-conformance:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install LLVM toolchain (Ubuntu)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y clang lld
+
+      - name: Build Arth CLI
+        run: cargo build --bin arth
+
+      - name: Run native integration tests
+        run: cargo test --test native_integration -- --ignored --test-threads=1
+
+      - name: Run LLVM conformance suite
+        run: cargo test --test conformance_runner run_all_conformance_tests_llvm -- --ignored

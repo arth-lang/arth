@@ -1,0 +1,3 @@
+[package]
+name = "test-list-api"
+entry = "demo/Main.arth"

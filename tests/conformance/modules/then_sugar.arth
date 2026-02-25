@@ -1,0 +1,48 @@
+package conformance;
+
+// @spec: spec.md §5 - .then() sugar for chaining
+// @expect: pass
+// @description: Validates .then() desugaring to module function calls
+
+public struct Data {
+    public final Int value;
+}
+
+module DataFns {
+    public Data new(Int value) {
+        return Data { value: value };
+    }
+
+    public Data double(Data d) {
+        return Data { value: d.value * 2 };
+    }
+
+    public Int getValue(Data d) {
+        return d.value;
+    }
+}
+
+module Transformer {
+    public Data triple(Data d) {
+        return Data { value: d.value * 3 };
+    }
+}
+
+module Main {
+    public static void main() {
+        Data d = DataFns.new(10);
+
+        // .then(f) desugars to f(value)
+        Data doubled = d.then(DataFns.double);
+
+        // .then(Module.f) desugars to Module.f(value)
+        Data tripled = d.then(Transformer.triple);
+
+        // Chaining multiple .then()
+        Int result = DataFns.new(1)
+            .then(DataFns.double)
+            .then(DataFns.getValue);
+
+        println("then_sugar: pass");
+    }
+}

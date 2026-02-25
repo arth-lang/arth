@@ -1,0 +1,60 @@
+package conformance;
+
+// @spec: spec.md §9 - Async/await syntax
+// @expect: pass
+// @description: Validates async function and await expression parsing
+
+// Async function returns Task<T>
+module AsyncFns {
+    public async Int compute(Int x) {
+        return x * 2;
+    }
+
+    public async String fetch(String url) {
+        return "response from " + url;
+    }
+
+    public async void doWork() {
+        // Void async function
+    }
+
+    // Async with throws
+    public async Int divide(Int a, Int b) throws (Error) {
+        if (b == 0) {
+            throw Error { message: "division by zero" };
+        }
+        return a / b;
+    }
+}
+
+public struct Error {
+    public String message;
+}
+
+module Main {
+    public static void main() {
+        // Async functions are parsed and type-checked
+        // Full async execution requires runtime support
+        println("async_await: pass");
+    }
+
+    // Main can be async for await support
+    public static async void asyncMain() {
+        // Await expression
+        Int result = await AsyncFns.compute(21);
+
+        // Await with assignment
+        String response = await AsyncFns.fetch("http://example.com");
+
+        // Multiple awaits
+        Int a = await AsyncFns.compute(1);
+        Int b = await AsyncFns.compute(2);
+        Int sum = a + b;
+
+        // Await void
+        await AsyncFns.doWork();
+
+        // Await in expressions
+        Int doubled = await AsyncFns.compute(await AsyncFns.compute(5));
+    }
+}

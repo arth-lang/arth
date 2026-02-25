@@ -1,0 +1,33 @@
+package conformance;
+
+// @spec: spec.md §2 - Integer literals (decimal, hex, binary)
+// @expect: pass
+// @description: Validates integer literal lexing per spec §2
+
+module Main {
+    public static void main() {
+        // Decimal literals
+        Int decimal = 42;
+        Int negative = -123;
+        Int zero = 0;
+        Int large = 9223372036854775807;  // Int.MAX
+
+        // Hex literals (0x prefix)
+        Int hex1 = 0xFF;
+        Int hex2 = 0x0;
+        Int hex3 = 0xCAFEBABE;
+        Int hexLower = 0xabcdef;
+
+        // Binary literals (0b prefix)
+        Int bin1 = 0b1010;
+        Int bin2 = 0b0;
+        Int bin3 = 0b11111111;
+
+        // Underscore separators
+        Int with_sep = 1_000_000;
+        Int hex_sep = 0xFF_FF;
+        Int bin_sep = 0b1111_0000;
+
+        println("int_literals: pass");
+    }
+}

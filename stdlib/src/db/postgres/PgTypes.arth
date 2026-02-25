@@ -1,0 +1,256 @@
+package db.postgres;
+
+/**
+ * PostgreSQL-specific type mappings and constants.
+ *
+ * This module defines PostgreSQL-specific type information, OIDs, and
+ * SQLSTATE error codes used by the PostgreSQL driver.
+ *
+ * ## Type Mappings
+ *
+ * | Arth Type | PostgreSQL Type | OID |
+ * |-----------|-----------------|-----|
+ * | int | INT4 | 23 |
+ * | int64 | INT8 | 20 |
+ * | float | FLOAT4 | 700 |
+ * | double | FLOAT8 | 701 |
+ * | bool | BOOLEAN | 16 |
+ * | String | TEXT | 25 |
+ * | bytes | BYTEA | 17 |
+ * | Optional<T> | NULL or T | - |
+ *
+ * @see https://www.postgresql.org/docs/current/datatype.html for PostgreSQL types
+ */
+
+/**
+ * PostgreSQL connection status.
+ *
+ * These correspond to libpq ConnStatusType values.
+ *
+ * Variants:
+ * - CONNECTION_OK: Connection is established and ready
+ * - CONNECTION_BAD: Connection attempt failed
+ * - CONNECTION_STARTED: Waiting for connection to be made
+ * - CONNECTION_MADE: Connection OK; waiting to send
+ * - CONNECTION_AWAITING_RESPONSE: Waiting for a response from the server
+ * - CONNECTION_AUTH_OK: Received authentication; waiting for backend startup
+ * - CONNECTION_SETENV: Negotiating environment-driven parameter settings
+ * - CONNECTION_SSL_STARTUP: Negotiating SSL encryption
+ * - CONNECTION_CHECK_WRITABLE: Server settings received
+ * - CONNECTION_CONSUME: Connection needs to be restarted
+ * - CONNECTION_NEEDED: Backend data transfer in progress
+ */
+public enum PgConnStatus {
+    CONNECTION_OK,
+    CONNECTION_BAD,
+    CONNECTION_STARTED,
+    CONNECTION_MADE,
+    CONNECTION_AWAITING_RESPONSE,
+    CONNECTION_AUTH_OK,
+    CONNECTION_SETENV,
+    CONNECTION_SSL_STARTUP,
+    CONNECTION_CHECK_WRITABLE,
+    CONNECTION_CONSUME,
+    CONNECTION_NEEDED
+}
+
+/**
+ * Module providing PostgreSQL connection status utilities.
+ */
+module PgConnStatus {
+    /// Returns true if the connection is usable.
+    public static bool isOk(PgConnStatus status) {
+        match status {
+            PgConnStatus.CONNECTION_OK => { return true; }
+            PgConnStatus.CONNECTION_BAD => { return false; }
+            PgConnStatus.CONNECTION_STARTED => { return false; }
+            PgConnStatus.CONNECTION_MADE => { return false; }
+            PgConnStatus.CONNECTION_AWAITING_RESPONSE => { return false; }
+            PgConnStatus.CONNECTION_AUTH_OK => { return false; }
+            PgConnStatus.CONNECTION_SETENV => { return false; }
+            PgConnStatus.CONNECTION_SSL_STARTUP => { return false; }
+            PgConnStatus.CONNECTION_CHECK_WRITABLE => { return false; }
+            PgConnStatus.CONNECTION_CONSUME => { return false; }
+            PgConnStatus.CONNECTION_NEEDED => { return false; }
+        }
+    }
+}
+
+/**
+ * PostgreSQL transaction status.
+ *
+ * These correspond to libpq PGTransactionStatusType values.
+ *
+ * Variants:
+ * - PQTRANS_IDLE: Idle, no transaction
+ * - PQTRANS_ACTIVE: In an active transaction
+ * - PQTRANS_INTRANS: In a transaction, idle
+ * - PQTRANS_INERROR: In a failed transaction, idle
+ * - PQTRANS_UNKNOWN: Unknown transaction status
+ */
+public enum PgTransactionStatus {
+    PQTRANS_IDLE,
+    PQTRANS_ACTIVE,
+    PQTRANS_INTRANS,
+    PQTRANS_INERROR,
+    PQTRANS_UNKNOWN
+}
+
+/**
+ * Module providing PostgreSQL transaction status utilities.
+ */
+module PgTransactionStatus {
+    /// Returns true if in any transaction state.
+    public static bool inTransaction(PgTransactionStatus status) {
+        match status {
+            PgTransactionStatus.PQTRANS_INTRANS => { return true; }
+            PgTransactionStatus.PQTRANS_INERROR => { return true; }
+            PgTransactionStatus.PQTRANS_ACTIVE => { return true; }
+            PgTransactionStatus.PQTRANS_IDLE => { return false; }
+            PgTransactionStatus.PQTRANS_UNKNOWN => { return false; }
+        }
+    }
+
+    /// Returns true if the transaction has failed.
+    public static bool inError(PgTransactionStatus status) {
+        match status {
+            PgTransactionStatus.PQTRANS_INERROR => { return true; }
+            PgTransactionStatus.PQTRANS_IDLE => { return false; }
+            PgTransactionStatus.PQTRANS_ACTIVE => { return false; }
+            PgTransactionStatus.PQTRANS_INTRANS => { return false; }
+            PgTransactionStatus.PQTRANS_UNKNOWN => { return false; }
+        }
+    }
+}
+
+/**
+ * PostgreSQL result status.
+ *
+ * These correspond to libpq ExecStatusType values.
+ *
+ * Variants:
+ * - PGRES_COMMAND_OK: Successful completion of a command returning no data
+ * - PGRES_TUPLES_OK: Successful completion of a command returning data
+ * - PGRES_COPY_OUT: Copy Out (from server) data transfer started
+ * - PGRES_COPY_IN: Copy In (to server) data transfer started
+ * - PGRES_BAD_RESPONSE: The server's response was not understood
+ * - PGRES_NONFATAL_ERROR: A nonfatal error occurred
+ * - PGRES_FATAL_ERROR: A fatal error occurred
+ * - PGRES_COPY_BOTH: Copy In/Out (to and from server) data transfer started
+ * - PGRES_SINGLE_TUPLE: Single tuple from larger result set
+ * - PGRES_PIPELINE_SYNC: Pipeline synchronization point
+ * - PGRES_PIPELINE_ABORTED: Command didn't run because of an earlier pipeline failure
+ */
+public enum PgExecStatus {
+    PGRES_COMMAND_OK,
+    PGRES_TUPLES_OK,
+    PGRES_COPY_OUT,
+    PGRES_COPY_IN,
+    PGRES_BAD_RESPONSE,
+    PGRES_NONFATAL_ERROR,
+    PGRES_FATAL_ERROR,
+    PGRES_COPY_BOTH,
+    PGRES_SINGLE_TUPLE,
+    PGRES_PIPELINE_SYNC,
+    PGRES_PIPELINE_ABORTED
+}
+
+/**
+ * Module providing PostgreSQL result status utilities.
+ */
+module PgExecStatus {
+    /// Returns true if the result indicates success.
+    public static bool isSuccess(PgExecStatus status) {
+        match status {
+            PgExecStatus.PGRES_COMMAND_OK => { return true; }
+            PgExecStatus.PGRES_TUPLES_OK => { return true; }
+            PgExecStatus.PGRES_SINGLE_TUPLE => { return true; }
+            PgExecStatus.PGRES_COPY_OUT => { return false; }
+            PgExecStatus.PGRES_COPY_IN => { return false; }
+            PgExecStatus.PGRES_BAD_RESPONSE => { return false; }
+            PgExecStatus.PGRES_NONFATAL_ERROR => { return false; }
+            PgExecStatus.PGRES_FATAL_ERROR => { return false; }
+            PgExecStatus.PGRES_COPY_BOTH => { return false; }
+            PgExecStatus.PGRES_PIPELINE_SYNC => { return false; }
+            PgExecStatus.PGRES_PIPELINE_ABORTED => { return false; }
+        }
+    }
+
+    /// Returns true if the result is a fatal error.
+    public static bool isFatal(PgExecStatus status) {
+        match status {
+            PgExecStatus.PGRES_FATAL_ERROR => { return true; }
+            PgExecStatus.PGRES_COMMAND_OK => { return false; }
+            PgExecStatus.PGRES_TUPLES_OK => { return false; }
+            PgExecStatus.PGRES_COPY_OUT => { return false; }
+            PgExecStatus.PGRES_COPY_IN => { return false; }
+            PgExecStatus.PGRES_BAD_RESPONSE => { return false; }
+            PgExecStatus.PGRES_NONFATAL_ERROR => { return false; }
+            PgExecStatus.PGRES_COPY_BOTH => { return false; }
+            PgExecStatus.PGRES_SINGLE_TUPLE => { return false; }
+            PgExecStatus.PGRES_PIPELINE_SYNC => { return false; }
+            PgExecStatus.PGRES_PIPELINE_ABORTED => { return false; }
+        }
+    }
+}
+
+/**
+ * Common PostgreSQL type OIDs.
+ *
+ * Object Identifiers (OIDs) used to identify PostgreSQL data types.
+ */
+public struct PgOid {
+    /// BOOLEAN type OID
+    public final int BOOL;
+    /// BYTEA type OID
+    public final int BYTEA;
+    /// INT8 type OID
+    public final int INT8;
+    /// INT4 type OID
+    public final int INT4;
+    /// INT2 type OID
+    public final int INT2;
+    /// TEXT type OID
+    public final int TEXT;
+    /// FLOAT4 type OID
+    public final int FLOAT4;
+    /// FLOAT8 type OID
+    public final int FLOAT8;
+    /// VARCHAR type OID
+    public final int VARCHAR;
+    /// TIMESTAMP type OID
+    public final int TIMESTAMP;
+    /// DATE type OID
+    public final int DATE;
+    /// UUID type OID
+    public final int UUID;
+    /// JSON type OID
+    public final int JSON;
+    /// JSONB type OID
+    public final int JSONB;
+}
+
+/**
+ * Module providing PostgreSQL OID constants.
+ */
+module PgOid {
+    /// Returns the standard PostgreSQL OID values.
+    public static PgOid values() {
+        return PgOid {
+            BOOL: 16,
+            BYTEA: 17,
+            INT8: 20,
+            INT4: 23,
+            INT2: 21,
+            TEXT: 25,
+            FLOAT4: 700,
+            FLOAT8: 701,
+            VARCHAR: 1043,
+            TIMESTAMP: 1114,
+            DATE: 1082,
+            UUID: 2950,
+            JSON: 114,
+            JSONB: 3802
+        };
+    }
+}

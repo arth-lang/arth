@@ -1,0 +1,62 @@
+package test.native;
+
+public struct RegionErr {
+    public Int iteration;
+}
+
+module Thrower {
+    public Int maybeThrow(Int i, Int throwAt) throws (RegionErr) {
+        if (i == throwAt) {
+            throw RegionErr { iteration: i };
+        }
+        return i * 10;
+    }
+}
+
+module Main {
+    public static void main() {
+        // === Part 1: Normal exit — loop completes all iterations ===
+        // Region-scoped locals are created and released each iteration.
+        Int normalAcc = 0;
+        for (Int i = 0; i < 5; i = i + 1) {
+            Int loopLocal = i * 3;
+            normalAcc = normalAcc + loopLocal;
+        }
+        // 0 + 3 + 6 + 9 + 12 = 30
+        Bool normalOk = (normalAcc == 30);
+
+        // === Part 2: Exceptional exit — throw from inside a loop ===
+        // Region cleanup must not corrupt state when unwinding.
+        Int exceptAcc = 0;
+        Int caughtAt = -1;
+        try {
+            for (Int j = 0; j < 5; j = j + 1) {
+                Int loopVal = Thrower.maybeThrow(j, 3);
+                exceptAcc = exceptAcc + loopVal;
+            }
+        } catch (RegionErr e) {
+            caughtAt = e.iteration;
+        }
+        // Iterations 0,1,2 complete (0+10+20=30), iteration 3 throws
+        Bool exceptOk = (exceptAcc == 30) && (caughtAt == 3);
+
+        // === Part 3: Nested loops — inner region released per iteration ===
+        Int nestedAcc = 0;
+        for (Int a = 1; a <= 3; a = a + 1) {
+            Int outerLocal = a * 100;
+            for (Int b = 1; b <= 2; b = b + 1) {
+                Int innerLocal = outerLocal + b;
+                nestedAcc = nestedAcc + innerLocal;
+            }
+        }
+        // a=1: (101+102)=203, a=2: (201+202)=403, a=3: (301+302)=603
+        // Total = 1209
+        Bool nestedOk = (nestedAcc == 1209);
+
+        if (normalOk && exceptOk && nestedOk) {
+            println("PHASE1_REGION_OK");
+        } else {
+            println("PHASE1_REGION_BAD");
+        }
+    }
+}

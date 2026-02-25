@@ -1,0 +1,249 @@
+package db.sqlite;
+
+/**
+ * SQLite-specific type mappings and constants.
+ *
+ * This module defines SQLite-specific type information and error codes
+ * used by the SQLite driver.
+ *
+ * ## Type Mappings
+ *
+ * | Arth Type | SQLite Type | Affinity |
+ * |-----------|-------------|----------|
+ * | int | INTEGER | INTEGER |
+ * | int64 | INTEGER | INTEGER |
+ * | float | REAL | REAL |
+ * | double | REAL | REAL |
+ * | bool | INTEGER (0/1) | NUMERIC |
+ * | String | TEXT | TEXT |
+ * | bytes | BLOB | BLOB |
+ * | Optional<T> | NULL or T | - |
+ *
+ * @see https://sqlite.org/datatype3.html for SQLite type affinity rules
+ */
+
+/**
+ * SQLite result codes.
+ *
+ * These correspond to sqlite3 result codes from sqlite3.h.
+ * Use these to check specific error conditions.
+ *
+ * Variants:
+ * - SQLITE_OK: Successful result
+ * - SQLITE_ERROR: Generic error
+ * - SQLITE_INTERNAL: Internal logic error in SQLite
+ * - SQLITE_PERM: Access permission denied
+ * - SQLITE_ABORT: Callback routine requested an abort
+ * - SQLITE_BUSY: The database file is locked
+ * - SQLITE_LOCKED: A table in the database is locked
+ * - SQLITE_NOMEM: A malloc() failed
+ * - SQLITE_READONLY: Attempt to write a readonly database
+ * - SQLITE_INTERRUPT: Operation terminated by sqlite3_interrupt()
+ * - SQLITE_IOERR: Some kind of disk I/O error occurred
+ * - SQLITE_CORRUPT: The database disk image is malformed
+ * - SQLITE_NOTFOUND: Unknown opcode in sqlite3_file_control()
+ * - SQLITE_FULL: Insertion failed because database is full
+ * - SQLITE_CANTOPEN: Unable to open the database file
+ * - SQLITE_PROTOCOL: Database lock protocol error
+ * - SQLITE_EMPTY: Internal use only
+ * - SQLITE_SCHEMA: The database schema changed
+ * - SQLITE_TOOBIG: String or BLOB exceeds size limit
+ * - SQLITE_CONSTRAINT: Abort due to constraint violation
+ * - SQLITE_MISMATCH: Data type mismatch
+ * - SQLITE_MISUSE: Library used incorrectly
+ * - SQLITE_NOLFS: Uses OS features not supported on host
+ * - SQLITE_AUTH: Authorization denied
+ * - SQLITE_FORMAT: Not used
+ * - SQLITE_RANGE: 2nd parameter to sqlite3_bind out of range
+ * - SQLITE_NOTADB: File opened that is not a database file
+ * - SQLITE_ROW: sqlite3_step() has another row ready
+ * - SQLITE_DONE: sqlite3_step() has finished executing
+ */
+public enum SqliteResultCode {
+    SQLITE_OK,
+    SQLITE_ERROR,
+    SQLITE_INTERNAL,
+    SQLITE_PERM,
+    SQLITE_ABORT,
+    SQLITE_BUSY,
+    SQLITE_LOCKED,
+    SQLITE_NOMEM,
+    SQLITE_READONLY,
+    SQLITE_INTERRUPT,
+    SQLITE_IOERR,
+    SQLITE_CORRUPT,
+    SQLITE_NOTFOUND,
+    SQLITE_FULL,
+    SQLITE_CANTOPEN,
+    SQLITE_PROTOCOL,
+    SQLITE_EMPTY,
+    SQLITE_SCHEMA,
+    SQLITE_TOOBIG,
+    SQLITE_CONSTRAINT,
+    SQLITE_MISMATCH,
+    SQLITE_MISUSE,
+    SQLITE_NOLFS,
+    SQLITE_AUTH,
+    SQLITE_FORMAT,
+    SQLITE_RANGE,
+    SQLITE_NOTADB,
+    SQLITE_ROW,
+    SQLITE_DONE
+}
+
+/**
+ * Module providing SQLite result code utilities.
+ */
+module SqliteResultCode {
+    /// Returns the numeric value for a result code.
+    public static int toInt(SqliteResultCode code) {
+        match code {
+            SqliteResultCode.SQLITE_OK => { return 0; }
+            SqliteResultCode.SQLITE_ERROR => { return 1; }
+            SqliteResultCode.SQLITE_INTERNAL => { return 2; }
+            SqliteResultCode.SQLITE_PERM => { return 3; }
+            SqliteResultCode.SQLITE_ABORT => { return 4; }
+            SqliteResultCode.SQLITE_BUSY => { return 5; }
+            SqliteResultCode.SQLITE_LOCKED => { return 6; }
+            SqliteResultCode.SQLITE_NOMEM => { return 7; }
+            SqliteResultCode.SQLITE_READONLY => { return 8; }
+            SqliteResultCode.SQLITE_INTERRUPT => { return 9; }
+            SqliteResultCode.SQLITE_IOERR => { return 10; }
+            SqliteResultCode.SQLITE_CORRUPT => { return 11; }
+            SqliteResultCode.SQLITE_NOTFOUND => { return 12; }
+            SqliteResultCode.SQLITE_FULL => { return 13; }
+            SqliteResultCode.SQLITE_CANTOPEN => { return 14; }
+            SqliteResultCode.SQLITE_PROTOCOL => { return 15; }
+            SqliteResultCode.SQLITE_EMPTY => { return 16; }
+            SqliteResultCode.SQLITE_SCHEMA => { return 17; }
+            SqliteResultCode.SQLITE_TOOBIG => { return 18; }
+            SqliteResultCode.SQLITE_CONSTRAINT => { return 19; }
+            SqliteResultCode.SQLITE_MISMATCH => { return 20; }
+            SqliteResultCode.SQLITE_MISUSE => { return 21; }
+            SqliteResultCode.SQLITE_NOLFS => { return 22; }
+            SqliteResultCode.SQLITE_AUTH => { return 23; }
+            SqliteResultCode.SQLITE_FORMAT => { return 24; }
+            SqliteResultCode.SQLITE_RANGE => { return 25; }
+            SqliteResultCode.SQLITE_NOTADB => { return 26; }
+            SqliteResultCode.SQLITE_ROW => { return 100; }
+            SqliteResultCode.SQLITE_DONE => { return 101; }
+        }
+    }
+
+    /// Returns true if the code indicates success.
+    public static bool isSuccess(SqliteResultCode code) {
+        match code {
+            SqliteResultCode.SQLITE_OK => { return true; }
+            SqliteResultCode.SQLITE_ROW => { return true; }
+            SqliteResultCode.SQLITE_DONE => { return true; }
+            SqliteResultCode.SQLITE_ERROR => { return false; }
+            SqliteResultCode.SQLITE_INTERNAL => { return false; }
+            SqliteResultCode.SQLITE_PERM => { return false; }
+            SqliteResultCode.SQLITE_ABORT => { return false; }
+            SqliteResultCode.SQLITE_BUSY => { return false; }
+            SqliteResultCode.SQLITE_LOCKED => { return false; }
+            SqliteResultCode.SQLITE_NOMEM => { return false; }
+            SqliteResultCode.SQLITE_READONLY => { return false; }
+            SqliteResultCode.SQLITE_INTERRUPT => { return false; }
+            SqliteResultCode.SQLITE_IOERR => { return false; }
+            SqliteResultCode.SQLITE_CORRUPT => { return false; }
+            SqliteResultCode.SQLITE_NOTFOUND => { return false; }
+            SqliteResultCode.SQLITE_FULL => { return false; }
+            SqliteResultCode.SQLITE_CANTOPEN => { return false; }
+            SqliteResultCode.SQLITE_PROTOCOL => { return false; }
+            SqliteResultCode.SQLITE_EMPTY => { return false; }
+            SqliteResultCode.SQLITE_SCHEMA => { return false; }
+            SqliteResultCode.SQLITE_TOOBIG => { return false; }
+            SqliteResultCode.SQLITE_CONSTRAINT => { return false; }
+            SqliteResultCode.SQLITE_MISMATCH => { return false; }
+            SqliteResultCode.SQLITE_MISUSE => { return false; }
+            SqliteResultCode.SQLITE_NOLFS => { return false; }
+            SqliteResultCode.SQLITE_AUTH => { return false; }
+            SqliteResultCode.SQLITE_FORMAT => { return false; }
+            SqliteResultCode.SQLITE_RANGE => { return false; }
+            SqliteResultCode.SQLITE_NOTADB => { return false; }
+        }
+    }
+
+    /// Returns true if the code indicates a constraint violation.
+    public static bool isConstraintViolation(SqliteResultCode code) {
+        match code {
+            SqliteResultCode.SQLITE_CONSTRAINT => { return true; }
+            SqliteResultCode.SQLITE_OK => { return false; }
+            SqliteResultCode.SQLITE_ERROR => { return false; }
+            SqliteResultCode.SQLITE_INTERNAL => { return false; }
+            SqliteResultCode.SQLITE_PERM => { return false; }
+            SqliteResultCode.SQLITE_ABORT => { return false; }
+            SqliteResultCode.SQLITE_BUSY => { return false; }
+            SqliteResultCode.SQLITE_LOCKED => { return false; }
+            SqliteResultCode.SQLITE_NOMEM => { return false; }
+            SqliteResultCode.SQLITE_READONLY => { return false; }
+            SqliteResultCode.SQLITE_INTERRUPT => { return false; }
+            SqliteResultCode.SQLITE_IOERR => { return false; }
+            SqliteResultCode.SQLITE_CORRUPT => { return false; }
+            SqliteResultCode.SQLITE_NOTFOUND => { return false; }
+            SqliteResultCode.SQLITE_FULL => { return false; }
+            SqliteResultCode.SQLITE_CANTOPEN => { return false; }
+            SqliteResultCode.SQLITE_PROTOCOL => { return false; }
+            SqliteResultCode.SQLITE_EMPTY => { return false; }
+            SqliteResultCode.SQLITE_SCHEMA => { return false; }
+            SqliteResultCode.SQLITE_TOOBIG => { return false; }
+            SqliteResultCode.SQLITE_MISMATCH => { return false; }
+            SqliteResultCode.SQLITE_MISUSE => { return false; }
+            SqliteResultCode.SQLITE_NOLFS => { return false; }
+            SqliteResultCode.SQLITE_AUTH => { return false; }
+            SqliteResultCode.SQLITE_FORMAT => { return false; }
+            SqliteResultCode.SQLITE_RANGE => { return false; }
+            SqliteResultCode.SQLITE_NOTADB => { return false; }
+            SqliteResultCode.SQLITE_ROW => { return false; }
+            SqliteResultCode.SQLITE_DONE => { return false; }
+        }
+    }
+}
+
+/**
+ * SQLite column type constants.
+ *
+ * These correspond to the fundamental datatypes in SQLite.
+ *
+ * Variants:
+ * - SQLITE_INTEGER: 64-bit signed integer
+ * - SQLITE_FLOAT: 64-bit IEEE floating point number
+ * - SQLITE_TEXT: String (UTF-8, UTF-16BE or UTF-16LE)
+ * - SQLITE_BLOB: Binary large object
+ * - SQLITE_NULL: NULL value
+ */
+public enum SqliteType {
+    SQLITE_INTEGER,
+    SQLITE_FLOAT,
+    SQLITE_TEXT,
+    SQLITE_BLOB,
+    SQLITE_NULL
+}
+
+/**
+ * Module providing SQLite type utilities.
+ */
+module SqliteType {
+    /// Returns the numeric value for a type.
+    public static int toInt(SqliteType t) {
+        match t {
+            SqliteType.SQLITE_INTEGER => { return 1; }
+            SqliteType.SQLITE_FLOAT => { return 2; }
+            SqliteType.SQLITE_TEXT => { return 3; }
+            SqliteType.SQLITE_BLOB => { return 4; }
+            SqliteType.SQLITE_NULL => { return 5; }
+        }
+    }
+
+    /// Returns the type name as a string.
+    public static String name(SqliteType t) {
+        match t {
+            SqliteType.SQLITE_INTEGER => { return "INTEGER"; }
+            SqliteType.SQLITE_FLOAT => { return "REAL"; }
+            SqliteType.SQLITE_TEXT => { return "TEXT"; }
+            SqliteType.SQLITE_BLOB => { return "BLOB"; }
+            SqliteType.SQLITE_NULL => { return "NULL"; }
+        }
+    }
+}

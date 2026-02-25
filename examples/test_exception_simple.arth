@@ -1,0 +1,23 @@
+package test.exception;
+
+struct IoError {
+    String message;
+}
+
+module Main {
+    // Put doThrow first to see its IR in dump
+    public void doThrow() throws (IoError) {
+        println("In doThrow - about to throw");
+        throw IoError { message: "test error" };
+    }
+
+    public void main() {
+        println("Before throw...");
+        try {
+            doThrow();
+        } catch (IoError e) {
+            println("Caught exception!");
+        }
+        println("After catch");
+    }
+}

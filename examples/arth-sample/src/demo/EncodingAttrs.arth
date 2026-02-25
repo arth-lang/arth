@@ -1,0 +1,27 @@
+package demo.encoding;
+
+import encoding.json.*;
+
+@derive(JsonCodec)
+struct Point { public final int x; public final int y; }
+
+@derive(JsonCodec)
+struct User {
+  @rename(name="user_id")
+  public final String id;
+
+  @default(expr="DateTime.epoch()")
+  public final DateTime createdAt;
+}
+
+module EncodingAttrsDemo {
+  public bytes toJsonPoint(Point p) throws (EncodeError) {
+    return Json.serialize<Point>(p, PointCodec.codec());
+  }
+
+  public Point fromJsonPoint(bytes b) throws (DecodeError) {
+    return Json.deserialize<Point>(b, PointCodec.codec());
+  }
+}
+
+module PointCodec { public Codec<Point> codec() { return Codec.of<Point>(); } }

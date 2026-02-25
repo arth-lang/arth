@@ -1,0 +1,216 @@
+package io;
+
+/**
+ * File I/O operations for reading and writing files.
+ *
+ * NOTE: This file is an INTRINSIC-BACKED STUB for IDE/tooling support.
+ * The function bodies are placeholders - actual implementation is provided
+ * by the compiler via intrinsic lowering to VM runtime functions.
+ *
+ * Example usage:
+ * ```
+ * import io.*;
+ *
+ * module Main {
+ *     public static void main() throws IoError {
+ *         // Write to a file
+ *         Int handle = File.open("output.txt", "w");
+ *         File.writeStr(handle, "Hello, World!");
+ *         File.close(handle);
+ *
+ *         // Read from a file
+ *         Int h = File.open("output.txt", "r");
+ *         String content = File.readAll(h);
+ *         File.close(h);
+ *     }
+ * }
+ * ```
+ *
+ * @see src/compiler/intrinsics.rs for intrinsic registry
+ * @see crates/arth-vm/src/runtime.rs for VM implementation
+ */
+
+/// Error type for file operations.
+public struct IoError {
+    public final String message;
+}
+
+/// File open modes.
+/// "r" - read only
+/// "w" - write only (creates/truncates)
+/// "a" - append (creates if not exists)
+/// "rw" - read and write
+
+module File {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Open/Close Operations
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Opens a file and returns a handle.
+    ///
+    /// @param path The path to the file
+    /// @param mode The open mode: "r", "w", "a", or "rw"
+    /// @return A file handle (Int) for subsequent operations
+    /// @throws IoError if the file cannot be opened
+    @intrinsic("io.file_open")
+    public static Int open(String path, String mode) throws IoError {
+        // Intrinsic: opens file, returns handle
+        return 0;
+    }
+
+    /// Closes a file handle.
+    ///
+    /// @param handle The file handle to close
+    /// @return true if successful, false otherwise
+    @intrinsic("io.file_close")
+    public static Bool close(Int handle) {
+        // Intrinsic: closes file
+        return true;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Read Operations
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Reads up to `count` bytes from a file.
+    ///
+    /// @param handle The file handle
+    /// @param count Maximum number of bytes to read
+    /// @return The bytes read as a String (may be less than count at EOF)
+    @intrinsic("io.file_read")
+    public static String read(Int handle, Int count) {
+        // Intrinsic: reads bytes from file
+        return "";
+    }
+
+    /// Reads the entire file contents as a string.
+    ///
+    /// Seeks to the start, reads the full file size, then restores position.
+    ///
+    /// @param handle The file handle
+    /// @return The complete file contents
+    public static String readAll(Int handle) {
+        // Get file size
+        Int fileSize = File.size(handle);
+        if (fileSize <= 0) {
+            return "";
+        }
+        // Save current position
+        Int savedPos = File.seek(handle, 0, 1); // SEEK_CUR
+        // Seek to start
+        File.seek(handle, 0, 0); // SEEK_SET
+        // Read entire file
+        String content = File.read(handle, fileSize);
+        // Restore position (optional, for convenience)
+        File.seek(handle, savedPos, 0); // SEEK_SET
+        return content;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Write Operations
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Writes bytes to a file.
+    ///
+    /// @param handle The file handle
+    /// @param data The bytes to write
+    /// @return Number of bytes written
+    @intrinsic("io.file_write")
+    public static Int write(Int handle, bytes data) {
+        // Intrinsic: writes bytes to file
+        return 0;
+    }
+
+    /// Writes a string to a file.
+    ///
+    /// @param handle The file handle
+    /// @param s The string to write
+    /// @return Number of bytes written
+    @intrinsic("io.file_write_str")
+    public static Int writeStr(Int handle, String s) {
+        // Intrinsic: writes string to file
+        return 0;
+    }
+
+    /// Flushes buffered writes to disk.
+    ///
+    /// @param handle The file handle
+    /// @return true if successful
+    @intrinsic("io.file_flush")
+    public static Bool flush(Int handle) {
+        // Intrinsic: flushes file buffers
+        return true;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Position Operations
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Seeks to a position in the file.
+    ///
+    /// @param handle The file handle
+    /// @param offset The byte offset
+    /// @param whence 0 = from start, 1 = from current, 2 = from end
+    /// @return The new position, or -1 on error
+    @intrinsic("io.file_seek")
+    public static Int seek(Int handle, Int offset, Int whence) {
+        // Intrinsic: seeks in file
+        return 0;
+    }
+
+    /// Returns the size of a file in bytes.
+    ///
+    /// @param handle The file handle
+    /// @return The file size in bytes
+    @intrinsic("io.file_size")
+    public static Int size(Int handle) {
+        // Intrinsic: returns file size
+        return 0;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // File System Operations
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Checks if a file exists at the given path.
+    ///
+    /// @param path The path to check
+    /// @return true if the file exists
+    @intrinsic("io.file_exists")
+    public static Bool exists(String path) {
+        // Intrinsic: checks file existence
+        return false;
+    }
+
+    /// Deletes a file at the given path.
+    ///
+    /// @param path The path to the file to delete
+    /// @return true if successful
+    @intrinsic("io.file_delete")
+    public static Bool delete(String path) {
+        // Intrinsic: deletes file
+        return false;
+    }
+
+    /// Copies a file from source to destination.
+    ///
+    /// @param src The source file path
+    /// @param dst The destination file path
+    /// @return true if successful
+    @intrinsic("io.file_copy")
+    public static Bool copy(String src, String dst) {
+        // Intrinsic: copies file
+        return false;
+    }
+
+    /// Moves/renames a file from source to destination.
+    ///
+    /// @param src The source file path
+    /// @param dst The destination file path
+    /// @return true if successful
+    @intrinsic("io.file_move")
+    public static Bool move(String src, String dst) {
+        // Intrinsic: moves/renames file
+        return false;
+    }
+}

@@ -1,0 +1,45 @@
+package test;
+
+// Test: Generic functions with type parameters
+// This test uses type inference from arguments (explicit type args to be added later)
+// Expected output:
+//   identity int: 42
+//   identity string: hello
+//   first of pair: 10
+//   swapped: world hello
+
+module Main {
+    // Simple identity function
+    public static T identity<T>(T value) {
+        return value;
+    }
+
+    // Generic function with two type parameters
+    public static T first<T, U>(T a, U b) {
+        return a;
+    }
+
+    // Generic function returning different type
+    public static U second<T, U>(T a, U b) {
+        return b;
+    }
+
+    public static void main() {
+        // Test identity with Int - type inferred from argument
+        Int x = identity(42);
+        println("identity int: " + x);
+
+        // Test identity with String - type inferred from argument
+        String s = identity("hello");
+        println("identity string: " + s);
+
+        // Test two type parameters - types inferred from arguments
+        Int f = first(10, "twenty");
+        println("first of pair: " + f);
+
+        // Test swapped type parameters
+        String a = first("hello", "world");
+        String b = second("hello", "world");
+        println("swapped: " + b + " " + a);
+    }
+}

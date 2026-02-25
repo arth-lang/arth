@@ -1,0 +1,112 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Arth",
+  "scopeName": "source.arth",
+  "fileTypes": ["arth"],
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#annotations" },
+    { "include": "#strings" },
+    { "include": "#chars" },
+    { "include": "#numbers" },
+    { "include": "#booleans" },
+    { "include": "#keywords" },
+    { "include": "#types" },
+    { "include": "#declarations" },
+    { "include": "#builtins" },
+    { "include": "#functions" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        { "name": "comment.line.documentation.arth", "match": "///.*$" },
+        { "name": "comment.block.documentation.arth", "begin": "/\\*\\*", "end": "\\*/" },
+        { "name": "comment.line.double-slash.arth", "match": "//.*$" },
+        { "name": "comment.block.arth", "begin": "/\\*", "end": "\\*/" }
+      ]
+    },
+    "annotations": {
+      "patterns": [
+        { "name": "storage.modifier.annotation.arth", "match": "@[A-Za-z_][A-Za-z0-9_]*" }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.arth",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            { "name": "constant.character.escape.arth", "match": "\\\\(?:[\\\\\"'0nrt]|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8})" }
+          ]
+        }
+      ]
+    },
+    "chars": {
+      "patterns": [
+        { "name": "constant.character.arth", "match": "'(?:[^\\\\']|\\\\(?:[\\\\\"'0nrt]|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8}))'" }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        { "name": "constant.numeric.hex.arth", "match": "(?<![A-Za-z0-9_])0x[0-9A-Fa-f_]+" },
+        { "name": "constant.numeric.bin.arth", "match": "(?<![A-Za-z0-9_])0b[01_]+" },
+        { "name": "constant.numeric.float.arth", "match": "(?<![A-Za-z0-9_])[0-9][0-9_]*\\.[0-9_]+(?:[eE][+-]?[0-9_]+)?" },
+        { "name": "constant.numeric.decimal.arth", "match": "(?<![A-Za-z0-9_])[0-9][0-9_]*(?:[eE][+-]?[0-9_]+)?" }
+      ]
+    },
+    "booleans": {
+      "patterns": [
+        { "name": "constant.language.boolean.arth", "match": "(?<![A-Za-z0-9_])(?:true|false)(?![A-Za-z0-9_])" }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        { "name": "keyword.other.declaration.arth", "match": "(?<![A-Za-z0-9_])(?:module|struct|interface|enum|provider)(?![A-Za-z0-9_])" },
+        { "name": "keyword.other.namespace.arth", "match": "(?<![A-Za-z0-9_])(?:package|import|export|extends|sealed|shared)(?![A-Za-z0-9_])" },
+        { "name": "storage.modifier.arth", "match": "(?<![A-Za-z0-9_])(?:public|internal|private|static|final|async)(?![A-Za-z0-9_])" },
+        { "name": "keyword.control.arth", "match": "(?<![A-Za-z0-9_])(?:if|else|for|while|switch|case|default|break|continue|return|await)(?![A-Za-z0-9_])" },
+        { "name": "keyword.control.exception.arth", "match": "(?<![A-Za-z0-9_])(?:try|catch|finally|throws|throw)(?![A-Za-z0-9_])" }
+      ]
+    },
+    "types": {
+      "patterns": [
+        { "name": "storage.type.primitive.arth", "match": "(?<![A-Za-z0-9_])(?:boolean|byte|short|int|long|float|double|char|void)(?![A-Za-z0-9_])" },
+        { "name": "entity.name.type.arth", "match": "(?<![A-Za-z0-9_\\.])(?:[A-Z][A-Za-z0-9_]*)(?![A-Za-z0-9_])" }
+      ]
+    },
+    "declarations": {
+      "patterns": [
+        {
+          "name": "meta.package.arth",
+          "match": "(?x)(?m) ^[\\t ]*(package)[\\t ]+([A-Za-z_][A-Za-z0-9_]*(?:\\\\.[A-Za-z_][A-Za-z0-9_]*)*)[\\t ]*;?",
+          "captures": { "1": { "name": "keyword.other.namespace.arth" }, "2": { "name": "entity.name.namespace.arth" } }
+        },
+        {
+          "name": "meta.import.arth",
+          "match": "(?x)(?m) ^[\\t ]*(import)[\\t ]+([A-Za-z_][A-Za-z0-9_]*(?:\\\\.[A-Za-z_][A-Za-z0-9_]*)*(?:\\\\.\\*)?)[\\t ]*;?",
+          "captures": { "1": { "name": "keyword.other.namespace.arth" }, "2": { "name": "entity.name.namespace.arth" } }
+        },
+        {
+          "name": "meta.declaration.type.arth",
+          "match": "(?x)(?<![A-Za-z0-9_])(?:module|struct|interface|enum|provider)[\\t ]+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": { "1": { "name": "entity.name.type.arth" } }
+        }
+      ]
+    },
+    "builtins": {
+      "patterns": [
+        {
+          "name": "support.function.builtin.arth",
+          "match": "(?<![A-Za-z0-9_])(println|print|assert|spawn|spawnBlocking|startTask|spawnTask|send|trySend|offer|post|emit)(?=\\s*\\()"
+        }
+      ]
+    },
+    "functions": {
+      "patterns": [
+        { "name": "entity.name.function.arth", "match": "(?x)(?<![A-Za-z0-9_\\.])(?!(?:println|print|assert|spawn|spawnBlocking|startTask|spawnTask|send|trySend|offer|post|emit)\\b)([A-Za-z_][A-Za-z0-9_]*)(?=[\\t ]*\\()" },
+        { "name": "entity.name.function.arth", "match": "(?x)\\\\.\\s*([A-Za-z_][A-Za-z0-9_]*)(?=\\s*\\()", "captures": { "1": { "name": "entity.name.function.arth" } } }
+      ]
+    }
+  }
+}

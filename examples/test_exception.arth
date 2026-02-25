@@ -1,0 +1,33 @@
+package test.exception;
+
+// Simple exception types for testing
+struct IoError {
+    String message;
+}
+
+struct TimeoutError {
+    int code;
+}
+
+module Main {
+    // Test try/catch with end_catch - put first so it shows in IR dump
+    public void testCatch() {
+        try {
+            testThrow();
+            println("No exception");
+        } catch (IoError e) {
+            println("Caught IoError");
+        }
+        println("After try/catch");
+    }
+
+    public void testThrow() throws (IoError) {
+        throw IoError { message: "file not found" };
+    }
+
+    public void main() {
+        println("Testing exception handling...");
+        testCatch();
+        println("Exception test complete!");
+    }
+}

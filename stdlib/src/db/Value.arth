@@ -1,0 +1,288 @@
+package db;
+
+/**
+ * Tagged union representing SQL values that can be stored in or retrieved from a database.
+ *
+ * Value provides type-safe representation of all supported SQL data types:
+ * - Int: 32-bit signed integer (maps to INTEGER in SQLite, INT4 in PostgreSQL)
+ * - Int64: 64-bit signed integer (maps to INTEGER in SQLite, INT8 in PostgreSQL)
+ * - Float: 32-bit floating point (maps to REAL in SQLite, FLOAT4 in PostgreSQL)
+ * - Double: 64-bit floating point (maps to REAL in SQLite, FLOAT8 in PostgreSQL)
+ * - Bool: Boolean value (maps to INTEGER 0/1 in SQLite, BOOLEAN in PostgreSQL)
+ * - Text: UTF-8 text string (maps to TEXT in SQLite, TEXT/VARCHAR in PostgreSQL)
+ * - Blob: Binary data (maps to BLOB in SQLite, BYTEA in PostgreSQL)
+ * - Null: SQL NULL value (represents absence of value)
+ *
+ * Values are immutable and can be safely passed across function boundaries.
+ *
+ * @see db.Row for retrieving values from query results
+ * @see db.Param for binding values to prepared statements
+ */
+public enum Value {
+    Int,
+    Int64,
+    Float,
+    Double,
+    Bool,
+    Text,
+    Blob,
+    Null
+}
+
+/**
+ * Type tag enumeration for runtime type checking of Value variants.
+ *
+ * Variants:
+ * - TYPE_INT: Integer type (32-bit)
+ * - TYPE_INT64: Long integer type (64-bit)
+ * - TYPE_FLOAT: Float type (32-bit)
+ * - TYPE_DOUBLE: Double type (64-bit)
+ * - TYPE_BOOL: Boolean type
+ * - TYPE_TEXT: Text/string type
+ * - TYPE_BLOB: Binary blob type
+ * - TYPE_NULL: Null type
+ */
+public enum ValueType {
+    TYPE_INT,
+    TYPE_INT64,
+    TYPE_FLOAT,
+    TYPE_DOUBLE,
+    TYPE_BOOL,
+    TYPE_TEXT,
+    TYPE_BLOB,
+    TYPE_NULL
+}
+
+/**
+ * Module providing utilities for ValueType enumeration.
+ */
+module ValueType {
+    /// Returns the ordinal value of the type (0-7).
+    public static int ordinal(ValueType t) {
+        match t {
+            ValueType.TYPE_INT => { return 0; }
+            ValueType.TYPE_INT64 => { return 1; }
+            ValueType.TYPE_FLOAT => { return 2; }
+            ValueType.TYPE_DOUBLE => { return 3; }
+            ValueType.TYPE_BOOL => { return 4; }
+            ValueType.TYPE_TEXT => { return 5; }
+            ValueType.TYPE_BLOB => { return 6; }
+            ValueType.TYPE_NULL => { return 7; }
+        }
+    }
+
+    /// Returns true if the two types are equal.
+    public static bool equals(ValueType a, ValueType b) {
+        return ValueType.ordinal(a) == ValueType.ordinal(b);
+    }
+}
+
+/**
+ * Wrapper struct for Value with its associated data.
+ *
+ * Since Arth enums are simple discriminants, ValueBox holds both the type tag
+ * and the actual data. Data is stored in a type-appropriate field.
+ */
+public struct ValueBox {
+    /// The type discriminant
+    public final ValueType valueType;
+    /// Integer value (used for Int and Bool types)
+    public final int intValue;
+    /// Long integer value (used for Int64 type)
+    public final int64 int64Value;
+    /// Float value (used for Float type)
+    public final float floatValue;
+    /// Double value (used for Double type)
+    public final double doubleValue;
+    /// String value (used for Text type)
+    public final String textValue;
+    /// Binary value (used for Blob type)
+    public final bytes blobValue;
+}
+
+/**
+ * Module providing factory functions and accessors for ValueBox instances.
+ *
+ * Note: Named ValueBoxFns because Arth does not allow modules and structs
+ * to share the same name within a package.
+ */
+module ValueBoxFns {
+    /// Creates a ValueBox containing a 32-bit integer.
+    public static ValueBox fromInt(int value) {
+        return ValueBox {
+            valueType: ValueType.TYPE_INT,
+            intValue: value,
+            int64Value: 0,
+            floatValue: 0.0,
+            doubleValue: 0.0,
+            textValue: "",
+            blobValue: []
+        };
+    }
+
+    /// Creates a ValueBox containing a 64-bit integer.
+    public static ValueBox fromInt64(int64 value) {
+        return ValueBox {
+            valueType: ValueType.TYPE_INT64,
+            intValue: 0,
+            int64Value: value,
+            floatValue: 0.0,
+            doubleValue: 0.0,
+            textValue: "",
+            blobValue: []
+        };
+    }
+
+    /// Creates a ValueBox containing a 32-bit float.
+    public static ValueBox fromFloat(float value) {
+        return ValueBox {
+            valueType: ValueType.TYPE_FLOAT,
+            intValue: 0,
+            int64Value: 0,
+            floatValue: value,
+            doubleValue: 0.0,
+            textValue: "",
+            blobValue: []
+        };
+    }
+
+    /// Creates a ValueBox containing a 64-bit double.
+    public static ValueBox fromDouble(double value) {
+        return ValueBox {
+            valueType: ValueType.TYPE_DOUBLE,
+            intValue: 0,
+            int64Value: 0,
+            floatValue: 0.0,
+            doubleValue: value,
+            textValue: "",
+            blobValue: []
+        };
+    }
+
+    /// Creates a ValueBox containing a boolean value.
+    public static ValueBox fromBool(bool value) {
+        int intVal = 0;
+        if (value) {
+            intVal = 1;
+        }
+        return ValueBox {
+            valueType: ValueType.TYPE_BOOL,
+            intValue: intVal,
+            int64Value: 0,
+            floatValue: 0.0,
+            doubleValue: 0.0,
+            textValue: "",
+            blobValue: []
+        };
+    }
+
+    /// Creates a ValueBox containing a text string.
+    public static ValueBox fromText(String value) {
+        return ValueBox {
+            valueType: ValueType.TYPE_TEXT,
+            intValue: 0,
+            int64Value: 0,
+            floatValue: 0.0,
+            doubleValue: 0.0,
+            textValue: value,
+            blobValue: []
+        };
+    }
+
+    /// Creates a ValueBox containing binary data.
+    public static ValueBox fromBlob(bytes value) {
+        return ValueBox {
+            valueType: ValueType.TYPE_BLOB,
+            intValue: 0,
+            int64Value: 0,
+            floatValue: 0.0,
+            doubleValue: 0.0,
+            textValue: "",
+            blobValue: value
+        };
+    }
+
+    /// Creates a ValueBox representing SQL NULL.
+    public static ValueBox null() {
+        return ValueBox {
+            valueType: ValueType.TYPE_NULL,
+            intValue: 0,
+            int64Value: 0,
+            floatValue: 0.0,
+            doubleValue: 0.0,
+            textValue: "",
+            blobValue: []
+        };
+    }
+
+    /// Returns true if this ValueBox contains SQL NULL.
+    public static bool isNull(ValueBox v) {
+        return ValueType.ordinal(v.valueType) == 7;
+    }
+
+    /// Returns the type of the value contained in this ValueBox.
+    public static ValueType getType(ValueBox v) {
+        return v.valueType;
+    }
+
+    /// Extracts the 32-bit integer value. Returns 0 if type mismatch.
+    public static int asInt(ValueBox v) {
+        if (ValueType.ordinal(v.valueType) == 0) {
+            return v.intValue;
+        }
+        return 0;
+    }
+
+    /// Extracts the 64-bit integer value. Returns 0 if type mismatch.
+    public static int64 asInt64(ValueBox v) {
+        if (ValueType.ordinal(v.valueType) == 1) {
+            return v.int64Value;
+        }
+        return 0;
+    }
+
+    /// Extracts the 32-bit float value. Returns 0.0 if type mismatch.
+    public static float asFloat(ValueBox v) {
+        if (ValueType.ordinal(v.valueType) == 2) {
+            return v.floatValue;
+        }
+        return 0.0;
+    }
+
+    /// Extracts the 64-bit double value. Returns 0.0 if type mismatch.
+    public static double asDouble(ValueBox v) {
+        if (ValueType.ordinal(v.valueType) == 3) {
+            return v.doubleValue;
+        }
+        return 0.0;
+    }
+
+    /// Extracts the boolean value. Returns false if type mismatch.
+    public static bool asBool(ValueBox v) {
+        if (ValueType.ordinal(v.valueType) == 4) {
+            return v.intValue != 0;
+        }
+        return false;
+    }
+
+    /// Extracts the text value. Returns empty string if type mismatch.
+    public static String asText(ValueBox v) {
+        if (ValueType.ordinal(v.valueType) == 5) {
+            return v.textValue;
+        }
+        return "";
+    }
+
+    /// Extracts the binary value. Returns empty bytes if type mismatch.
+    public static bytes asBlob(ValueBox v) {
+        if (ValueType.ordinal(v.valueType) == 6) {
+            return v.blobValue;
+        }
+        return [];
+    }
+
+    /// Returns true if the value is of the specified type.
+    public static bool isType(ValueBox v, ValueType expected) {
+        return ValueType.ordinal(v.valueType) == ValueType.ordinal(expected);
+    }
+}

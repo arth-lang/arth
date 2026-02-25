@@ -1,0 +1,388 @@
+package test;
+
+// Test: C10 - Backpressure Under Load
+//
+// This test proves that bounded channels properly handle backpressure:
+// - When channel is full, non-blocking sends return full status
+// - Blocking sends wait until space is available
+// - No messages are lost under load
+// - FIFO order is preserved
+//
+// Note: Since we run single-threaded, we test backpressure by:
+// 1. Verifying non-blocking send behavior when full
+// 2. Interleaving sends and receives for blocking operations
+// 3. Verifying message integrity through sum checks
+
+module Executor {
+    // Executor intrinsics mapped to __arth_executor_* VM calls
+}
+
+module MpmcChan {
+    // MPMC channel intrinsics mapped to __arth_mpmc_chan_* VM calls
+}
+
+module Instants {
+    // Time measurement intrinsics
+}
+
+module Main {
+    public static void main() {
+        println("=== C10: Backpressure Under Load ===");
+
+        // Initialize thread pool
+        println("Initializing pool with 4 threads...");
+        Int initResult = Executor.init(4);
+        println("Pool initialized: " + initResult);
+
+        Int resetResult = Executor.resetStats();
+
+        println("=== Test 1: Small Capacity Channel Blocking ===");
+        // Create a very small channel - capacity 3
+        Int ch = MpmcChan.create(3);
+        println("Channel created with capacity 3: handle=" + ch);
+
+        // Fill the channel to capacity
+        Int s1 = MpmcChan.send(ch, 100);
+        Int s2 = MpmcChan.send(ch, 200);
+        Int s3 = MpmcChan.send(ch, 300);
+        println("Sent 3 messages: " + s1 + ", " + s2 + ", " + s3);
+
+        // Channel should be full now
+        Int isFull = MpmcChan.isFull(ch);
+        println("Channel full: " + isFull);
+
+        // Non-blocking send should fail (return 1 = full)
+        Int s4 = MpmcChan.send(ch, 400);
+        println("4th send (should be 1=full): " + s4);
+
+        Int test1Pass = 0;
+        if (isFull == 1) {
+            if (s4 == 1) {
+                println("Test 1 (channel blocking): PASS");
+                test1Pass = 1;
+            }
+        }
+        if (test1Pass == 0) {
+            println("Test 1 FAIL: expected full=1, send=1");
+        }
+
+        // Drain the channel
+        MpmcChan.recv(ch);
+        MpmcChan.recv(ch);
+        MpmcChan.recv(ch);
+        MpmcChan.close(ch);
+
+        println("=== Test 2: High Volume with Large Capacity ===");
+        // Create channel with large capacity for bulk transfer test
+        Int messageCount = 500;
+        Int ch2 = MpmcChan.create(messageCount);
+        println("Channel created with capacity " + messageCount);
+
+        // Calculate expected sum: 1 + 2 + 3 + ... + 500 = 500*501/2 = 125250
+        Int expectedSum = 125250;
+        println("Sending " + messageCount + " messages (expected sum: " + expectedSum + ")");
+
+        Int startTime = Instants.now();
+
+        // Send all messages
+        Int i = 1;
+        while (i <= messageCount) {
+            Int status = MpmcChan.send(ch2, i);
+            if (status != 0) {
+                println("ERROR: send failed at message " + i);
+            }
+            i = i + 1;
+        }
+
+        Int sendElapsed = Instants.elapsed(startTime);
+        println("All messages sent in " + sendElapsed + " ms");
+
+        // Verify channel state
+        Int len = MpmcChan.len(ch2);
+        println("Channel length after sends: " + len);
+
+        // Now receive all messages and compute sum
+        Int recvStart = Instants.now();
+        Int receivedSum = 0;
+        Int receivedCount = 0;
+
+        i = 0;
+        while (i < messageCount) {
+            Int val = MpmcChan.recv(ch2);
+            if (val >= 0) {
+                receivedSum = receivedSum + val;
+                receivedCount = receivedCount + 1;
+            }
+            i = i + 1;
+        }
+
+        Int recvElapsed = Instants.elapsed(recvStart);
+        println("All messages received in " + recvElapsed + " ms");
+        println("Received count: " + receivedCount + ", sum: " + receivedSum);
+
+        Int test2Pass = 0;
+        if (receivedCount == messageCount) {
+            if (receivedSum == expectedSum) {
+                println("Test 2 (high volume transfer): PASS");
+                test2Pass = 1;
+            }
+        }
+        if (test2Pass == 0) {
+            println("Test 2 FAIL: expected count=" + messageCount + ", sum=" + expectedSum);
+        }
+
+        MpmcChan.close(ch2);
+
+        println("=== Test 3: Interleaved Send/Recv with Small Buffer ===");
+        // Create channel with capacity 5
+        Int ch3 = MpmcChan.create(5);
+        println("Channel created with capacity 5");
+
+        // Interleave sends and receives - send 1, recv 1, etc.
+        Int totalMessages = 200;
+        Int interleavedSum = 0;
+        Int expected3 = 20100; // 200*201/2 = 20100
+
+        println("Interleaving " + totalMessages + " send/recv pairs...");
+
+        i = 1;
+        while (i <= totalMessages) {
+            // Send one message
+            Int ss = MpmcChan.sendBlocking(ch3, i);
+            // Immediately receive it
+            Int val = MpmcChan.recvBlocking(ch3);
+            if (val >= 0) {
+                interleavedSum = interleavedSum + val;
+            }
+            i = i + 1;
+        }
+
+        println("Interleaved sum: " + interleavedSum);
+
+        Int test3Pass = 0;
+        if (interleavedSum == expected3) {
+            println("Test 3 (interleaved send/recv): PASS");
+            test3Pass = 1;
+        } else {
+            println("Test 3 FAIL: expected sum=" + expected3);
+        }
+
+        MpmcChan.close(ch3);
+
+        println("=== Test 4: Stress Test with Tiny Buffer ===");
+        // Create channel with capacity 1 (maximum backpressure)
+        Int ch4 = MpmcChan.create(1);
+        println("Channel created with capacity 1 (maximum backpressure)");
+
+        Int stressCount = 100;
+        Int stressSum = 0;
+        Int expected4 = 5050; // 100*101/2
+
+        Int stressStart = Instants.now();
+
+        // With capacity 1, send-recv pattern
+        i = 1;
+        while (i <= stressCount) {
+            // Send
+            Int ss = MpmcChan.sendBlocking(ch4, i);
+            // Immediately receive
+            Int val = MpmcChan.recvBlocking(ch4);
+            if (val >= 0) {
+                stressSum = stressSum + val;
+            }
+            i = i + 1;
+        }
+
+        Int stressElapsed = Instants.elapsed(stressStart);
+        println("Stress test: " + stressCount + " messages, sum=" + stressSum + " in " + stressElapsed + " ms");
+
+        Int test4Pass = 0;
+        if (stressSum == expected4) {
+            println("Test 4 (stress test tiny buffer): PASS");
+            test4Pass = 1;
+        } else {
+            println("Test 4 FAIL: expected sum=" + expected4);
+        }
+
+        MpmcChan.close(ch4);
+
+        println("=== Test 5: Batch Send/Recv Pattern ===");
+        // Send a batch, receive a batch - tests buffer utilization
+        Int ch5 = MpmcChan.create(10);
+        Int batchSize = 10;
+        Int batches = 50;
+        Int batchSum = 0;
+        Int expected5 = 127750; // sum of 1..500 = 500*501/2 = 125250... wait
+
+        // Actually let's just track what we send and receive
+        Int sendVal = 1;
+        Int batchRecvCount = 0;
+
+        println("Running " + batches + " batches of " + batchSize + " messages...");
+
+        Int batchStart = Instants.now();
+
+        Int b = 0;
+        while (b < batches) {
+            // Send a batch of 10
+            Int j = 0;
+            while (j < batchSize) {
+                MpmcChan.sendBlocking(ch5, sendVal);
+                sendVal = sendVal + 1;
+                j = j + 1;
+            }
+
+            // Receive the batch
+            j = 0;
+            while (j < batchSize) {
+                Int val = MpmcChan.recvBlocking(ch5);
+                if (val >= 0) {
+                    batchSum = batchSum + val;
+                    batchRecvCount = batchRecvCount + 1;
+                }
+                j = j + 1;
+            }
+
+            b = b + 1;
+        }
+
+        Int batchElapsed = Instants.elapsed(batchStart);
+        Int totalBatchMessages = batches * batchSize;
+        // Expected sum: 1 + 2 + ... + 500 = 125250
+        Int expectedBatchSum = 125250;
+
+        println("Batch test: " + batchRecvCount + " messages, sum=" + batchSum + " in " + batchElapsed + " ms");
+
+        Int test5Pass = 0;
+        if (batchRecvCount == totalBatchMessages) {
+            if (batchSum == expectedBatchSum) {
+                println("Test 5 (batch send/recv): PASS");
+                test5Pass = 1;
+            }
+        }
+        if (test5Pass == 0) {
+            println("Test 5 FAIL: expected count=" + totalBatchMessages + ", sum=" + expectedBatchSum);
+        }
+
+        MpmcChan.close(ch5);
+
+        println("=== Test 6: FIFO Order Under Backpressure ===");
+        // Verify messages arrive in FIFO order
+        Int fifoCh = MpmcChan.create(50);
+        Int fifoCount = 50;
+        Int fifoPass = 1;
+
+        // Send messages 1..50
+        i = 1;
+        while (i <= fifoCount) {
+            MpmcChan.send(fifoCh, i);
+            i = i + 1;
+        }
+
+        // Receive and verify order
+        i = 1;
+        while (i <= fifoCount) {
+            Int val = MpmcChan.recv(fifoCh);
+            if (val != i) {
+                println("FIFO violation: expected " + i + ", got " + val);
+                fifoPass = 0;
+            }
+            i = i + 1;
+        }
+
+        Int test6Pass = fifoPass;
+        if (test6Pass == 1) {
+            println("Test 6 (FIFO order): PASS");
+        } else {
+            println("Test 6 FAIL: FIFO order violated");
+        }
+
+        MpmcChan.close(fifoCh);
+
+        println("=== Test 7: Rapid Cycles ===");
+        // Rapid send/recv cycles to stress test
+        Int rapidCh = MpmcChan.create(5);
+        Int rapidCycles = 1000;
+        Int rapidSum = 0;
+        Int expected7 = 500500; // 1000*1001/2
+
+        println("Running " + rapidCycles + " rapid send/recv cycles...");
+
+        Int rapidStart = Instants.now();
+        i = 1;
+        while (i <= rapidCycles) {
+            MpmcChan.sendBlocking(rapidCh, i);
+            Int val = MpmcChan.recvBlocking(rapidCh);
+            rapidSum = rapidSum + val;
+            i = i + 1;
+        }
+        Int rapidElapsed = Instants.elapsed(rapidStart);
+
+        println("Rapid cycles completed in " + rapidElapsed + " ms, sum=" + rapidSum);
+
+        Int test7Pass = 0;
+        if (rapidSum == expected7) {
+            println("Test 7 (rapid cycles): PASS");
+            test7Pass = 1;
+        } else {
+            println("Test 7 FAIL: expected sum=" + expected7 + ", got " + rapidSum);
+        }
+
+        MpmcChan.close(rapidCh);
+
+        println("=== Test 8: Backpressure with Close ===");
+        // Test that closing a channel doesn't lose messages
+        Int closeCh = MpmcChan.create(100);
+        Int closeCount = 100;
+        Int expected8 = 5050;
+
+        // Send all messages
+        i = 1;
+        while (i <= closeCount) {
+            MpmcChan.send(closeCh, i);
+            i = i + 1;
+        }
+
+        // Close the channel (should still allow draining)
+        MpmcChan.close(closeCh);
+        Int isClosed = MpmcChan.isClosed(closeCh);
+        println("Channel closed: " + isClosed);
+
+        // Drain all messages
+        Int closeSum = 0;
+        Int closeDrained = 0;
+        i = 0;
+        while (i < closeCount) {
+            Int val = MpmcChan.recv(closeCh);
+            if (val >= 0) {
+                closeSum = closeSum + val;
+                closeDrained = closeDrained + 1;
+            }
+            i = i + 1;
+        }
+
+        println("Drained " + closeDrained + " messages after close, sum=" + closeSum);
+
+        Int test8Pass = 0;
+        if (closeDrained == closeCount) {
+            if (closeSum == expected8) {
+                println("Test 8 (backpressure with close): PASS");
+                test8Pass = 1;
+            }
+        }
+        if (test8Pass == 0) {
+            println("Test 8 FAIL: expected " + closeCount + " messages, sum=" + expected8);
+        }
+
+        // Summary
+        println("=== Summary ===");
+        Int totalPassed = test1Pass + test2Pass + test3Pass + test4Pass + test5Pass + test6Pass + test7Pass + test8Pass;
+        println("Tests passed: " + totalPassed + "/8");
+
+        if (totalPassed == 8) {
+            println("=== C10: PASSED - Backpressure works correctly ===");
+        } else {
+            println("=== C10: FAILED ===");
+        }
+    }
+}

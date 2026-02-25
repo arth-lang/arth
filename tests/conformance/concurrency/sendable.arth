@@ -1,0 +1,38 @@
+package conformance;
+
+// @spec: spec.md §9 - Sendable marker for cross-thread transfer
+// @expect: pass
+// @description: Validates Sendable trait for thread-safe ownership transfer
+
+// Struct with only primitive fields (automatically Sendable)
+public struct ImmutableData {
+    public final Int id;
+    public final String name;
+}
+
+module ImmutableDataFns {
+    public ImmutableData new(Int id, String name) {
+        return ImmutableData { id: id, name: name };
+    }
+
+    public Int getId(ImmutableData d) {
+        return d.id;
+    }
+
+    public String getName(ImmutableData d) {
+        return d.name;
+    }
+}
+
+module Main {
+    public static void main() {
+        // Create immutable data
+        ImmutableData data = ImmutableDataFns.new(1, "test");
+
+        // Access fields
+        Int id = ImmutableDataFns.getId(data);
+        String name = ImmutableDataFns.getName(data);
+
+        println("sendable: pass");
+    }
+}

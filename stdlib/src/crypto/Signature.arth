@@ -1,0 +1,188 @@
+package crypto;
+
+/**
+ * Digital signature with algorithm tag.
+ *
+ * A Signature represents a cryptographic signature created using a private key.
+ * It can be verified using the corresponding public key.
+ *
+ * Supported algorithms:
+ * - Ed25519: Fast, small signatures (64 bytes), recommended
+ * - ECDSA P-256/P-384: NIST curves, widely deployed
+ * - RSA-PSS: Large signatures, legacy compatibility
+ *
+ * Example usage:
+ * ```arth
+ * import crypto.*;
+ *
+ * module Example {
+ *     public void signVerify() throws (KeyGenerationError, RandomError, InvalidSignatureError) {
+ *         // Generate a key pair
+ *         KeyPair kp = KeyPair.generate(SignatureAlgorithm.ED25519);
+ *
+ *         bytes message = "Hello, World!".toBytes();
+ *
+ *         // Sign
+ *         Signature sig = Signature.sign(KeyPair.privateKey(kp), message);
+ *
+ *         // Verify
+ *         Bool valid = Signature.verify(KeyPair.publicKey(kp), message, sig);
+ *         if (!valid) {
+ *             throw InvalidSignatureError.new("Signature verification failed");
+ *         }
+ *     }
+ * }
+ * ```
+ *
+ * @see crypto.KeyPair for key generation
+ * @see crypto.SignatureAlgorithm for supported algorithms
+ */
+
+/**
+ * A digital signature.
+ */
+public struct Signature {
+    /// The signature algorithm used
+    public final SignatureAlgorithm algorithm;
+    /// The signature bytes
+    public final bytes data;
+}
+
+/**
+ * Module for Signature operations.
+ */
+module Signature {
+    // =========================================================================
+    // Signing
+    // =========================================================================
+
+    /**
+     * Signs a message with a private key.
+     *
+     * @param privateKey The signing key
+     * @param message The message to sign
+     * @return The signature
+     */
+    @intrinsic("crypto.signature_sign")
+    public static Signature sign(PrivateKey privateKey, bytes message) {
+        return Signature {
+            algorithm: privateKey.algorithm,
+            data: bytes.allocate(0)
+        };
+    }
+
+    /**
+     * Signs a message hash with a private key.
+     *
+     * Use this for "sign the hash" protocols where the message has
+     * already been hashed.
+     *
+     * @param privateKey The signing key
+     * @param hash The hash to sign
+     * @return The signature
+     */
+    @intrinsic("crypto.signature_sign_hash")
+    public static Signature signHash(PrivateKey privateKey, Hash hash) {
+        return Signature {
+            algorithm: privateKey.algorithm,
+            data: bytes.allocate(0)
+        };
+    }
+
+    // =========================================================================
+    // Verification
+    // =========================================================================
+
+    /**
+     * Verifies a signature against a message and public key.
+     *
+     * @param publicKey The verification key
+     * @param message The message that was signed
+     * @param signature The signature to verify
+     * @return true if the signature is valid
+     */
+    @intrinsic("crypto.signature_verify")
+    public static Bool verify(PublicKey publicKey, bytes message, Signature signature) {
+        return false;
+    }
+
+    /**
+     * Verifies a signature against a hash and public key.
+     *
+     * @param publicKey The verification key
+     * @param hash The hash that was signed
+     * @param signature The signature to verify
+     * @return true if the signature is valid
+     */
+    @intrinsic("crypto.signature_verify_hash")
+    public static Bool verifyHash(PublicKey publicKey, Hash hash, Signature signature) {
+        return false;
+    }
+
+    /**
+     * Verifies a signature and throws if invalid.
+     *
+     * @param publicKey The verification key
+     * @param message The message that was signed
+     * @param signature The signature to verify
+     * @throws InvalidSignatureError if the signature is invalid
+     */
+    public static void verifyOrThrow(PublicKey publicKey, bytes message, Signature signature)
+        throws InvalidSignatureError {
+        if (!Signature.verify(publicKey, message, signature)) {
+            throw InvalidSignatureError.new("Signature verification failed");
+        }
+    }
+
+    // =========================================================================
+    // Import/Export
+    // =========================================================================
+
+    /**
+     * Creates a Signature from raw bytes.
+     *
+     * @param algorithm The signature algorithm
+     * @param data The signature bytes
+     * @return A new Signature
+     */
+    public static Signature fromBytes(SignatureAlgorithm algorithm, bytes data) {
+        return Signature {
+            algorithm: algorithm,
+            data: data
+        };
+    }
+
+    /**
+     * Returns the raw signature bytes.
+     *
+     * @param self The signature
+     * @return The signature bytes
+     */
+    public static bytes toBytes(Signature self) {
+        return self.data;
+    }
+
+    // =========================================================================
+    // Properties
+    // =========================================================================
+
+    /**
+     * Returns the algorithm.
+     *
+     * @param self The signature
+     * @return The signature algorithm
+     */
+    public static SignatureAlgorithm algorithm(Signature self) {
+        return self.algorithm;
+    }
+
+    /**
+     * Returns the signature size in bytes.
+     *
+     * @param self The signature
+     * @return The size
+     */
+    public static int size(Signature self) {
+        return self.data.length();
+    }
+}

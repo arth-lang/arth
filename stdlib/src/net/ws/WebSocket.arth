@@ -1,0 +1,164 @@
+package net.ws;
+
+import concurrent.*;
+
+/**
+ * WebSocket server surface for Arth programs.
+ *
+ * NOTE: This file is an INTRINSIC-BACKED STUB for IDE/tooling support.
+ * The function bodies are placeholders - actual implementation is provided
+ * by the compiler via intrinsic lowering to VM runtime functions.
+ *
+ * WebSocket provides bidirectional real-time communication between server
+ * and clients. The design is intentionally minimal and biased toward
+ * server use:
+ *
+ * - One WebSocket per connected client
+ * - Messages are modeled as a small enum (Text, Binary, Close)
+ * - Each connection is backed by channels for inbound/outbound traffic
+ *
+ * Example usage:
+ * ```
+ * import net.ws.*;
+ * import concurrent.*;
+ *
+ * module ChatServer {
+ *     public static void main() {
+ *         Int server = WebSockets.serve(8080, "/chat");
+ *         while (true) {
+ *             WebSocket ws = WebSockets.accept(server);
+ *             Task.spawn(() -> { echo(ws); });
+ *         }
+ *     }
+ *
+ *     public static void echo(WebSocket ws) {
+ *         while (WebSocketFns.isOpen(ws)) {
+ *             WebSocketMessage msg = WebSocketFns.recv(ws);
+ *             switch (msg) {
+ *                 case WebSocketMessage.Text(text):
+ *                     WebSocketFns.sendText(ws, text);
+ *                 case WebSocketMessage.Close(code, reason):
+ *                     return;
+ *                 default:
+ *                     break;
+ *             }
+ *         }
+ *     }
+ * }
+ * ```
+ *
+ * @see src/compiler/intrinsics.rs for intrinsic registry
+ * @see crates/arth-vm/src/runtime.rs for VM implementation
+ */
+
+/// WebSocket message type at the server boundary.
+public enum WebSocketMessage {
+    /// Text frame (UTF-8).
+    Text(String),
+    /// Binary frame (opaque bytes).
+    Binary(bytes),
+    /// Close frame with code + reason.
+    Close(Int, String)
+}
+
+/// Server-side WebSocket handle.
+///
+/// Represents a single WebSocket connection to a client.
+/// Backed by channels for inbound/outbound traffic in the VM.
+public struct WebSocket {
+    /// Opaque runtime handle (backed by channels/actors in the VM).
+    public final Int handle;
+}
+
+/**
+ * High-level WebSocket server entrypoints.
+ *
+ * These functions manage WebSocket server lifecycle:
+ * - serve() starts a WebSocket server on a port/path
+ * - accept() blocks waiting for the next client connection
+ */
+module WebSockets {
+    /// Starts a WebSocket server on the given port and path.
+    ///
+    /// The server performs the HTTP Upgrade handshake for incoming
+    /// connections on the specified path. Use accept() to receive
+    /// individual client connections.
+    ///
+    /// @param port The port to listen on
+    /// @param path The URL path for WebSocket connections (e.g., "/ws")
+    /// @return A server handle for use with accept()
+    @intrinsic("ws.serve")
+    public static Int serve(Int port, String path) {
+        return 0;
+    }
+
+    /// Accepts the next WebSocket connection.
+    ///
+    /// Blocks until a client connects and completes the WebSocket
+    /// handshake. Returns a WebSocket handle for bidirectional
+    /// communication with that client.
+    ///
+    /// @param server The server handle from serve()
+    /// @return A WebSocket handle for the new connection
+    @intrinsic("ws.accept")
+    public static WebSocket accept(Int server) {
+        return WebSocket { handle: 0 };
+    }
+}
+
+/**
+ * Helper operations on WebSocket handles.
+ *
+ * These operations enable bidirectional communication:
+ * - sendText/sendBinary: send messages to the client
+ * - recv: receive the next message from the client
+ * - close: gracefully close the connection
+ * - isOpen: check if the connection is still active
+ */
+module WebSocketFns {
+    /// Sends a text frame over the WebSocket.
+    ///
+    /// @param self The WebSocket handle
+    /// @param text The UTF-8 text to send
+    @intrinsic("ws.send_text")
+    public static void sendText(WebSocket self, String text) {
+    }
+
+    /// Sends a binary frame over the WebSocket.
+    ///
+    /// @param self The WebSocket handle
+    /// @param data The binary data to send
+    @intrinsic("ws.send_binary")
+    public static void sendBinary(WebSocket self, bytes data) {
+    }
+
+    /// Receives the next inbound message.
+    ///
+    /// Blocks until a message is received from the client.
+    /// Returns a WebSocketMessage enum indicating the message type.
+    ///
+    /// @param self The WebSocket handle
+    /// @return The received message (Text, Binary, or Close)
+    @intrinsic("ws.recv")
+    public static WebSocketMessage recv(WebSocket self) {
+        return WebSocketMessage.Close(1000, "stub");
+    }
+
+    /// Sends a Close frame and terminates the connection.
+    ///
+    /// @param self The WebSocket handle
+    /// @param code The close status code (e.g., 1000 for normal closure)
+    /// @param reason Human-readable close reason
+    @intrinsic("ws.close")
+    public static void close(WebSocket self, Int code, String reason) {
+    }
+
+    /// Checks if the WebSocket connection is still open.
+    ///
+    /// @param self The WebSocket handle
+    /// @return true if the connection is open, false otherwise
+    @intrinsic("ws.is_open")
+    public static Bool isOpen(WebSocket self) {
+        return false;
+    }
+}

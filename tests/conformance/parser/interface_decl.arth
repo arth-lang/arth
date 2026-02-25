@@ -1,0 +1,45 @@
+package conformance;
+
+// @spec: spec.md §4 - Interface declarations with methods and extends
+// @expect: pass
+// @description: Validates interface declaration parsing per spec §4
+
+public struct IoError {
+    public String message;
+}
+
+// Simple interface
+public interface Named {
+    String getName();
+}
+
+// Interface with multiple methods
+public interface Comparable {
+    Int compareTo(Int other);
+}
+
+// Interface with throws clause
+public interface Fetcher {
+    String fetch(String url) throws (IoError);
+}
+
+// Interface extending another interface
+public interface AdvancedNamed extends Named {
+    String getFullName();
+}
+
+// Generic interface
+public interface Container<T> {
+    T get();
+}
+
+// Interface for description
+public interface Describable {
+    String describe();
+}
+
+module Main {
+    public static void main() {
+        println("interface_decl: pass");
+    }
+}

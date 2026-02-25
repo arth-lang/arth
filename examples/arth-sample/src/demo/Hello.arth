@@ -1,0 +1,42 @@
+package demo.hello;
+
+import demo.logging.Logging;
+
+module Main {
+  public void main() {
+    println("Hello from Arth file demo!");
+
+    // If/else
+    if (true) { println("if-branch"); } else { println("else-branch"); }
+
+    // While loop (not executed)
+    while (false) { println("while-loop"); }
+
+    // Expression print
+    println(1 + 2);
+    println(10 - 3);
+    println(2 * 4);
+    println(20 / 5);
+    println(3 == 3);
+    println(true && false || true);
+
+    // For loop with tiny env + break/continue
+    for (i = 0; i < 5; i = i + 1) {
+      if (i == 3) { continue; }
+      if (i == 4) { break; }
+      println(i);
+    }
+
+    // Switch/case lowering demo
+    switch (2) {
+      case 1: { println("case1"); }
+      case 2: { println("case2"); }
+      default: { println("default"); }
+    }
+
+    // Try/catch scaffolding (no-op runtime)
+    try { println("in try"); } catch (Error e) { println("in catch"); } finally { println("in finally"); }
+
+    return;
+  }
+}

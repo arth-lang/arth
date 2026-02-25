@@ -1,0 +1,51 @@
+package conformance;
+
+// @spec: spec.md §4 - Struct declarations with fields and modifiers
+// @expect: pass
+// @description: Validates struct declaration parsing per spec §4
+
+// Simple struct
+public struct Point {
+    public Int x;
+    public Int y;
+}
+
+// Struct with final fields (immutable)
+public struct ImmutablePoint {
+    public final Int x;
+    public final Int y;
+}
+
+// Nested struct
+public struct Rectangle {
+    public Int x;
+    public Int y;
+    public Int width;
+    public Int height;
+}
+
+module PointFns {
+    public Point new(Int x, Int y) {
+        return Point { x: x, y: y };
+    }
+
+    public Int getX(Point p) {
+        return p.x;
+    }
+}
+
+module Main {
+    public static void main() {
+        // Create and use structs
+        Point p = Point { x: 10, y: 20 };
+        ImmutablePoint ip = ImmutablePoint { x: 1, y: 2 };
+        Rectangle r = Rectangle { x: 0, y: 0, width: 100, height: 50 };
+
+        // Access fields
+        Int px = p.x;
+        Int ipy = ip.y;
+        Int rw = r.width;
+
+        println("struct_decl: pass");
+    }
+}

@@ -1,0 +1,28 @@
+package cli;
+
+/**
+ * Minimal test program for environment.
+ */
+module Main {
+    @intrinsic("env.current_dir")
+    static String getCurrentDir() { return ""; }
+
+    @intrinsic("env.get_var")
+    static String getEnvVar(String name) { return ""; }
+
+    public void main() {
+        println("Testing env intrinsics:");
+
+        // Test current dir
+        String cwd = getCurrentDir();
+        println("Got cwd!");
+        println(cwd);
+
+        // Test env var
+        String user = getEnvVar("USER");
+        println("Got USER!");
+        println(user);
+
+        println("Done!");
+    }
+}

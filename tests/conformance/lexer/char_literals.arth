@@ -1,0 +1,29 @@
+package conformance;
+
+// @spec: spec.md §2 - Character literals with escapes
+// @expect: pass
+// @description: Validates char literal lexing and escapes
+
+module Main {
+    public static void main() {
+        // Basic char literals
+        Char a = 'A';
+        Char zero = '0';
+        Char space = ' ';
+
+        // Escaped chars
+        Char newline = '\n';
+        Char tab = '\t';
+        Char backslash = '\\';
+        Char single_q = '\'';
+        Char double_q = '\"';
+
+        // Hex escape in char
+        Char hex_a = '\x41';  // 'A'
+
+        // Unicode escape in char
+        Char unicode_a = '\u0041';  // 'A'
+
+        println("char_literals: pass");
+    }
+}

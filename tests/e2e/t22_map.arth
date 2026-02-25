@@ -1,0 +1,30 @@
+package test;
+
+import arth.*;
+
+// Test: Map operations via intrinsics
+// Expected output:
+//   len: 2
+//   has alice: 1
+//   has bob: 0
+//   get alice: 25
+
+module Main {
+    public static void main() {
+        Int map = Map.new();
+        Map.put(map, "alice", 25);
+        Map.put(map, "charlie", 35);
+
+        Int len = Map.len(map);
+        println("len: " + len);
+
+        Int hasAlice = Map.containsKey(map, "alice");
+        println("has alice: " + hasAlice);
+
+        Int hasBob = Map.containsKey(map, "bob");
+        println("has bob: " + hasBob);
+
+        Int aliceAge = Map.get(map, "alice");
+        println("get alice: " + aliceAge);
+    }
+}

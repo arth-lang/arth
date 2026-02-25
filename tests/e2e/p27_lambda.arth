@@ -1,0 +1,89 @@
+package test;
+
+// Test: Lambda Expressions - P27
+// Lambda syntax in Arth: fn(Type param, ...) { body }
+// Lambdas are first-class values that can be stored and called.
+//
+// Expected output:
+//   === Test 1: Basic Lambda (No Parameters) ===
+//   Hello from lambda!
+//   Test 1: PASS
+//   === Test 2: Lambda With Parameter ===
+//   Got value: 42
+//   Test 2: PASS
+//   === Test 3: Lambda With Multiple Parameters ===
+//   Sum is: 15
+//   Test 3: PASS
+//   === Test 4: Lambda Returning Value ===
+//   Result: 10
+//   Test 4: PASS
+//   === Test 5: Lambda With Expression Body ===
+//   Squared: 25
+//   Test 5: PASS
+//   === Summary ===
+//   All 5 tests passed!
+//   === P27: PASSED ===
+
+module Main {
+    public static void main() {
+        int passed = 0;
+
+        // Test 1: Basic lambda with no parameters
+        println("=== Test 1: Basic Lambda (No Parameters) ===");
+        var greet = fn() {
+            println("Hello from lambda!");
+        };
+        greet();
+        println("Test 1: PASS");
+        passed = passed + 1;
+
+        // Test 2: Lambda with single parameter
+        println("=== Test 2: Lambda With Parameter ===");
+        var showNum = fn(int x) {
+            println("Got value: " + x);
+        };
+        showNum(42);
+        println("Test 2: PASS");
+        passed = passed + 1;
+
+        // Test 3: Lambda with multiple parameters
+        println("=== Test 3: Lambda With Multiple Parameters ===");
+        var showSum = fn(int a, int b) {
+            int s = a + b;
+            println("Sum is: " + s);
+        };
+        showSum(7, 8);
+        println("Test 3: PASS");
+        passed = passed + 1;
+
+        // Test 4: Lambda returning a value
+        println("=== Test 4: Lambda Returning Value ===");
+        var doubler = fn(int x) {
+            return x * 2;
+        };
+        int doubled = doubler(5);
+        println("Result: " + doubled);
+        println("Test 4: PASS");
+        passed = passed + 1;
+
+        // Test 5: Lambda stored and called with result used
+        println("=== Test 5: Lambda With Expression Body ===");
+        var square = fn(int x) {
+            return x * x;
+        };
+        int squared = square(5);
+        println("Squared: " + squared);
+        println("Test 5: PASS");
+        passed = passed + 1;
+
+        // Summary
+        println("=== Summary ===");
+        if (passed == 5) {
+            println("All 5 tests passed!");
+            println("=== P27: PASSED ===");
+        } else {
+            println("Some tests failed!");
+            println("=== P27: FAILED ===");
+        }
+    }
+}

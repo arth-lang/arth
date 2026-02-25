@@ -1,0 +1,24 @@
+package examples.tests;
+
+/**
+ * Simple illustrative test for array.merge on sorted lists.
+ *
+ * NOTE: This is an illustrative example only; the Arth sample
+ * test runner is not wired into `cargo test`.
+ */
+module ArrayMergeTest {
+    public void main() {
+        Int xs = array.arrayOf(1, 3, 5);
+        Int ys = array.arrayOf(2, 4, 6);
+        Int merged = array.merge(xs, ys);
+
+        // Expected: [1, 2, 3, 4, 5, 6]
+        println(array.get(merged, 0)); // 1
+        println(array.get(merged, 1)); // 2
+        println(array.get(merged, 2)); // 3
+        println(array.get(merged, 3)); // 4
+        println(array.get(merged, 4)); // 5
+        println(array.get(merged, 5)); // 6
+    }
+}
+

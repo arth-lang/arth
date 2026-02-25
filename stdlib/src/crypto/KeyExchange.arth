@@ -1,0 +1,193 @@
+package crypto;
+
+/**
+ * Diffie-Hellman Key Exchange.
+ *
+ * This module provides key agreement protocols that allow two parties to
+ * establish a shared secret over an insecure channel. The shared secret
+ * can then be used to derive encryption keys.
+ *
+ * Supported algorithms:
+ * - **X25519**: Curve25519 key exchange (RFC 7748) - fast, modern, widely used
+ * - **ECDH P-256**: NIST P-256 curve ECDH - NIST-approved, interoperable
+ * - **ECDH P-384**: NIST P-384 curve ECDH - higher security level
+ *
+ * Security properties:
+ * - **Forward Secrecy**: Use ephemeral keys for each session
+ * - **Shared Secret**: Both parties compute the same value
+ * - **Key Derivation**: Always use KDF on the raw shared secret
+ *
+ * IMPORTANT: The raw shared secret should NOT be used directly as an
+ * encryption key. Always derive keys using a KDF (HKDF recommended).
+ *
+ * Example usage:
+ * ```arth
+ * import crypto.*;
+ *
+ * module Example {
+ *     public void keyExchange() throws (KeyGenerationError, RandomError, InvalidKeyError) {
+ *         // Alice generates her key pair
+ *         ExchangeKeyPair aliceKp = ExchangeKeyPair.generate(KeyExchangeAlgorithm.X25519);
+ *
+ *         // Bob generates his key pair
+ *         ExchangeKeyPair bobKp = ExchangeKeyPair.generate(KeyExchangeAlgorithm.X25519);
+ *
+ *         // Alice computes shared secret using her private key and Bob's public key
+ *         SharedSecret aliceSecret = KeyExchange.agree(
+ *             ExchangeKeyPair.privateKey(aliceKp),
+ *             ExchangeKeyPair.publicKey(bobKp)
+ *         );
+ *
+ *         // Bob computes shared secret using his private key and Alice's public key
+ *         SharedSecret bobSecret = KeyExchange.agree(
+ *             ExchangeKeyPair.privateKey(bobKp),
+ *             ExchangeKeyPair.publicKey(aliceKp)
+ *         );
+ *
+ *         // Both secrets are equal! Use HKDF to derive encryption key.
+ *     }
+ * }
+ * ```
+ *
+ * @see crypto.ExchangeKeyPair for key generation
+ * @see crypto.SharedSecret for the shared secret type
+ * @see crypto.Kdf for key derivation from shared secrets
+ */
+
+/**
+ * Shared secret from key exchange in secure memory.
+ *
+ * The shared secret is stored in secure memory and automatically zeroed
+ * when dropped. It should be used as input to a KDF, not directly as a key.
+ */
+public struct SharedSecret {
+    /// The key exchange algorithm used
+    public final KeyExchangeAlgorithm algorithm;
+    /// The shared secret in secure memory
+    final SecureBytes data;
+}
+
+/**
+ * Module for SharedSecret operations.
+ */
+module SharedSecret {
+    /**
+     * Returns the raw shared secret bytes.
+     *
+     * WARNING: The returned bytes are NOT in secure memory.
+     * They should be used immediately and then zeroed.
+     *
+     * @param self The shared secret
+     * @return A copy of the secret bytes
+     */
+    public static bytes toBytes(SharedSecret self) {
+        return SecureBytes.toBytes(self.data);
+    }
+
+    /**
+     * Returns the size of the shared secret in bytes.
+     *
+     * @param self The shared secret
+     * @return The secret size
+     */
+    public static int size(SharedSecret self) {
+        return SecureBytes.length(self.data);
+    }
+
+    /**
+     * Returns the algorithm used.
+     *
+     * @param self The shared secret
+     * @return The key exchange algorithm
+     */
+    public static KeyExchangeAlgorithm algorithm(SharedSecret self) {
+        return self.algorithm;
+    }
+
+    /**
+     * Securely zeros and frees the shared secret.
+     *
+     * @param self The secret to destroy
+     */
+    public static void destroy(SharedSecret self) {
+        SecureBytes.zeroAndFree(self.data);
+    }
+}
+
+/**
+ * Module for Diffie-Hellman key exchange operations.
+ *
+ * NOTE: This file is an INTRINSIC-BACKED STUB for IDE/tooling support.
+ * The function bodies are placeholders - actual implementation is provided
+ * by the compiler via intrinsic lowering to C FFI runtime functions.
+ */
+module KeyExchange {
+    // =========================================================================
+    // Key Agreement
+    // =========================================================================
+
+    /**
+     * Performs Diffie-Hellman key agreement.
+     *
+     * Computes a shared secret from your private key and the other party's
+     * public key. Both parties will compute the same shared secret when
+     * using their respective keys.
+     *
+     * IMPORTANT: The raw shared secret should NOT be used directly as an
+     * encryption key. Always derive keys using a KDF like HKDF.
+     *
+     * @param privateKey Your private key
+     * @param publicKey The other party's public key
+     * @return The shared secret (both parties compute the same value)
+     * @throws InvalidKeyError if a key is malformed or incompatible
+     */
+    @intrinsic("crypto.kex_agree")
+    public static SharedSecret agree(
+        ExchangePrivateKey privateKey,
+        ExchangePublicKey publicKey
+    ) throws InvalidKeyError {
+        // Verify algorithms match
+        if (privateKey.algorithm != publicKey.algorithm) {
+            throw InvalidKeyError.new(
+                "Key exchange algorithm mismatch: " +
+                KeyExchangeAlgorithm.name(privateKey.algorithm) + " vs " +
+                KeyExchangeAlgorithm.name(publicKey.algorithm)
+            );
+        }
+        // Intrinsic: performs key agreement via C FFI
+        return SharedSecret {
+            algorithm: privateKey.algorithm,
+            data: SecureBytes { handle: 0, length: KeyExchangeAlgorithm.sharedSecretSize(privateKey.algorithm) }
+        };
+    }
+
+    // =========================================================================
+    // Convenience Methods
+    // =========================================================================
+
+    /**
+     * Generates an ephemeral key pair, performs key agreement, and returns
+     * both the ephemeral public key and the shared secret.
+     *
+     * This is useful for protocols where you want to generate a new key pair
+     * for each session (forward secrecy) and send your public key to the peer.
+     *
+     * @param algorithm The key exchange algorithm
+     * @param peerPublicKey The peer's public key
+     * @return A tuple of (ephemeral public key, shared secret)
+     * @throws KeyGenerationError if key generation fails
+     * @throws RandomError if the CSPRNG fails
+     * @throws InvalidKeyError if the peer's public key is invalid
+     */
+    public static (ExchangePublicKey, SharedSecret) agreeEphemeral(
+        KeyExchangeAlgorithm algorithm,
+        ExchangePublicKey peerPublicKey
+    ) throws (KeyGenerationError, RandomError, InvalidKeyError) {
+        ExchangeKeyPair ephemeralKp = ExchangeKeyPair.generate(algorithm);
+        SharedSecret secret = KeyExchange.agree(
+            ExchangeKeyPair.privateKey(ephemeralKp),
+            peerPublicKey
+        );
+        return (ExchangeKeyPair.publicKey(ephemeralKp), secret);
+    }
+}

@@ -1,0 +1,164 @@
+package test;
+
+// P13: Finally blocks - comprehensive testing
+// Tests: normal completion, exception caught, nested finally, state modification,
+//        sequential blocks, loops, return in try, return in catch, try-finally without catch
+
+public struct TestError {
+    public String message;
+}
+
+module Thrower {
+    public static Int mayThrow(Bool shouldThrow) throws (TestError) {
+        if (shouldThrow) {
+            throw TestError { message: "error" };
+        }
+        return 42;
+    }
+}
+
+// Helper module for testing return + finally interactions
+module Helpers {
+    // Return inside try block - finally should run before return
+    public static Int returnInTry() {
+        try {
+            println("before-return-try");
+            return 100;
+        } finally {
+            println("finally-after-return-try");
+        }
+    }
+
+    // Return inside catch block - finally should run before return
+    public static Int returnInCatch() {
+        try {
+            Int r = Thrower.mayThrow(true);
+            return 1;
+        } catch (TestError e) {
+            println("before-return-catch");
+            return 200;
+        } finally {
+            println("finally-after-return-catch");
+        }
+    }
+
+    // Try-finally without catch - both should execute
+    public static void tryFinallyNoCatch() {
+        try {
+            println("try-no-catch");
+        } finally {
+            println("finally-no-catch");
+        }
+    }
+}
+
+module Main {
+    public static void main() {
+        // Test 1: Finally executes after normal try completion
+        println("Test 1: Normal completion");
+        try {
+            Int x = 1 + 1;
+        } finally {
+            println("finally-1");
+        }
+        println("after-1");
+
+        // Test 2: Finally executes after exception is caught
+        println("Test 2: Exception caught");
+        try {
+            Int r = Thrower.mayThrow(true);
+            println("BAD-should-not-reach");
+        } catch (TestError e) {
+            println("caught-2");
+        } finally {
+            println("finally-2");
+        }
+        println("after-2");
+
+        // Test 3: Nested try-finally blocks
+        println("Test 3: Nested finally");
+        try {
+            try {
+                Int x = 10;
+            } finally {
+                println("inner-finally");
+            }
+        } finally {
+            println("outer-finally");
+        }
+        println("after-3");
+
+        // Test 4: Nested with exception in inner
+        println("Test 4: Finally with nested exception");
+        try {
+            try {
+                Int r = Thrower.mayThrow(true);
+            } catch (TestError e) {
+                println("inner-catch");
+            } finally {
+                println("inner-finally");
+            }
+        } finally {
+            println("outer-finally");
+        }
+        println("after-4");
+
+        // Test 5: Finally modifies state (proves execution order)
+        println("Test 5: Finally modifies state");
+        Int counter = 0;
+        try {
+            Int x = 1;
+        } finally {
+            counter = counter + 1;
+        }
+        println("finally ran: " + counter);
+
+        // Test 6: Multiple sequential try-finally blocks
+        println("Test 6: Multiple sequential try-finally");
+        try {
+            Int a = 1;
+        } finally {
+            println("finally-a");
+        }
+        try {
+            Int b = 2;
+        } finally {
+            println("finally-b");
+        }
+        try {
+            Int c = 3;
+        } finally {
+            println("finally-c");
+        }
+        println("done-6");
+
+        // Test 7: Finally in loop
+        println("Test 7: Finally in loop");
+        Int i = 0;
+        while (i < 3) {
+            try {
+                Int temp = i;
+            } finally {
+                println("loop-finally: " + i);
+            }
+            i = i + 1;
+        }
+        println("done-7");
+
+        // Test 8: Finally with return in try
+        println("Test 8: Return in try");
+        Int val8 = Helpers.returnInTry();
+        println("returned: " + val8);
+
+        // Test 9: Finally with return in catch
+        println("Test 9: Return in catch");
+        Int val9 = Helpers.returnInCatch();
+        println("returned: " + val9);
+
+        // Test 10: Try-finally without catch
+        println("Test 10: Try-finally no catch");
+        Helpers.tryFinallyNoCatch();
+
+        println("All finally tests passed!");
+    }
+}

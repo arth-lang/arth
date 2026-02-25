@@ -1,0 +1,35 @@
+package test;
+
+import arth.*;
+
+// Test: Optional<T> with VM intrinsics - Phase 2
+// Optional provides explicit absence handling (no nulls in Arth)
+// Expected output:
+//   has value: 1
+//   value: 42
+//   no value: 0
+//   orElse: 99
+//   unwrapped some: 100
+//   getOrElse some: 100
+
+module Main {
+    public static void main() {
+        // Test Optional.some()
+        Int opt1 = Optional.some(42);
+        println("has value: " + Optional.isSome(opt1));
+        println("value: " + Optional.unwrap(opt1));
+
+        // Test Optional.none()
+        Int opt2 = Optional.none();
+        println("no value: " + Optional.isSome(opt2));
+
+        // Test Optional.orElse() with none
+        Int val = Optional.orElse(opt2, 99);
+        println("orElse: " + val);
+
+        // Test Optional.unwrap() and orElse() with some
+        Int opt3 = Optional.some(100);
+        println("unwrapped some: " + Optional.unwrap(opt3));
+        println("getOrElse some: " + Optional.getOrElse(opt3, 0));
+    }
+}

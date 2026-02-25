@@ -1,0 +1,15 @@
+package test;
+
+struct Config {
+    public final String appName;
+    public String environment;
+}
+
+module Test {
+    public void main() {
+        Config cfg = { appName: "MyApp", environment: "dev" };
+
+        // Should FAIL: reassigning final field
+        cfg.appName = "NewApp";
+    }
+}

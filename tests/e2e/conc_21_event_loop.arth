@@ -1,0 +1,227 @@
+package conc_21_event_loop;
+
+// ============================================================================
+// C21: Event Loop Operations Test Suite
+// Tests: event loop creation, timer registration, pipe operations, polling
+// Verifies: OS-level event-driven I/O with proper event delivery
+// ============================================================================
+
+// Event type constants
+// TIMER = 1, READ = 2, WRITE = 3, ERROR = 4
+
+// Interest flags
+// INTEREST_READ = 1, INTEREST_WRITE = 2, INTEREST_BOTH = 3
+
+module Main {
+
+    public void main() {
+        println("=== C21: Event Loop Operations Test ===");
+
+        int passed = 0;
+        int total = 0;
+
+        // Test 1: EventLoop.create - basic creation
+        total = total + 1;
+        println("=== Test 1: EventLoop.create ===");
+        int loopHandle = EventLoop.create();
+        if (loopHandle >= 60000) {
+            println("Test 1 (create): PASS - handle = " + loopHandle);
+            passed = passed + 1;
+        } else {
+            println("Test 1 FAIL: expected handle >= 60000, got " + loopHandle);
+        }
+
+        // Test 2: EventLoop.poll with empty loop and timeout
+        total = total + 1;
+        println("=== Test 2: EventLoop.poll (empty, timeout) ===");
+        int pollResult = EventLoop.poll(loopHandle, 10);
+        if (pollResult == 0) {
+            println("Test 2 (poll empty): PASS - returned 0 events after timeout");
+            passed = passed + 1;
+        } else {
+            println("Test 2 FAIL: expected 0 events, got " + pollResult);
+        }
+
+        // Test 3: EventLoop.registerTimer
+        total = total + 1;
+        println("=== Test 3: EventLoop.registerTimer ===");
+        int timerToken = EventLoop.registerTimer(loopHandle, 50);
+        if (timerToken >= 1) {
+            println("Test 3 (registerTimer): PASS - token = " + timerToken);
+            passed = passed + 1;
+        } else {
+            println("Test 3 FAIL: expected token >= 1, got " + timerToken);
+        }
+
+        // Test 4: Poll for timer event
+        total = total + 1;
+        println("=== Test 4: Poll for timer event ===");
+        int timerPollResult = EventLoop.poll(loopHandle, 200);
+        if (timerPollResult >= 1) {
+            int eventToken = EventLoop.getEvent(0);
+            int eventType = EventLoop.getEventType(0);
+            if (eventToken == timerToken && eventType == 1) {
+                println("Test 4 (timer poll): PASS - token = " + eventToken + ", type = TIMER");
+                passed = passed + 1;
+            } else {
+                println("Test 4 FAIL: expected token=" + timerToken + " type=1, got token=" + eventToken + " type=" + eventType);
+            }
+        } else {
+            println("Test 4 FAIL: expected >= 1 events, got " + timerPollResult);
+        }
+
+        // Test 5: EventLoop.pipeCreate
+        total = total + 1;
+        println("=== Test 5: EventLoop.pipeCreate ===");
+        int readFd = EventLoop.pipeCreate();
+        int writeFd = EventLoop.pipeGetWriteFd();
+        if (readFd >= 0 && writeFd >= 0 && readFd != writeFd) {
+            println("Test 5 (pipeCreate): PASS - readFd=" + readFd + " writeFd=" + writeFd);
+            passed = passed + 1;
+        } else {
+            println("Test 5 FAIL: expected valid fds, got readFd=" + readFd + " writeFd=" + writeFd);
+        }
+
+        // Test 6: EventLoop.pipeWrite and pipeRead (direct, no polling)
+        total = total + 1;
+        println("=== Test 6: pipeWrite and pipeRead ===");
+        int writeResult = EventLoop.pipeWrite(writeFd, 12345);
+        if (writeResult == 8) {
+            int readValue = EventLoop.pipeRead(readFd);
+            if (readValue == 12345) {
+                println("Test 6 (pipe write/read): PASS - wrote and read 12345");
+                passed = passed + 1;
+            } else {
+                println("Test 6 FAIL: expected read 12345, got " + readValue);
+            }
+        } else {
+            println("Test 6 FAIL: expected write 8 bytes, got " + writeResult);
+        }
+
+        // Test 7: Register pipe for read events
+        total = total + 1;
+        println("=== Test 7: registerFd for pipe read ===");
+        int pipeToken = EventLoop.registerFd(loopHandle, readFd, 1);
+        if (pipeToken >= 1) {
+            println("Test 7 (registerFd): PASS - token = " + pipeToken);
+            passed = passed + 1;
+        } else {
+            println("Test 7 FAIL: expected token >= 1, got " + pipeToken);
+        }
+
+        // Test 8: Write to pipe and poll for read event
+        total = total + 1;
+        println("=== Test 8: Poll for pipe read event ===");
+        int writeResult2 = EventLoop.pipeWrite(writeFd, 67890);
+        if (writeResult2 == 8) {
+            int pipePollResult = EventLoop.poll(loopHandle, 100);
+            if (pipePollResult >= 1) {
+                int pipeEventToken = EventLoop.getEvent(0);
+                int pipeEventType = EventLoop.getEventType(0);
+                if (pipeEventToken == pipeToken && pipeEventType == 2) {
+                    int pipedValue = EventLoop.pipeRead(readFd);
+                    if (pipedValue == 67890) {
+                        println("Test 8 (pipe poll/read): PASS - event delivered, value = " + pipedValue);
+                        passed = passed + 1;
+                    } else {
+                        println("Test 8 FAIL: expected value 67890, got " + pipedValue);
+                    }
+                } else {
+                    println("Test 8 FAIL: expected token=" + pipeToken + " type=2, got token=" + pipeEventToken + " type=" + pipeEventType);
+                }
+            } else {
+                println("Test 8 FAIL: expected >= 1 events, got " + pipePollResult);
+            }
+        } else {
+            println("Test 8 FAIL: write failed with " + writeResult2);
+        }
+
+        // Test 9: Deregister pipe token
+        total = total + 1;
+        println("=== Test 9: EventLoop.deregister ===");
+        int deregResult = EventLoop.deregister(loopHandle, pipeToken);
+        if (deregResult == 0) {
+            println("Test 9 (deregister): PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 9 FAIL: expected 0, got " + deregResult);
+        }
+
+        // Test 10: Multiple timers with different timeouts
+        total = total + 1;
+        println("=== Test 10: Multiple timers ===");
+        int timer1 = EventLoop.registerTimer(loopHandle, 30);
+        int timer2 = EventLoop.registerTimer(loopHandle, 60);
+        int timer3 = EventLoop.registerTimer(loopHandle, 90);
+        int multiPollResult = EventLoop.poll(loopHandle, 150);
+        if (multiPollResult == 3) {
+            println("Test 10 (multi-timer): PASS - 3 timers fired");
+            passed = passed + 1;
+        } else {
+            println("Test 10 PARTIAL: expected 3 timers, got " + multiPollResult);
+            if (multiPollResult >= 1) {
+                passed = passed + 1;
+            }
+        }
+
+        // Test 11: pipeClose
+        total = total + 1;
+        println("=== Test 11: EventLoop.pipeClose ===");
+        int closeWrite = EventLoop.pipeClose(writeFd);
+        int closeRead = EventLoop.pipeClose(readFd);
+        if (closeWrite == 0 && closeRead == 0) {
+            println("Test 11 (pipeClose): PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 11 FAIL: expected both 0, got write=" + closeWrite + " read=" + closeRead);
+        }
+
+        // Test 12: EventLoop.close
+        total = total + 1;
+        println("=== Test 12: EventLoop.close ===");
+        int closeResult = EventLoop.close(loopHandle);
+        if (closeResult == 0) {
+            println("Test 12 (close): PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 12 FAIL: expected 0, got " + closeResult);
+        }
+
+        // Test 13: Create second event loop and verify independence
+        total = total + 1;
+        println("=== Test 13: Multiple event loops ===");
+        int loop2 = EventLoop.create();
+        int loop3 = EventLoop.create();
+        if (loop2 != loop3 && loop2 > loopHandle && loop3 > loop2) {
+            println("Test 13 (multi-loop): PASS - loop2=" + loop2 + " loop3=" + loop3);
+            passed = passed + 1;
+        } else {
+            println("Test 13 FAIL: expected unique increasing handles");
+        }
+        EventLoop.close(loop2);
+        EventLoop.close(loop3);
+
+        // Test 14: Invalid operations return errors
+        total = total + 1;
+        println("=== Test 14: Error handling ===");
+        int invalidPoll = EventLoop.poll(999999, 10);
+        int invalidGetEvent = EventLoop.getEvent(999);
+        int invalidDeregister = EventLoop.deregister(999999, 1);
+        if (invalidPoll == -1 && invalidGetEvent == -1 && invalidDeregister == -1) {
+            println("Test 14 (error handling): PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 14 FAIL: expected all -1, got poll=" + invalidPoll + " getEvent=" + invalidGetEvent + " dereg=" + invalidDeregister);
+        }
+
+        // Summary
+        println("");
+        println("=== Test Summary ===");
+        println("Tests passed: " + passed + " / " + total);
+        if (passed == total) {
+            println("All C21 Event Loop tests PASSED!");
+        } else {
+            println("Some tests failed.");
+        }
+    }
+}

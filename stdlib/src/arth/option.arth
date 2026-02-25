@@ -1,0 +1,47 @@
+package arth;
+
+/**
+ * Option helpers backed by Optional<T> intrinsics.
+ *
+ * NOTE: This file is an INTRINSIC-BACKED STUB for IDE/tooling support.
+ * These functions are thin wrappers around the core Optional<T> API - the actual
+ * implementation is provided by the VM runtime via intrinsic lowering.
+ *
+ * This file exists to provide:
+ * - Go-to-definition support in IDEs
+ * - Hover documentation and signature help
+ * - Autocomplete suggestions
+ * - User-readable API documentation
+ *
+ * These helpers currently operate on Optional<Int> to match the VM demo's
+ * int-focused collections. Future versions will support generic typed options.
+ *
+ * @see src/compiler/lower/hir_to_ir.rs for intrinsic lowering
+ * @see crates/arth-vm/src/runtime.rs for VM implementation
+ */
+module option {
+    /// Creates an Optional containing the specified value.
+    public static Optional<Int> some(Int value) {
+        return Optional.of(value);
+    }
+
+    /// Creates an empty Optional.
+    public static Optional<Int> none() {
+        return Optional.empty();
+    }
+
+    /// Returns true if the Optional contains a value.
+    public static Bool isSome(Optional<Int> opt) {
+        return opt.isPresent();
+    }
+
+    /// Returns true if the Optional is empty.
+    public static Bool isNone(Optional<Int> opt) {
+        return opt.isEmpty();
+    }
+
+    /// Returns the contained value if present, otherwise returns defaultValue.
+    public static Int orElse(Optional<Int> opt, Int defaultValue) {
+        return opt.orElse(defaultValue);
+    }
+}

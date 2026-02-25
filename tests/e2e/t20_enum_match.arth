@@ -1,0 +1,36 @@
+package test;
+
+// Test: Enum variant matching
+// Expected output:
+//   color is green
+//   status ok
+
+public enum Color {
+    Red,
+    Green,
+    Blue
+}
+
+module Main {
+    public static void main() {
+        Int color = 1;  // Green
+        switch (color) {
+            case 0:
+                println("color is red");
+            case 1:
+                println("color is green");
+            case 2:
+                println("color is blue");
+            default:
+                println("unknown color");
+        }
+
+        Int status = 0;  // Ok
+        switch (status) {
+            case 0:
+                println("status ok");
+            default:
+                println("status error");
+        }
+    }
+}

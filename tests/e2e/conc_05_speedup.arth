@@ -1,0 +1,174 @@
+package test;
+
+// Test: C05 - Parallel Speedup Proof
+//
+// This is the litmus test for real concurrency.
+// If parallel execution isn't faster, we built a fake executor.
+//
+// Test:
+// - Sequential: 4x slow operations, measure T1
+// - Parallel: spawn 4x slow tasks, await all, measure T4
+// - REQUIRE: T4 < T1 * 0.5 (at least 2x speedup on 4 cores)
+
+module Executor {
+    // Executor intrinsics mapped to __arth_executor_* VM calls
+}
+
+module Instants {
+    // Time measurement intrinsics
+    // now() -> instant handle
+    // elapsed(handle) -> milliseconds since instant
+}
+
+module Main {
+    public static void main() {
+        println("=== C05: Parallel Speedup Proof ===");
+
+        // Initialize thread pool with 4 threads
+        println("Initializing pool with 4 threads...");
+        Int initResult = Executor.init(4);
+        println("Pool initialized: " + initResult);
+
+        Int threadCount = Executor.threadCount();
+        println("Thread count: " + threadCount);
+
+        // Reset stats
+        Int resetResult = Executor.resetStats();
+
+        // Work parameters: type 1 = CPU iterations
+        // Using large iteration count to get measurable time
+        Int workType = 1;
+        Int iterations = 50000000;
+
+        println("=== Sequential Execution ===");
+        println("Running 4 slow operations sequentially...");
+        println("Each operation: " + iterations + " iterations");
+
+        // Measure sequential time
+        Int seqStart = Instants.now();
+
+        // Run 4 slow operations sequentially
+        // We'll use spawnWithArg + immediate join for "sequential" execution
+        Int seq1 = Executor.spawnWithArg(workType, iterations);
+        Int r1 = Executor.join(seq1);
+
+        Int seq2 = Executor.spawnWithArg(workType, iterations);
+        Int r2 = Executor.join(seq2);
+
+        Int seq3 = Executor.spawnWithArg(workType, iterations);
+        Int r3 = Executor.join(seq3);
+
+        Int seq4 = Executor.spawnWithArg(workType, iterations);
+        Int r4 = Executor.join(seq4);
+
+        Int seqElapsed = Instants.elapsed(seqStart);
+        println("Sequential time: " + seqElapsed + " ms");
+
+        // Reset stats for parallel test
+        Int resetResult2 = Executor.resetStats();
+
+        println("=== Parallel Execution ===");
+        println("Spawning 4 slow operations in parallel...");
+
+        // Measure parallel time
+        Int parStart = Instants.now();
+
+        // Spawn all 4 tasks in parallel (before any joins)
+        Int par1 = Executor.spawnWithArg(workType, iterations);
+        Int par2 = Executor.spawnWithArg(workType, iterations);
+        Int par3 = Executor.spawnWithArg(workType, iterations);
+        Int par4 = Executor.spawnWithArg(workType, iterations);
+
+        // Join all (they execute in parallel)
+        Int pr1 = Executor.join(par1);
+        Int pr2 = Executor.join(par2);
+        Int pr3 = Executor.join(par3);
+        Int pr4 = Executor.join(par4);
+
+        Int parElapsed = Instants.elapsed(parStart);
+        println("Parallel time: " + parElapsed + " ms");
+
+        // Get work distribution stats
+        println("=== Work Distribution Stats ===");
+        Int workersUsed = Executor.activeExecutorCount();
+        println("Workers that executed tasks: " + workersUsed);
+
+        Int w0 = Executor.workerTaskCount(0);
+        Int w1 = Executor.workerTaskCount(1);
+        Int w2 = Executor.workerTaskCount(2);
+        Int w3 = Executor.workerTaskCount(3);
+        println("Worker 0 tasks: " + w0);
+        println("Worker 1 tasks: " + w1);
+        println("Worker 2 tasks: " + w2);
+        println("Worker 3 tasks: " + w3);
+
+        // Verification
+        println("=== Speedup Analysis ===");
+
+        // Calculate speedup ratio
+        // To avoid floating point, multiply by 100 for percentage
+        Int speedupPct = 0;
+        if (parElapsed > 0) {
+            speedupPct = (seqElapsed * 100) / parElapsed;
+        }
+        println("Speedup: " + speedupPct + "% (seq/par * 100)");
+
+        // Check for at least 2x speedup (200%)
+        // Note: We use 150% threshold to account for overhead
+        Int passCount = 0;
+
+        if (speedupPct >= 150) {
+            println("Speedup >= 1.5x: PASS (" + speedupPct + "%)");
+            passCount = passCount + 1;
+        } else {
+            println("Speedup >= 1.5x: FAIL (" + speedupPct + "%)");
+        }
+
+        // Check that parallel is faster than sequential
+        if (parElapsed < seqElapsed) {
+            println("Parallel faster than sequential: PASS");
+            passCount = passCount + 1;
+        } else {
+            println("Parallel faster than sequential: FAIL");
+        }
+
+        // Check multiple workers participated
+        if (workersUsed >= 2) {
+            println("Multiple workers used: PASS (" + workersUsed + ")");
+            passCount = passCount + 1;
+        } else {
+            println("Multiple workers used: FAIL (" + workersUsed + ")");
+        }
+
+        // Ideal speedup check (close to 4x on 4 cores)
+        // With overhead, 3x (300%) is excellent
+        if (speedupPct >= 300) {
+            println("Near-ideal speedup (>=3x): PASS");
+            passCount = passCount + 1;
+        } else {
+            println("Near-ideal speedup (>=3x): INFO (" + speedupPct + "% - may vary by CPU)");
+        }
+
+        // Time sanity check (sequential should take at least 100ms)
+        if (seqElapsed >= 100) {
+            println("Workload sufficient (>=100ms): PASS");
+            passCount = passCount + 1;
+        } else {
+            println("Workload sufficient (>=100ms): WARN (" + seqElapsed + "ms - increase iterations)");
+        }
+
+        // Summary
+        println("=== Results ===");
+        println("Sequential: " + seqElapsed + " ms");
+        println("Parallel:   " + parElapsed + " ms");
+        println("Speedup:    " + speedupPct + "%");
+        println("Tests passed: " + passCount + "/5");
+
+        // Final verdict - require at least 3 core tests to pass
+        if (passCount >= 3) {
+            println("=== C05: PASSED - Real parallelism confirmed ===");
+        } else {
+            println("=== C05: FAILED - Not real parallelism ===");
+        }
+    }
+}

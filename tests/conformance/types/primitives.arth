@@ -1,0 +1,49 @@
+package conformance;
+
+// @spec: spec.md §3 - Primitive types
+// @expect: pass
+// @description: Validates all primitive type declarations per spec §3
+
+module Main {
+    public static void main() {
+        // Integer types with aliases
+        Int i = 42;              // alias of int32
+        int32 i32 = 42;
+        int64 i64 = 42;
+        int16 i16 = 42;
+        int8 i8 = 42;
+
+        // Shorthand aliases
+        i32 short32 = 42;
+        i64 short64 = 42;
+
+        // Unsigned integers
+        uint8 u8 = 255;
+        uint16 u16 = 65535;
+        uint32 u32 = 100;
+        uint64 u64 = 100;
+
+        // Float types
+        Float f = 3.14;          // alias of float32
+        float32 f32 = 3.14;
+        float64 f64 = 3.14159265359;
+        f32 shortf32 = 1.5;
+        f64 shortf64 = 2.5;
+
+        // Boolean
+        Bool b1 = true;
+        Bool b2 = false;
+        boolean bool_alias = true;
+
+        // Character
+        Char c = 'A';
+
+        // String
+        String s = "hello";
+
+        // Void is only valid as return type
+        // Tested via function declarations
+
+        println("primitives: pass");
+    }
+}

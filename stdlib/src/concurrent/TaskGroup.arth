@@ -1,0 +1,347 @@
+/**
+ * INTRINSIC-BACKED STUB for IDE/tooling support.
+ *
+ * This module provides TaskGroup for structured concurrency.
+ * TaskGroup ensures all spawned tasks complete (or are cancelled) before the scope exits.
+ *
+ * @see crates/arth-vm/src/runtime.rs - task group runtime functions
+ */
+package concurrent;
+
+/**
+ * TaskGroup provides structured concurrency for managing a set of related tasks.
+ *
+ * All tasks spawned within a TaskGroup are automatically cancelled if the group
+ * is cancelled or if any task fails (depending on configuration). The group
+ * ensures all tasks complete before the scope exits.
+ *
+ * Example:
+ * ```arth
+ * public async void fetchAll(List<String> urls) throws (CancelledError, HttpError) {
+ *     TaskGroup group = TaskGroup.create();
+ *     try {
+ *         for (String url : urls) {
+ *             group.spawn(fn() async { await Http.fetch(Request.get(url)); });
+ *         }
+ *         await group.awaitAll();
+ *     } finally {
+ *         group.cancelAll();
+ *     }
+ * }
+ * ```
+ */
+struct TaskGroup {
+    /** Internal handle to the task group. */
+    private final int handle;
+    /** Cancellation token for this group. */
+    private final int token;
+}
+
+/**
+ * Configuration for TaskGroup behavior.
+ */
+struct TaskGroupConfig {
+    /** If true, cancel all tasks when any task fails. Default: true. */
+    final bool cancelOnFailure;
+    /** If true, cancel all tasks when any task panics. Default: true. */
+    final bool cancelOnPanic;
+    /** Maximum number of concurrent tasks (0 = unlimited). Default: 0. */
+    final int maxConcurrency;
+}
+
+export module TaskGroupConfigFns {
+    /**
+     * Creates a default TaskGroupConfig.
+     */
+    public TaskGroupConfig defaults() {
+        return TaskGroupConfig {
+            cancelOnFailure: true,
+            cancelOnPanic: true,
+            maxConcurrency: 0
+        };
+    }
+
+    /**
+     * Creates a TaskGroupConfig that does not cancel on failure.
+     */
+    public TaskGroupConfig lenient() {
+        return TaskGroupConfig {
+            cancelOnFailure: false,
+            cancelOnPanic: false,
+            maxConcurrency: 0
+        };
+    }
+}
+
+export module TaskGroupFns {
+    /**
+     * Creates a new TaskGroup with default configuration.
+     *
+     * @return A new TaskGroup
+     */
+    @intrinsic("taskgroup.create")
+    public TaskGroup create() {
+        // Intrinsic: creates task group with cancellation token
+        return TaskGroup { handle: 0, token: 0 };
+    }
+
+    /**
+     * Creates a new TaskGroup with the given configuration.
+     *
+     * @param config Configuration for the task group
+     * @return A new TaskGroup
+     */
+    @intrinsic("taskgroup.create_with_config")
+    public TaskGroup createWithConfig(TaskGroupConfig config) {
+        // Intrinsic: creates task group with config
+        return TaskGroup { handle: 0, token: 0 };
+    }
+
+    /**
+     * Spawns a new task within this group.
+     *
+     * The spawned task becomes a child of the group and will be cancelled
+     * if the group is cancelled.
+     *
+     * @param self The task group
+     * @param f The function to execute
+     * @return A Task handle for the spawned task
+     */
+    @intrinsic("taskgroup.spawn")
+    public Task<void> spawn(TaskGroup self, fn() f) {
+        // Intrinsic: spawns task as child of group
+        return Task { handle: 0 };
+    }
+
+    /**
+     * Spawns an async function within this group.
+     *
+     * @param self The task group
+     * @param f The async function to execute
+     * @return A Task handle for the spawned task
+     */
+    @intrinsic("taskgroup.spawn_async")
+    public Task<T> spawnAsync<T>(TaskGroup self, fn() async T f) {
+        // Intrinsic: spawns async task as child of group
+        return Task { handle: 0 };
+    }
+
+    /**
+     * Waits for all tasks in the group to complete.
+     *
+     * Throws CancelledError if the group is cancelled.
+     * Throws the first exception from any failed task if cancelOnFailure is true.
+     *
+     * @param self The task group
+     * @throws CancelledError if the group was cancelled
+     */
+    @intrinsic("taskgroup.await_all")
+    public async void awaitAll(TaskGroup self) throws CancelledError {
+        // Intrinsic: waits for all tasks, propagates cancellation
+    }
+
+    /**
+     * Waits for any one task in the group to complete.
+     *
+     * Returns the index of the first completed task.
+     * Throws CancelledError if the group is cancelled before any task completes.
+     *
+     * @param self The task group
+     * @return Index of the first completed task
+     * @throws CancelledError if cancelled
+     */
+    @intrinsic("taskgroup.await_any")
+    public async int awaitAny(TaskGroup self) throws CancelledError {
+        // Intrinsic: waits for first task to complete
+        return 0;
+    }
+
+    /**
+     * Cancels all tasks in the group.
+     *
+     * This propagates cancellation to all child tasks.
+     *
+     * @param self The task group
+     */
+    @intrinsic("taskgroup.cancel_all")
+    public void cancelAll(TaskGroup self) {
+        // Intrinsic: cancels all tasks in group
+    }
+
+    /**
+     * Returns the number of tasks currently in the group.
+     *
+     * @param self The task group
+     * @return Number of tasks (pending + running)
+     */
+    @intrinsic("taskgroup.task_count")
+    public int taskCount(TaskGroup self) {
+        // Intrinsic: returns task count
+        return 0;
+    }
+
+    /**
+     * Returns the number of completed tasks in the group.
+     *
+     * @param self The task group
+     * @return Number of completed tasks
+     */
+    @intrinsic("taskgroup.completed_count")
+    public int completedCount(TaskGroup self) {
+        // Intrinsic: returns completed count
+        return 0;
+    }
+
+    /**
+     * Gets the cancellation token for this group.
+     *
+     * Tasks can use this token to check for group-wide cancellation.
+     *
+     * @param self The task group
+     * @return The cancellation token
+     */
+    @intrinsic("taskgroup.get_token")
+    public CancellationToken getToken(TaskGroup self) {
+        // Intrinsic: returns group's cancellation token
+        return CancellationToken { handle: self.token };
+    }
+
+    /**
+     * Runs tasks in the group with a deadline.
+     *
+     * All tasks will be cancelled if they don't complete before the deadline.
+     *
+     * @param self The task group
+     * @param deadline The deadline duration
+     * @throws CancelledError if deadline exceeded
+     * @throws TimeoutError if deadline exceeded (alternative)
+     */
+    @intrinsic("taskgroup.with_deadline")
+    public async void withDeadline(TaskGroup self, Duration deadline) throws (CancelledError, TimeoutError) {
+        // Intrinsic: sets deadline on group and waits
+    }
+}
+
+/**
+ * CancellationToken allows cooperative cancellation across tasks.
+ *
+ * Tokens can be shared between tasks and channels to coordinate
+ * cancellation across related operations.
+ *
+ * Example:
+ * ```arth
+ * CancellationToken token = CancellationToken.create();
+ * Task<void> worker = Task.spawn(fn() async {
+ *     while (!token.isCancelled()) {
+ *         await doWork();
+ *         Task.checkCancel();
+ *     }
+ * });
+ *
+ * // Later...
+ * token.cancel();
+ * await worker;  // Will complete soon
+ * ```
+ */
+struct CancellationToken {
+    /** Internal handle to the token. */
+    private final int handle;
+}
+
+export module CancellationTokenFns {
+    /**
+     * Creates a new cancellation token.
+     *
+     * @return A new CancellationToken
+     */
+    @intrinsic("cancel_token.new")
+    public CancellationToken create() {
+        // Intrinsic: creates new token
+        return CancellationToken { handle: 0 };
+    }
+
+    /**
+     * Signals cancellation on this token.
+     *
+     * All tasks and channels associated with this token will observe
+     * the cancellation at their next cancellation check point.
+     *
+     * @param self The token to cancel
+     */
+    @intrinsic("cancel_token.cancel")
+    public void cancel(CancellationToken self) {
+        // Intrinsic: signals cancellation
+    }
+
+    /**
+     * Checks if this token has been cancelled.
+     *
+     * @param self The token to check
+     * @return true if cancelled, false otherwise
+     */
+    @intrinsic("cancel_token.is_cancelled")
+    public bool isCancelled(CancellationToken self) {
+        // Intrinsic: checks cancellation state
+        return false;
+    }
+
+    /**
+     * Creates a child token linked to this token.
+     *
+     * The child token will be cancelled when the parent is cancelled,
+     * but cancelling the child does not cancel the parent.
+     *
+     * @param self The parent token
+     * @return A new child token
+     */
+    @intrinsic("cancel_token.child")
+    public CancellationToken child(CancellationToken self) {
+        // Intrinsic: creates linked child token
+        return CancellationToken { handle: 0 };
+    }
+
+    /**
+     * Associates this token with the current task.
+     *
+     * The task will be cancelled when the token is cancelled.
+     *
+     * @param self The token
+     */
+    @intrinsic("cancel_token.bind_task")
+    public void bindToCurrentTask(CancellationToken self) {
+        // Intrinsic: binds token to current task
+    }
+}
+
+/**
+ * TimeoutError is thrown when an operation exceeds its deadline.
+ */
+struct TimeoutError {
+    /** The duration that was exceeded. */
+    final Duration timeout;
+    /** Optional message describing the timeout. */
+    final String message;
+}
+
+export module TimeoutErrorFns {
+    /**
+     * Creates a new TimeoutError.
+     *
+     * @param timeout The duration that was exceeded
+     * @return A new TimeoutError
+     */
+    public TimeoutError new(Duration timeout) {
+        return TimeoutError { timeout: timeout, message: "Operation timed out" };
+    }
+
+    /**
+     * Creates a TimeoutError with a custom message.
+     *
+     * @param timeout The duration that was exceeded
+     * @param message Description of what timed out
+     * @return A new TimeoutError
+     */
+    public TimeoutError withMessage(Duration timeout, String message) {
+        return TimeoutError { timeout: timeout, message: message };
+    }
+}

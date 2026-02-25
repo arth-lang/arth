@@ -1,0 +1,27 @@
+package demo.math;
+
+// Illustrative usage of the math stdlib. These functions are currently
+// placeholders to aid typechecking and codegen demos.
+module MathDemo {
+  public void main() {
+    println(math.Math.sqrt(9.0));
+    println(math.Math.pow(2.0, 3.0));
+    println(math.Math.sin(0.0));
+    println(math.Math.cos(0.0));
+    println(math.Math.tan(0.0));
+
+    println(math.Math.minF(1.0, 2.0));
+    println(math.Math.maxF(1.0, 2.0));
+    println(math.Math.clampF(2.5, 0.0, 2.0));
+    println(math.Math.floor(1.9));
+    println(math.Math.ceil(1.1));
+    println(math.Math.round(1.5));
+    println(math.Math.absF(-3.0));
+
+    println(math.Math.minI(1, 2));
+    println(math.Math.maxI(1, 2));
+    println(math.Math.clampI(3, 0, 2));
+    println(math.Math.absI(-5));
+  }
+}
+

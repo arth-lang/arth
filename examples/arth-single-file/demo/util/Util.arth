@@ -1,0 +1,14 @@
+package demo.util;
+
+module Util {
+  public int twice(int x) { return x + x; }
+  public String greet(String name) { return "Hi " + name; }
+
+  // VM-demo helpers that print results (since function return values are not yet propagated in VM demo)
+  public void printTwice(int x) { println(x + x); }
+  public void printGreet(String name) { println("Hi " + name); }
+
+  // No-arg demo helpers that don't rely on parameter passing
+  public void fortyTwo() { println(42); }
+  public void hello() { println("Hello from Util"); }
+}

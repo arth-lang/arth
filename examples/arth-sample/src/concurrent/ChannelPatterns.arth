@@ -1,0 +1,253 @@
+package concurrent.channels;
+
+/// Channel Patterns Example
+///
+/// Demonstrates channel-based message passing in Arth:
+/// - Bounded channels with capacity
+/// - Backpressure semantics (blocking on full)
+/// - Producer-consumer pattern
+/// - Multi-producer patterns
+/// - Close and drain semantics
+
+import concurrent.*;
+import log.*;
+
+/// Message types for the examples
+enum WorkItem {
+  Job(int id, String data),
+  Shutdown
+}
+
+module ChannelPatterns {
+  /// Basic producer-consumer pattern
+  public async void producerConsumer() throws (CancelledError) {
+    Logger log = Logger.get("concurrent.channels");
+
+    // Create a bounded channel with capacity 10
+    // Backpressure: sends block when channel has 10 items
+    Channel<int> ch = Channel.create(10);
+    Sender<int> tx = ch.sender();
+    Receiver<int> rx = ch.receiver();
+
+    // Spawn producer task
+    Task<void> producer = async {
+      for (int i = 0; i < 100; i++) {
+        await tx.send(i);  // Blocks if channel full
+        log.info("sent", "Produced item", Fields.of("value", i));
+      }
+      tx.close();
+      log.info("closed", "Producer finished", Fields.of());
+    };
+
+    // Spawn consumer task
+    Task<void> consumer = async {
+      while (true) {
+        Optional<int> value = await rx.recv();
+        if (value.isEmpty()) {
+          log.info("drained", "Channel closed and drained", Fields.of());
+          break;
+        }
+        log.info("received", "Consumed item", Fields.of("value", value.get()));
+      }
+    };
+
+    // Wait for both to complete
+    await producer;
+    await consumer;
+  }
+
+  /// Demonstrates backpressure - sender blocks when channel is full
+  public async void backpressureDemo() throws (CancelledError) {
+    Logger log = Logger.get("concurrent.channels");
+
+    // Small capacity to demonstrate backpressure
+    Channel<int> ch = Channel.create(2);
+    Sender<int> tx = ch.sender();
+    Receiver<int> rx = ch.receiver();
+
+    // Fast producer, slow consumer
+    Task<void> producer = async {
+      for (int i = 0; i < 10; i++) {
+        log.info("sending", "About to send", Fields.of("value", i));
+        await tx.send(i);  // Will block when buffer has 2 items
+        log.info("sent", "Sent", Fields.of("value", i));
+      }
+      tx.close();
+    };
+
+    Task<void> consumer = async {
+      while (true) {
+        // Simulate slow consumer
+        await Task.sleep(Duration.ofMillis(100));
+        Optional<int> value = await rx.recv();
+        if (value.isEmpty()) break;
+        log.info("consumed", "Consumed", Fields.of("value", value.get()));
+      }
+    };
+
+    await producer;
+    await consumer;
+  }
+
+  /// Non-blocking try operations
+  public async void tryOperations() throws (CancelledError) {
+    Logger log = Logger.get("concurrent.channels");
+
+    Channel<int> ch = Channel.create(2);
+    Sender<int> tx = ch.sender();
+    Receiver<int> rx = ch.receiver();
+
+    // trySend is non-blocking
+    boolean sent1 = tx.trySend(1);  // true
+    boolean sent2 = tx.trySend(2);  // true
+    boolean sent3 = tx.trySend(3);  // false - channel full
+
+    log.info("trySend", "Results",
+      Fields.of("s1", sent1, "s2", sent2, "s3", sent3));
+
+    // tryRecv is non-blocking
+    Optional<int> v1 = rx.tryRecv();  // Some(1)
+    Optional<int> v2 = rx.tryRecv();  // Some(2)
+    Optional<int> v3 = rx.tryRecv();  // None - channel empty
+
+    log.info("tryRecv", "Results",
+      Fields.of("v1", v1.getOrDefault(-1),
+                "v2", v2.getOrDefault(-1),
+                "v3", v3.getOrDefault(-1)));
+  }
+
+  /// Multiple producers, single consumer
+  public async void multiProducer() throws (CancelledError) {
+    Logger log = Logger.get("concurrent.channels");
+
+    Channel<WorkItem> ch = Channel.create(20);
+    Sender<WorkItem> tx = ch.sender();
+    Receiver<WorkItem> rx = ch.receiver();
+
+    // Spawn multiple producers
+    Task<void> p1 = async {
+      for (int i = 0; i < 5; i++) {
+        await tx.send(WorkItem.Job(i, "from-p1"));
+      }
+    };
+
+    Task<void> p2 = async {
+      for (int i = 100; i < 105; i++) {
+        await tx.send(WorkItem.Job(i, "from-p2"));
+      }
+    };
+
+    Task<void> p3 = async {
+      for (int i = 200; i < 205; i++) {
+        await tx.send(WorkItem.Job(i, "from-p3"));
+      }
+    };
+
+    // Single consumer
+    Task<void> consumer = async {
+      int count = 0;
+      while (true) {
+        Optional<WorkItem> item = await rx.recv();
+        if (item.isEmpty()) break;
+
+        switch (item.get()) {
+          case WorkItem.Job(id, data):
+            log.info("job", "Processing", Fields.of("id", id, "data", data));
+            count++;
+          case WorkItem.Shutdown:
+            log.info("shutdown", "Received shutdown", Fields.of());
+        }
+      }
+      log.info("done", "Processed items", Fields.of("count", count));
+    };
+
+    // Wait for producers, then close channel
+    await p1;
+    await p2;
+    await p3;
+    tx.close();
+
+    await consumer;
+  }
+
+  /// Ping-pong between two tasks
+  public async void pingPong() throws (CancelledError) {
+    Logger log = Logger.get("concurrent.channels");
+
+    Channel<int> ping = Channel.create(1);
+    Channel<int> pong = Channel.create(1);
+
+    Sender<int> pingTx = ping.sender();
+    Receiver<int> pingRx = ping.receiver();
+    Sender<int> pongTx = pong.sender();
+    Receiver<int> pongRx = pong.receiver();
+
+    Task<void> player1 = async {
+      for (int i = 0; i < 5; i++) {
+        await pingTx.send(i);
+        log.info("ping", "Sent ping", Fields.of("n", i));
+        Optional<int> reply = await pongRx.recv();
+        log.info("pong", "Got pong", Fields.of("n", reply.getOrDefault(-1)));
+      }
+      pingTx.close();
+    };
+
+    Task<void> player2 = async {
+      while (true) {
+        Optional<int> msg = await pingRx.recv();
+        if (msg.isEmpty()) break;
+        int n = msg.get();
+        await pongTx.send(n);
+      }
+      pongTx.close();
+    };
+
+    await player1;
+    await player2;
+  }
+
+  /// Request-response pattern using one-shot channels
+  public async void requestResponse() throws (CancelledError) {
+    Logger log = Logger.get("concurrent.channels");
+
+    // Main request channel
+    Channel<Request> requests = Channel.create(10);
+    Sender<Request> reqTx = requests.sender();
+    Receiver<Request> reqRx = requests.receiver();
+
+    // Server task
+    Task<void> server = async {
+      while (true) {
+        Optional<Request> req = await reqRx.recv();
+        if (req.isEmpty()) break;
+
+        Request r = req.get();
+        // Process request and send response
+        int result = r.value * 2;
+        await r.replyChan.send(result);
+        r.replyChan.close();
+      }
+    };
+
+    // Client sends requests
+    for (int i = 0; i < 3; i++) {
+      // Create one-shot channel for response
+      Channel<int> reply = Channel.create(1);
+      await reqTx.send(Request { value: i, replyChan: reply.sender() });
+
+      // Wait for response
+      Optional<int> response = await reply.receiver().recv();
+      log.info("response", "Got response",
+        Fields.of("request", i, "response", response.getOrDefault(-1)));
+    }
+
+    reqTx.close();
+    await server;
+  }
+}
+
+/// Request struct for request-response pattern
+struct Request {
+  final int value;
+  final Sender<int> replyChan;
+}

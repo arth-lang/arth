@@ -1,0 +1,201 @@
+package demo;
+
+// Demonstrates exception handling patterns per spec §7
+
+// Hierarchy of exceptions
+public struct BaseError {
+    public String message;
+}
+
+public struct IoError {
+    public String message;
+    public String path;
+}
+
+public struct NetworkError {
+    public String message;
+    public Int statusCode;
+}
+
+public struct TimeoutError {
+    public String message;
+    public Int timeoutMs;
+}
+
+public struct ValidationError {
+    public String message;
+    public String field;
+}
+
+// Wrapped exception with cause
+public struct ServiceError {
+    public String message;
+    public String cause;
+}
+
+// Service layer with exception handling
+module FileService {
+    public String readFile(String path) throws (IoError) {
+        if (path == "") {
+            throw IoError { message: "empty path", path: path };
+        }
+        if (path == "/nonexistent") {
+            throw IoError { message: "file not found", path: path };
+        }
+        return "file contents";
+    }
+}
+
+module NetworkService {
+    public String fetch(String url) throws (NetworkError, TimeoutError) {
+        if (url == "") {
+            throw NetworkError { message: "empty url", statusCode: 400 };
+        }
+        if (url == "slow://example.com") {
+            throw TimeoutError { message: "request timed out", timeoutMs: 30000 };
+        }
+        if (url == "error://example.com") {
+            throw NetworkError { message: "server error", statusCode: 500 };
+        }
+        return "response";
+    }
+}
+
+module ValidationService {
+    public void validateEmail(String email) throws (ValidationError) {
+        if (email == "") {
+            throw ValidationError { message: "email required", field: "email" };
+        }
+        // Simplified validation
+        Bool hasAt = false;
+        for (Int i = 0; i < 10; i = i + 1) {
+            // Would check for @ symbol
+        }
+    }
+}
+
+// Higher-level service that wraps exceptions
+module UserService {
+    public String createUser(String email) throws (ServiceError) {
+        // Validate input
+        try {
+            ValidationService.validateEmail(email);
+        } catch (ValidationError e) {
+            throw ServiceError {
+                message: "validation failed",
+                cause: e.message
+            };
+        }
+
+        // Fetch additional data
+        try {
+            String profile = NetworkService.fetch("http://api.example.com/defaults");
+        } catch (NetworkError e) {
+            throw ServiceError {
+                message: "failed to fetch defaults",
+                cause: e.message
+            };
+        } catch (TimeoutError e) {
+            throw ServiceError {
+                message: "service unavailable",
+                cause: "timeout after " + e.timeoutMs + "ms"
+            };
+        }
+
+        return "user:" + email;
+    }
+}
+
+// Retry pattern with exceptions
+module RetryHelper {
+    public String fetchWithRetry(String url, Int maxRetries) throws (NetworkError, TimeoutError) {
+        Int attempts = 0;
+        NetworkError lastError = NetworkError { message: "", statusCode: 0 };
+
+        while (attempts < maxRetries) {
+            try {
+                return NetworkService.fetch(url);
+            } catch (NetworkError e) {
+                lastError = e;
+                attempts = attempts + 1;
+                // Would add delay here
+            } catch (TimeoutError e) {
+                attempts = attempts + 1;
+                // Timeout - retry immediately
+            }
+        }
+
+        throw lastError;
+    }
+}
+
+// Finally for cleanup
+module ResourceHandler {
+    public String processFile(String path) throws (IoError) {
+        String result = "";
+        try {
+            String content = FileService.readFile(path);
+            result = "processed: " + content;
+        } catch (IoError e) {
+            result = "error: " + e.message;
+            throw e;  // Rethrow after recording
+        } finally {
+            // Cleanup happens whether or not exception occurred
+            // Close resources, release locks, etc.
+        }
+        return result;
+    }
+}
+
+// Nested exception handling
+module ComplexHandler {
+    public String handleRequest() throws (ServiceError) {
+        try {
+            try {
+                String data = NetworkService.fetch("http://api.example.com/data");
+                return data;
+            } catch (TimeoutError e) {
+                // Inner catch - retry or fallback
+                try {
+                    return NetworkService.fetch("http://backup.example.com/data");
+                } catch (NetworkError e2) {
+                    throw ServiceError { message: "both primary and backup failed", cause: e2.message };
+                } catch (TimeoutError e2) {
+                    throw ServiceError { message: "all endpoints timed out", cause: e2.message };
+                }
+            }
+        } catch (NetworkError e) {
+            throw ServiceError { message: "network error", cause: e.message };
+        }
+    }
+}
+
+module Main {
+    public static void main() {
+        // Test exception wrapping
+        try {
+            String user = UserService.createUser("");
+        } catch (ServiceError e) {
+            println("Service error: " + e.message + " caused by: " + e.cause);
+        }
+
+        // Test retry pattern
+        try {
+            String data = RetryHelper.fetchWithRetry("http://example.com/api", 3);
+        } catch (NetworkError e) {
+            println("Network error after retries: " + e.message);
+        } catch (TimeoutError e) {
+            println("Timeout after retries");
+        }
+
+        // Test finally cleanup
+        try {
+            String result = ResourceHandler.processFile("/test.txt");
+            println(result);
+        } catch (IoError e) {
+            println("IO error: " + e.message);
+        }
+
+        println("ExceptionChaining demo complete");
+    }
+}

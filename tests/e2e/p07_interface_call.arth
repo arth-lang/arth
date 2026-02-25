@@ -1,0 +1,50 @@
+package test;
+
+// P07: Interface method dispatch
+// Tests the .then() sugar for calling module methods on values
+
+// Define an interface (no self parameter - receiver is injected by compiler)
+interface Named {
+    String getName();
+}
+
+// Module implementing the interface (explicit receiver, target type inferred)
+module StringFns implements Named {
+    public String getName(String s) {
+        return s;
+    }
+
+    public String prefix(String self, String p) {
+        return p + self;
+    }
+
+    public String suffix(String self, String s) {
+        return self + s;
+    }
+}
+
+module Main {
+    public static void main() {
+        // Test 1: Basic .then() call with no extra args
+        String s1 = "Alice";
+        String name = s1.then(StringFns.getName());
+        println("Test 1: " + name);
+
+        // Test 2: .then() call with additional argument
+        String s2 = "World";
+        String prefixed = s2.then(StringFns.prefix("Hello "));
+        println("Test 2: " + prefixed);
+
+        // Test 3: Chained .then() calls
+        String s3 = "Middle";
+        String chained = s3.then(StringFns.prefix("Start-")).then(StringFns.suffix("-End"));
+        println("Test 3: " + chained);
+
+        // Test 4: Direct call (for comparison - this already works)
+        String s4 = "Direct";
+        String direct = StringFns.getName(s4);
+        println("Test 4: " + direct);
+
+        println("All interface dispatch tests passed!");
+    }
+}

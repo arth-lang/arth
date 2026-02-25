@@ -1,0 +1,86 @@
+/**
+ * TimeoutError is thrown when an operation exceeds its deadline or timeout.
+ *
+ * This error is thrown by Task.withDeadline and Task.withTimeout when
+ * the underlying task does not complete within the specified time.
+ *
+ * @see concurrent.Task - Task module with deadline support
+ */
+package concurrent;
+
+import time.*;
+
+/**
+ * TimeoutError indicates that an operation did not complete within
+ * the allowed time.
+ *
+ * Example:
+ * ```
+ * import concurrent.*;
+ * import time.*;
+ *
+ * Task<Response> task = fetchData(url);
+ * Duration timeout = Duration.fromSecs(30);
+ *
+ * try {
+ *     Response r = Task.withTimeout(task, timeout);
+ * } catch (TimeoutError e) {
+ *     Console.print("Operation timed out after " + e.message);
+ * }
+ * ```
+ */
+public struct TimeoutError {
+    /** The task handle that timed out. */
+    public final Int taskHandle;
+    /** Message describing the timeout. */
+    public final String message;
+}
+
+export module TimeoutError {
+    /**
+     * Creates a new TimeoutError with the given task handle.
+     *
+     * @param taskHandle The handle of the task that timed out
+     * @return A new TimeoutError
+     */
+    public static TimeoutError new(Int taskHandle) {
+        return TimeoutError { taskHandle: taskHandle, message: "Operation timed out" };
+    }
+
+    /**
+     * Creates a new TimeoutError with a custom message.
+     *
+     * @param taskHandle The handle of the task that timed out
+     * @param message A description of the timeout
+     * @return A new TimeoutError
+     */
+    public static TimeoutError withMessage(Int taskHandle, String message) {
+        return TimeoutError { taskHandle: taskHandle, message: message };
+    }
+
+    /**
+     * Creates a TimeoutError for a deadline that was exceeded.
+     *
+     * @param taskHandle The handle of the task that exceeded the deadline
+     * @param deadline The Instant that was exceeded
+     * @return A new TimeoutError with deadline information
+     */
+    public static TimeoutError forDeadline(Int taskHandle, Instant deadline) {
+        return TimeoutError { taskHandle: taskHandle, message: "Deadline exceeded" };
+    }
+
+    /**
+     * Creates a TimeoutError for a duration timeout.
+     *
+     * @param taskHandle The handle of the task that timed out
+     * @param duration The Duration that was exceeded
+     * @return A new TimeoutError with timeout information
+     */
+    public static TimeoutError forTimeout(Int taskHandle, Duration duration) {
+        Int secs = Duration.toSecs(duration);
+        return TimeoutError {
+            taskHandle: taskHandle,
+            message: "Timeout after " + secs + " seconds"
+        };
+    }
+}

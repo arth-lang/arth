@@ -1,0 +1,140 @@
+package demo;
+
+// Demonstrates generic type bounds and constraints per spec §12
+
+import concurrent.*;
+
+// Marker interfaces for concurrency bounds
+public interface Sendable {}
+public interface Shareable {}
+
+// Interface with generic method
+public interface Mapper<T, R> {
+    R map(T input);
+}
+
+// Bounded generic struct
+public struct SendableBox<T extends Sendable> {
+    public final T value;
+}
+
+// Multi-parameter generic with bounds
+public struct BoundedPair<A extends Sendable, B extends Shareable> {
+    public final A first;
+    public final B second;
+}
+
+// Generic result type (like Rust's Result)
+public enum Result<T, E> {
+    Ok(T),
+    Err(E)
+}
+
+// Option type with map/flatMap
+public enum Option<T> {
+    Some(T),
+    None
+}
+
+// Struct implementing Sendable
+public struct Message {
+    public final String id;
+    public final String content;
+}
+
+// Make Message sendable
+module MessageFns implements Sendable {
+    public Message new(String id, String content) {
+        return Message { id: id, content: content };
+    }
+
+    public String getId(Message m) {
+        return m.id;
+    }
+}
+
+// Generic functions with bounds
+module GenericUtils {
+    // Identity function - no bounds needed
+    public T identity<T>(T value) {
+        return value;
+    }
+
+    // Clone requires Sendable (value can be sent/copied)
+    public T clone<T extends Sendable>(T value) {
+        return value;
+    }
+
+    // Map over Option
+    public Option<R> map<T, R>(Option<T> opt, R defaultVal) {
+        switch (opt) {
+            case Option.Some(val): {
+                return Option.Some(defaultVal);
+            }
+            case Option.None: {
+                return Option.None;
+            }
+        }
+    }
+
+    // Unwrap with default
+    public T unwrapOr<T>(Option<T> opt, T defaultVal) {
+        switch (opt) {
+            case Option.Some(val): {
+                return val;
+            }
+            case Option.None: {
+                return defaultVal;
+            }
+        }
+    }
+
+    // Flatten nested Option
+    public Option<T> flatten<T>(Option<Option<T>> nested) {
+        switch (nested) {
+            case Option.Some(inner): {
+                return inner;
+            }
+            case Option.None: {
+                return Option.None;
+            }
+        }
+    }
+}
+
+// Demonstrate bounded container usage
+module ContainerDemo {
+    public void demonstrate() {
+        // Create a sendable message
+        Message msg = MessageFns.new("1", "Hello");
+
+        // Put in bounded box (only works because Message is Sendable)
+        SendableBox<Message> box = SendableBox { value: msg };
+
+        // Use generic functions
+        Int x = GenericUtils.identity(42);
+        String s = GenericUtils.identity("hello");
+
+        // Option operations
+        Option<Int> some = Option.Some(10);
+        Option<Int> none = Option.None;
+
+        Int val1 = GenericUtils.unwrapOr(some, 0);  // 10
+        Int val2 = GenericUtils.unwrapOr(none, 0);  // 0
+
+        // Nested option
+        Option<Option<Int>> nested = Option.Some(Option.Some(5));
+        Option<Int> flat = GenericUtils.flatten(nested);
+
+        // Result type usage
+        Result<Int, String> success = Result.Ok(42);
+        Result<Int, String> failure = Result.Err("error");
+    }
+}
+
+module Main {
+    public static void main() {
+        ContainerDemo.demonstrate();
+        println("GenericBounds demo complete");
+    }
+}

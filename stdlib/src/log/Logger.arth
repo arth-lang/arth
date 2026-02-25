@@ -1,0 +1,122 @@
+package log;
+
+/**
+ * Structured logging for Arth applications.
+ *
+ * NOTE: The logging methods (trace/debug/info/warn/error) are INTRINSIC-BACKED.
+ * Their bodies are placeholders - actual implementation is provided by the
+ * compiler via intrinsic lowering to __arth_log_emit_str in the VM runtime.
+ *
+ * This file exists to provide:
+ * - Go-to-definition support in IDEs
+ * - Hover documentation and signature help
+ * - Autocomplete suggestions
+ * - User-readable API documentation
+ *
+ * @see src/compiler/lower/hir_to_ir.rs for intrinsic lowering
+ * @see crates/arth-vm/src/runtime.rs for VM implementation
+ */
+
+/// A named logger for structured logging.
+/// Loggers are obtained via Logger.get(name) and provide methods
+/// for logging at different levels (trace, debug, info, warn, error).
+public struct Logger {
+    /// The name of this logger, typically a hierarchical path like "app.http.client".
+    public final String name;
+    /// The minimum log level for this logger. Messages below this level are ignored.
+    public final LogLevel level;
+}
+
+module Logger {
+    /// Returns a logger with the given name. Names are typically hierarchical
+    /// (e.g., "app.http.client"). Uses INFO as the default minimum level.
+    ///
+    /// Example:
+    ///   Logger log = Logger.get("myapp.service");
+    public static Logger get(String name) {
+        return Logger { name: name, level: LogLevel.INFO };
+    }
+
+    /// Returns a logger with the given name and minimum log level.
+    ///
+    /// Example:
+    ///   Logger log = Logger.getWithLevel("myapp.debug", LogLevel.DEBUG);
+    public static Logger getWithLevel(String name, LogLevel level) {
+        return Logger { name: name, level: level };
+    }
+
+    /// Returns true if this logger will log messages at the given level.
+    public static bool isEnabled(Logger logger, LogLevel level) {
+        return LogLevel.isEnabled(level, logger.level);
+    }
+
+    /// Returns this logger's name.
+    public static String getName(Logger logger) {
+        return logger.name;
+    }
+
+    /// Returns this logger's minimum level.
+    public static LogLevel getLevel(Logger logger) {
+        return logger.level;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // TRACE Level (most verbose)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Logs a TRACE message with event identifier and message.
+    @intrinsic("log.emit")
+    public static void trace(Logger logger, String event, String message) { return; }
+
+    /// Logs a TRACE message with event identifier, message, and structured fields.
+    @intrinsic("log.emit")
+    public static void trace(Logger logger, String event, String message, Fields fields) { return; }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // DEBUG Level
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Logs a DEBUG message with event identifier and message.
+    @intrinsic("log.emit")
+    public static void debug(Logger logger, String event, String message) { return; }
+
+    /// Logs a DEBUG message with event identifier, message, and structured fields.
+    @intrinsic("log.emit")
+    public static void debug(Logger logger, String event, String message, Fields fields) { return; }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // INFO Level
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Logs an INFO message with event identifier and message.
+    @intrinsic("log.emit")
+    public static void info(Logger logger, String event, String message) { return; }
+
+    /// Logs an INFO message with event identifier, message, and structured fields.
+    @intrinsic("log.emit")
+    public static void info(Logger logger, String event, String message, Fields fields) { return; }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // WARN Level
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Logs a WARN message with event identifier and message.
+    @intrinsic("log.emit")
+    public static void warn(Logger logger, String event, String message) { return; }
+
+    /// Logs a WARN message with event identifier, message, and structured fields.
+    @intrinsic("log.emit")
+    public static void warn(Logger logger, String event, String message, Fields fields) { return; }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // ERROR Level (least verbose)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Logs an ERROR message with event identifier and message.
+    @intrinsic("log.emit")
+    public static void error(Logger logger, String event, String message) { return; }
+
+    /// Logs an ERROR message with event identifier, message, and structured fields.
+    @intrinsic("log.emit")
+    public static void error(Logger logger, String event, String message, Fields fields) { return; }
+}

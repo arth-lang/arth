@@ -1,0 +1,31 @@
+package conformance;
+
+// @spec: spec.md §2 - Triple-quoted strings (raw/multiline)
+// @expect: pass
+// @description: Validates triple-quoted string literals with no escape processing
+
+module Main {
+    public static void main() {
+        // Basic triple-quoted string
+        String multi = """
+            This is a
+            multi-line string
+        """;
+
+        // No escape processing in triple-quoted
+        String raw = """backslash is literal: \ """;
+        String quotes = """Contains "quotes" without escaping""";
+
+        // Useful for templates
+        String template = """
+            <html>
+                <body>Hello</body>
+            </html>
+        """;
+
+        // Regex patterns
+        String pattern = """\d+\.\d+""";
+
+        println("triple_string: pass");
+    }
+}

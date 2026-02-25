@@ -1,0 +1,17 @@
+package test.native;
+
+module Executor {
+}
+
+module Main {
+    public static void main() {
+        Int init = Executor.init(2);
+        Int task = Executor.spawn(5);
+        Int out = Executor.join(task);
+        if (init == 1 && out == 5) {
+            println("PHASE1_SPAWN_OK");
+        } else {
+            println("PHASE1_SPAWN_BAD");
+        }
+    }
+}

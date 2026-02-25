@@ -1,0 +1,18 @@
+package providers;
+
+provider CacheProvider {
+  state { private final Shared<Map<String, Atomic<String>>> map; }
+}
+
+module CacheProviderFns {
+  public CacheProvider newDefault() {
+    Shared<Map<String, Atomic<String>>> m = Shared.of(Map.new());
+    return CacheProvider { map: m };
+  }
+
+  public Shared<Map<String, Atomic<String>>> cache(CacheProvider self) {
+    return self.map;
+  }
+
+  public void deinit(CacheProvider self) { /* release resources if any */ }
+}

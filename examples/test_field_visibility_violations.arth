@@ -1,0 +1,24 @@
+package test.other;
+
+import test.visibility.Account;
+
+// This module is in a different package and should NOT be able to access
+// private/default fields of Account
+module AccountUser {
+    public void test() {
+        Account acc;
+
+        // Should work: public field
+        acc.username = "bob";
+        String name = acc.username;
+
+        // Should FAIL: internal field from different top-level package
+        // acc.balance = 2000;  // Uncomment to test error
+
+        // Should FAIL: private field from different package
+        // acc.password = "pwd";  // Uncomment to test error
+
+        // Should FAIL: default field from different package
+        // acc.email = "bob@example.com";  // Uncomment to test error
+    }
+}

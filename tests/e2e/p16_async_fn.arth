@@ -1,0 +1,37 @@
+package test;
+
+// Test: Async function definition and basic await
+// P16: async function definition
+// Expected output:
+//   starting async test
+//   computing value
+//   result: 42
+//   async with params: 30
+//   done
+
+module Main {
+    // Basic async function returning Task<Int>
+    public static async Int computeValue() {
+        println("computing value");
+        return 42;
+    }
+
+    // Async function with parameters
+    public static async Int addValues(Int a, Int b) {
+        return a + b;
+    }
+
+    public static void main() {
+        println("starting async test");
+
+        // Call async function and await result
+        Int result = await computeValue();
+        println("result: " + result);
+
+        // Async with parameters
+        Int sum = await addValues(10, 20);
+        println("async with params: " + sum);
+
+        println("done");
+    }
+}

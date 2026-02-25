@@ -1,0 +1,104 @@
+[package]
+name = "arth"
+version = "0.1.0"
+edition = "2024"
+default-run = "arth"
+
+[lib]
+doctest = false
+
+[workspace]
+members = [
+    ".",
+    "crates/arth-vm",
+    "crates/arth-rt",
+    "crates/arth-ts-frontend",
+    "crates/arth-cli",
+]
+
+[dependencies]
+arth-vm = { path = "crates/arth-vm" }
+libc = { version = "0.2", optional = true }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "io-std"] }
+tower-lsp = "0.20"
+regex = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+semver = "1"
+dirs = "5"
+sha2 = "0.10"
+hex = "0.4"
+
+[features]
+default = []
+# Enable the Cranelift JIT backend for tiered compilation.
+# The VM will JIT-compile hot functions for improved performance.
+cranelift = [
+    "dep:libc",
+    "dep:cranelift",
+    "dep:cranelift-codegen",
+    "dep:cranelift-frontend",
+    "dep:cranelift-module",
+    "dep:cranelift-jit",
+    "dep:cranelift-native",
+    "arth-vm/jit",
+]
+# Placeholder feature flag in case we gate LLVM object emission later.
+llvm = []
+# Enable CPS-based async state machine lowering (Stage 2)
+# When enabled, async functions are transformed into poll-based state machines
+# instead of the simpler wrapper + async_body approach
+async-cps = []
+
+[dependencies.cranelift]
+version = "0.125"
+optional = true
+
+[dependencies.cranelift-codegen]
+version = "0.125"
+optional = true
+
+[dependencies.cranelift-frontend]
+version = "0.125"
+optional = true
+
+[dependencies.cranelift-module]
+version = "0.125"
+optional = true
+
+[dependencies.cranelift-jit]
+version = "0.125"
+optional = true
+
+[dependencies.cranelift-native]
+version = "0.125"
+optional = true
+
+[[bin]]
+name = "arth-lsp"
+path = "src/bin/arth_lsp.rs"
+
+[dev-dependencies]
+tempfile = "3"
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "vm_benchmarks"
+harness = false
+
+[[bench]]
+name = "compiler_benchmarks"
+harness = false
+
+[[bench]]
+name = "end_to_end_benchmarks"
+harness = false
+
+[[bench]]
+name = "runtime_benchmarks"
+harness = false
+
+[[test]]
+name = "conformance_runner"
+path = "tests/conformance_runner.rs"

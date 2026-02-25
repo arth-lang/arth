@@ -1,0 +1,373 @@
+package integration;
+
+// Integration tests for Enum type
+
+// Simple unit enum
+enum Color {
+    Red,
+    Green,
+    Blue
+}
+
+// Enum with single payload
+enum Option {
+    None,
+    Some(int)
+}
+
+// Enum with string payload
+enum Result {
+    Ok(String),
+    Err(String)
+}
+
+// Enum with multiple payloads
+enum Event {
+    Click(int, int),
+    KeyPress(String),
+    Resize(int, int),
+    Close
+}
+
+// Enum with mixed payload types
+enum Value {
+    IntVal(int),
+    StrVal(String),
+    BoolVal(bool),
+    Pair(int, String)
+}
+
+module Main {
+    public void main() {
+        println("=== Enum Integration Tests ===");
+
+        testUnitVariants();
+        testSinglePayload();
+        testStringPayload();
+        testMultiplePayloads();
+        testMixedPayloads();
+        testEnumIntrinsics();
+        testExhaustivenessWithDefault();
+
+        println("=== All Enum Tests Passed ===");
+    }
+
+    void testUnitVariants() {
+        println("-- Unit Variants --");
+
+        Color c1 = Color.Red;
+        Color c2 = Color.Green;
+        Color c3 = Color.Blue;
+
+        switch (c1) {
+            case Color.Red: {
+                println("Got Red");
+            }
+            case Color.Green: {
+                println("Got Green");
+            }
+            case Color.Blue: {
+                println("Got Blue");
+            }
+        }
+
+        switch (c2) {
+            case Color.Red: {
+                println("Got Red");
+            }
+            case Color.Green: {
+                println("Got Green");
+            }
+            case Color.Blue: {
+                println("Got Blue");
+            }
+        }
+
+        switch (c3) {
+            case Color.Red: {
+                println("Got Red");
+            }
+            case Color.Green: {
+                println("Got Green");
+            }
+            case Color.Blue: {
+                println("Got Blue");
+            }
+        }
+
+        println("Unit variants OK");
+    }
+
+    void testSinglePayload() {
+        println("-- Single Payload --");
+
+        Option none = Option.None;
+        Option some = Option.Some(42);
+
+        switch (none) {
+            case Option.None: {
+                println("Got None");
+            }
+            case Option.Some(val): {
+                println("Got Some: ");
+                println(val);
+            }
+        }
+
+        switch (some) {
+            case Option.None: {
+                println("Got None");
+            }
+            case Option.Some(val): {
+                println("Got Some: ");
+                println(val);
+            }
+        }
+
+        // Test with different values
+        Option opt1 = Option.Some(100);
+        Option opt2 = Option.Some(200);
+
+        switch (opt1) {
+            case Option.Some(v): {
+                println("opt1 value: ");
+                println(v);
+            }
+            default: {
+                println("opt1 is None");
+            }
+        }
+
+        switch (opt2) {
+            case Option.Some(v): {
+                println("opt2 value: ");
+                println(v);
+            }
+            default: {
+                println("opt2 is None");
+            }
+        }
+
+        println("Single payload OK");
+    }
+
+    void testStringPayload() {
+        println("-- String Payload --");
+
+        Result ok = Result.Ok("success");
+        Result err = Result.Err("something went wrong");
+
+        switch (ok) {
+            case Result.Ok(msg): {
+                println("Ok: " + msg);
+            }
+            case Result.Err(msg): {
+                println("Err: " + msg);
+            }
+        }
+
+        switch (err) {
+            case Result.Ok(msg): {
+                println("Ok: " + msg);
+            }
+            case Result.Err(msg): {
+                println("Err: " + msg);
+            }
+        }
+
+        println("String payload OK");
+    }
+
+    void testMultiplePayloads() {
+        println("-- Multiple Payloads --");
+
+        Event click = Event.Click(100, 200);
+        Event key = Event.KeyPress("Enter");
+        Event resize = Event.Resize(800, 600);
+        Event close = Event.Close;
+
+        switch (click) {
+            case Event.Click(x, y): {
+                println("Click at x: ");
+                println(x);
+                println("Click at y: ");
+                println(y);
+            }
+            case Event.KeyPress(k): {
+                println("Key: " + k);
+            }
+            case Event.Resize(w, h): {
+                println("Resize to: ");
+                println(w);
+                println(h);
+            }
+            case Event.Close: {
+                println("Close event");
+            }
+        }
+
+        switch (key) {
+            case Event.Click(x, y): {
+                println("Click");
+            }
+            case Event.KeyPress(k): {
+                println("KeyPress: " + k);
+            }
+            default: {
+                println("Other event");
+            }
+        }
+
+        switch (resize) {
+            case Event.Resize(width, height): {
+                println("New width: ");
+                println(width);
+                println("New height: ");
+                println(height);
+            }
+            default: {
+                println("Not a resize");
+            }
+        }
+
+        switch (close) {
+            case Event.Close: {
+                println("Window closing");
+            }
+            default: {
+                println("Not close");
+            }
+        }
+
+        println("Multiple payloads OK");
+    }
+
+    void testMixedPayloads() {
+        println("-- Mixed Payloads --");
+
+        Value intV = Value.IntVal(42);
+        Value strV = Value.StrVal("hello");
+        Value boolV = Value.BoolVal(true);
+        Value pairV = Value.Pair(10, "ten");
+
+        switch (intV) {
+            case Value.IntVal(n): {
+                println("IntVal: ");
+                println(n);
+            }
+            case Value.StrVal(s): {
+                println("StrVal: " + s);
+            }
+            case Value.BoolVal(b): {
+                println("BoolVal: ");
+                println(b);
+            }
+            case Value.Pair(num, str): {
+                println("Pair: ");
+                println(num);
+                println(str);
+            }
+        }
+
+        switch (strV) {
+            case Value.IntVal(n): {
+                println("IntVal");
+            }
+            case Value.StrVal(s): {
+                println("StrVal: " + s);
+            }
+            default: {
+                println("Other");
+            }
+        }
+
+        switch (boolV) {
+            case Value.BoolVal(flag): {
+                println("BoolVal: ");
+                println(flag);
+            }
+            default: {
+                println("Not a bool");
+            }
+        }
+
+        switch (pairV) {
+            case Value.Pair(n, s): {
+                println("Pair number: ");
+                println(n);
+                println("Pair string: " + s);
+            }
+            default: {
+                println("Not a pair");
+            }
+        }
+
+        println("Mixed payloads OK");
+    }
+
+    void testEnumIntrinsics() {
+        println("-- Enum Intrinsics --");
+
+        // Test Enum.tag()
+        Color red = Color.Red;
+        Color green = Color.Green;
+        int redTag = Enum.tag(red);
+        int greenTag = Enum.tag(green);
+        println("Red tag: ");
+        println(redTag);
+        println("Green tag: ");
+        println(greenTag);
+
+        // Test Enum.payloadCount()
+        Option none1 = Option.None;
+        Option some1 = Option.Some(42);
+        int nonePayloads = Enum.payloadCount(none1);
+        int somePayloads = Enum.payloadCount(some1);
+        println("None payload count: ");
+        println(nonePayloads);
+        println("Some payload count: ");
+        println(somePayloads);
+
+        // Test Enum.get()
+        Event clickEvent = Event.Click(150, 250);
+        int x = Enum.get(clickEvent, 0);
+        Event clickEvent2 = Event.Click(150, 250);
+        int y = Enum.get(clickEvent2, 1);
+        println("Click x via Enum.get: ");
+        println(x);
+        println("Click y via Enum.get: ");
+        println(y);
+
+        println("Enum intrinsics OK");
+    }
+
+    void testExhaustivenessWithDefault() {
+        println("-- Exhaustiveness with Default --");
+
+        // Test that default catches unmatched variants
+        Color c = Color.Blue;
+
+        switch (c) {
+            case Color.Red: {
+                println("Matched Red");
+            }
+            default: {
+                println("Matched default (not Red)");
+            }
+        }
+
+        // Test multiple patterns with default fallback
+        Option opt = Option.None;
+        switch (opt) {
+            case Option.Some(v): {
+                println("Has value: ");
+                println(v);
+            }
+            default: {
+                println("No value (None)");
+            }
+        }
+
+        println("Exhaustiveness with default OK");
+    }
+}

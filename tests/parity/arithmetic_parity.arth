@@ -1,0 +1,35 @@
+package test;
+
+/**
+ * Arithmetic parity test.
+ * Tests that math operations work identically in VM and native modes.
+ */
+module Main {
+    public static void main() {
+        // Integer arithmetic
+        Int a = 10;
+        Int b = 3;
+        println("add: " + (a + b));
+        println("sub: " + (a - b));
+        println("mul: " + (a * b));
+        println("div: " + (a / b));
+        println("mod: " + (a % b));
+
+        // Negative numbers
+        Int c = -5;
+        println("neg: " + c);
+        println("neg add: " + (a + c));
+
+        // Large numbers
+        Int big = 1000000;
+        println("big mul: " + (big * 1000));
+
+        // Comparisons
+        println("lt: " + (a < b));
+        println("gt: " + (a > b));
+        println("eq: " + (a == b));
+        println("ne: " + (a != b));
+        println("le: " + (a <= b));
+        println("ge: " + (a >= b));
+    }
+}

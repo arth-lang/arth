@@ -1,0 +1,18 @@
+package test.native;
+
+// Minimal native compilation test
+// Tests only: basic arithmetic, no loops or runtime calls
+
+module Main {
+    public static void main() {
+        // Just basic arithmetic - no loops = no regions
+        Int a = 10;
+        Int b = 20;
+        Int sum = a + b;
+
+        // Simple conditional without control flow merges
+        Int result = 0;
+
+        return;
+    }
+}

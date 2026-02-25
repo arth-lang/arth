@@ -1,0 +1,102 @@
+/**
+ * INTRINSIC-BACKED STUB for IDE/tooling support.
+ *
+ * This module provides actor-based concurrency with serialized message handling.
+ * Actors provide a safe way to manage mutable state across concurrent tasks.
+ *
+ * @see crates/arth-vm/src/runtime.rs - actor runtime functions
+ */
+package concurrent;
+
+/**
+ * Actor<T> represents an actor that processes messages of type T.
+ *
+ * Actors serialize all message handling, ensuring that only one message
+ * is processed at a time. This provides safe mutable state without locks.
+ *
+ * Example:
+ * ```
+ * struct CounterMsg {
+ *     enum Kind { Increment, Get }
+ *     public Kind kind;
+ * }
+ *
+ * Actor<CounterMsg> counter = Actors.create(fn(CounterMsg msg) {
+ *     // Handle message
+ * });
+ * counter.send(CounterMsg { kind: Kind.Increment });
+ * ```
+ */
+struct Actor<T> {
+    /** Internal handle to the runtime actor. */
+    private final int handle;
+}
+
+/**
+ * Factory module for creating actors.
+ */
+module Actors {
+    /**
+     * Creates a new actor with the given message handler.
+     *
+     * @param handler The function that processes each message
+     * @return A new Actor that can receive messages
+     */
+    @intrinsic("actor.create")
+    public Actor<T> create<T>(fn(T) handler) {
+        // Intrinsic: creates actor with given handler
+        return Actor { handle: 0 };
+    }
+
+    /**
+     * Creates a new actor with a bounded mailbox.
+     *
+     * @param handler The function that processes each message
+     * @param capacity The maximum number of pending messages
+     * @return A new Actor with bounded mailbox
+     */
+    @intrinsic("actor.create")
+    public Actor<T> createWithCapacity<T>(fn(T) handler, int capacity) {
+        // Intrinsic: creates actor with bounded mailbox
+        return Actor { handle: 0 };
+    }
+}
+
+module ActorFns {
+    /**
+     * Sends a message to the actor.
+     *
+     * The message will be queued and processed by the actor's handler.
+     * This may block if the actor's mailbox is full.
+     *
+     * @param self The actor
+     * @param message The message to send
+     */
+    @intrinsic("actor.send")
+    public void send<T>(Actor<T> self, T message) {
+        // Intrinsic: queues message for processing
+    }
+
+    /**
+     * Tries to send a message without blocking.
+     *
+     * @param self The actor
+     * @param message The message to send
+     * @return true if sent, false if mailbox was full
+     */
+    @intrinsic("actor.try_send")
+    public bool trySend<T>(Actor<T> self, T message) {
+        // Intrinsic: non-blocking send attempt
+        return false;
+    }
+
+    /**
+     * Stops the actor and waits for it to finish processing.
+     *
+     * @param self The actor to stop
+     */
+    @intrinsic("actor.stop")
+    public void stop<T>(Actor<T> self) {
+        // Intrinsic: signals actor to stop and waits
+    }
+}

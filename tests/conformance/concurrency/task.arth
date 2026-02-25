@@ -1,0 +1,40 @@
+package conformance;
+
+// @spec: spec.md §9 - Task type for async return
+// @expect: pass
+// @description: Validates Task<T> type usage for async functions
+
+module AsyncWork {
+    public async Int heavyCompute(Int x) {
+        // Simulated heavy work
+        Int result = 0;
+        for (Int i = 0; i < x; i = i + 1) {
+            result = result + i;
+        }
+        return result;
+    }
+
+    public async String fetchData(String id) {
+        return "data:" + id;
+    }
+}
+
+module Main {
+    public static void main() {
+        // Task creation via async function call
+        // Task<Int> task = AsyncWork.heavyCompute(100);
+
+        // Task API would include:
+        // - await: suspend until complete
+        // - cancel(): request cancellation
+        // - isComplete(): check status
+
+        println("task: pass");
+    }
+
+    public static async void asyncMain() {
+        // Await returns the inner type
+        Int result = await AsyncWork.heavyCompute(10);
+        String data = await AsyncWork.fetchData("123");
+    }
+}

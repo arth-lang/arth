@@ -1,0 +1,24 @@
+package test;
+
+// Test: Cross-module function calls
+// Expected output:
+//   Helper says: test message
+//   Computed: 30
+
+module Helper {
+    public static void say(String msg) {
+        println("Helper says: " + msg);
+    }
+
+    public static Int compute(Int a, Int b) {
+        return a + b + 10;
+    }
+}
+
+module Main {
+    public static void main() {
+        Helper.say("test message");
+        Int result = Helper.compute(5, 15);
+        println("Computed: " + result);
+    }
+}

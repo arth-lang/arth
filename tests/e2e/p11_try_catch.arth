@@ -1,0 +1,77 @@
+package test;
+
+// P11: Basic try/catch exception handling
+// Expected output:
+//   Test 1: Caught DivisionError: division by zero
+//   Test 2: No exception thrown
+//   Test 3: Caught ValidationError: invalid input
+//   Test 4: Finally block executed
+//   All try/catch tests passed!
+
+// Exception types (structs used as exceptions)
+public struct DivisionError {
+    public String message;
+}
+
+public struct ValidationError {
+    public String message;
+}
+
+// Function that throws an exception
+module Math {
+    public Int divide(Int a, Int b) throws (DivisionError) {
+        if (b == 0) {
+            throw DivisionError { message: "division by zero" };
+        }
+        return a / b;
+    }
+}
+
+// Function that may throw based on input
+module Validator {
+    public String validate(Int value) throws (ValidationError) {
+        if (value < 0) {
+            throw ValidationError { message: "invalid input" };
+        }
+        return "valid";
+    }
+}
+
+module Main {
+    public static void main() {
+        // Test 1: Catch a thrown exception
+        try {
+            Int result = Math.divide(10, 0);
+            println("Should not reach here");
+        } catch (DivisionError e) {
+            println("Test 1: Caught DivisionError: " + e.message);
+        }
+
+        // Test 2: No exception thrown
+        try {
+            Int result = Math.divide(10, 2);
+            println("Test 2: No exception thrown");
+        } catch (DivisionError e) {
+            println("Should not catch");
+        }
+
+        // Test 3: Different exception type
+        try {
+            String result = Validator.validate(-5);
+            println("Should not reach here");
+        } catch (ValidationError e) {
+            println("Test 3: Caught ValidationError: " + e.message);
+        }
+
+        // Test 4: Finally block
+        try {
+            Int result = Math.divide(10, 5);
+        } catch (DivisionError e) {
+            println("Should not catch");
+        } finally {
+            println("Test 4: Finally block executed");
+        }
+
+        println("All try/catch tests passed!");
+    }
+}

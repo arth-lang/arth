@@ -1,0 +1,55 @@
+package demo;
+
+// Test enum pattern matching
+
+enum Status {
+    OK,
+    Error(String),
+    Pending(int)
+}
+
+module EnumPatternMatchTest {
+    public void main() {
+        // Test: Unit variant matching
+        Status s1 = Status.OK;
+        switch (s1) {
+            case Status.OK: {
+                println("Status is OK");
+            }
+            default: {
+                println("Unknown status");
+            }
+        }
+
+        // Test: Payload matching
+        Status s2 = Status.Error("Connection failed");
+        switch (s2) {
+            case Status.OK: {
+                println("Status is OK");
+            }
+            case Status.Error(msg): {
+                println("Got error: " + msg);
+            }
+            default: {
+                println("Unknown");
+            }
+        }
+
+        // Test: Numeric payload
+        Status s3 = Status.Pending(42);
+        switch (s3) {
+            case Status.OK: {
+                println("OK");
+            }
+            case Status.Pending(code): {
+                println("Pending code: ");
+                println(code);
+            }
+            default: {
+                println("Unknown");
+            }
+        }
+
+        println("All tests completed");
+    }
+}

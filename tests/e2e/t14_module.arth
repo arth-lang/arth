@@ -1,0 +1,26 @@
+package test;
+
+// Test: Module with static methods
+// Expected output:
+//   MathUtils.square(5) = 25
+//   MathUtils.double(7) = 14
+
+module MathUtils {
+    public static Int square(Int x) {
+        return x * x;
+    }
+
+    public static Int double(Int x) {
+        return x * 2;
+    }
+}
+
+module Main {
+    public static void main() {
+        Int s = MathUtils.square(5);
+        println("MathUtils.square(5) = " + s);
+
+        Int d = MathUtils.double(7);
+        println("MathUtils.double(7) = " + d);
+    }
+}

@@ -1,0 +1,70 @@
+package conformance;
+
+// @spec: spec.md §7 - Rethrow in catch blocks
+// @expect: pass
+// @description: Validates rethrowing exceptions in catch blocks
+
+public struct ProcessError {
+    public String message;
+}
+
+public struct WrapperError {
+    public String message;
+    public String cause;
+}
+
+module Processor {
+    public Int process(Int x) throws (ProcessError) {
+        if (x < 0) {
+            throw ProcessError { message: "negative input" };
+        }
+        return x * 2;
+    }
+}
+
+module Wrapper {
+    // Catch and rethrow the same exception
+    public Int processWithLogging(Int x) throws (ProcessError) {
+        try {
+            return Processor.process(x);
+        } catch (ProcessError e) {
+            // Log and rethrow
+            String logged = e.message;
+            throw e;  // Rethrow same exception
+        }
+    }
+
+    // Catch and throw wrapped exception
+    public Int processWithWrap(Int x) throws (WrapperError) {
+        try {
+            return Processor.process(x);
+        } catch (ProcessError e) {
+            // Wrap in new exception type
+            throw WrapperError {
+                message: "processing failed",
+                cause: e.message
+            };
+        }
+    }
+}
+
+module Main {
+    public static void main() {
+        // Test rethrow path
+        try {
+            Int result = Wrapper.processWithLogging(-1);
+        } catch (ProcessError e) {
+            String msg = e.message;
+        }
+
+        // Test wrapped exception
+        try {
+            Int result = Wrapper.processWithWrap(-1);
+        } catch (WrapperError e) {
+            String msg = e.message;
+            String cause = e.cause;
+        }
+
+        println("rethrow: pass");
+    }
+}

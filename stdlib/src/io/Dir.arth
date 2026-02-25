@@ -1,0 +1,131 @@
+package io;
+
+/**
+ * Directory operations for creating, listing, and managing directories.
+ *
+ * NOTE: This file is an INTRINSIC-BACKED STUB for IDE/tooling support.
+ * The function bodies are placeholders - actual implementation is provided
+ * by the compiler via intrinsic lowering to VM runtime functions.
+ *
+ * Example usage:
+ * ```
+ * import io.*;
+ *
+ * module Main {
+ *     public static void main() {
+ *         // Create a directory
+ *         Dir.create("./output");
+ *
+ *         // Create nested directories
+ *         Dir.createAll("./output/nested/deep");
+ *
+ *         // List directory contents
+ *         Array<String> entries = Dir.list("./output");
+ *
+ *         // Check if path is a directory
+ *         if (Dir.isDir("./output")) {
+ *             Console.print("It's a directory!");
+ *         }
+ *     }
+ * }
+ * ```
+ *
+ * @see src/compiler/intrinsics.rs for intrinsic registry
+ * @see crates/arth-vm/src/runtime.rs for VM implementation
+ */
+module Dir {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Directory Creation
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Creates a directory at the specified path.
+    ///
+    /// Fails if the parent directory doesn't exist or the directory already exists.
+    ///
+    /// @param path The path where to create the directory
+    /// @return true if successful, false otherwise
+    @intrinsic("io.dir_create")
+    public static Bool create(String path) {
+        // Intrinsic: creates directory
+        return false;
+    }
+
+    /// Creates a directory and all necessary parent directories.
+    ///
+    /// Similar to `mkdir -p` on Unix systems.
+    ///
+    /// @param path The path where to create the directory tree
+    /// @return true if successful, false otherwise
+    @intrinsic("io.dir_create_all")
+    public static Bool createAll(String path) {
+        // Intrinsic: creates directory tree
+        return false;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Directory Deletion
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Deletes an empty directory.
+    ///
+    /// Fails if the directory is not empty or doesn't exist.
+    ///
+    /// @param path The path to the directory to delete
+    /// @return true if successful, false otherwise
+    @intrinsic("io.dir_delete")
+    public static Bool delete(String path) {
+        // Intrinsic: deletes empty directory
+        return false;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Directory Listing
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Lists all entries in a directory.
+    ///
+    /// Returns file and directory names (not full paths).
+    /// Does not include "." or "..".
+    ///
+    /// @param path The directory path to list
+    /// @return An array of entry names, or empty array on error
+    @intrinsic("io.dir_list")
+    public static Array<String> list(String path) {
+        // Intrinsic: lists directory contents
+        return [];
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Directory Queries
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Checks if a directory exists at the given path.
+    ///
+    /// @param path The path to check
+    /// @return true if the path exists and is a directory
+    @intrinsic("io.dir_exists")
+    public static Bool exists(String path) {
+        // Intrinsic: checks directory existence
+        return false;
+    }
+
+    /// Checks if a path points to a directory.
+    ///
+    /// @param path The path to check
+    /// @return true if the path is a directory
+    @intrinsic("io.is_dir")
+    public static Bool isDir(String path) {
+        // Intrinsic: checks if path is directory
+        return false;
+    }
+
+    /// Checks if a path points to a regular file.
+    ///
+    /// @param path The path to check
+    /// @return true if the path is a regular file
+    @intrinsic("io.is_file")
+    public static Bool isFile(String path) {
+        // Intrinsic: checks if path is file
+        return false;
+    }
+}

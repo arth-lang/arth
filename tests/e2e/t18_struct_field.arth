@@ -1,0 +1,30 @@
+package test;
+
+// Test: Struct field access
+// Expected output:
+//   10
+//   20
+//   Alice
+//   30
+
+public struct Point {
+    public Int x;
+    public Int y;
+}
+
+public struct Person {
+    public String name;
+    public Int age;
+}
+
+module Main {
+    public static void main() {
+        Point p = Point { x: 10, y: 20 };
+        println(p.x);
+        println(p.y);
+
+        Person person = Person { name: "Alice", age: 30 };
+        println(person.name);
+        println(person.age);
+    }
+}

@@ -1,0 +1,21 @@
+package test;
+
+// Test: Function definition and calls
+// Expected output:
+//   hello from greet
+//   value is 42
+
+module Main {
+    public static void greet() {
+        println("hello from greet");
+    }
+
+    public static void showValue(Int v) {
+        println("value is " + v);
+    }
+
+    public static void main() {
+        greet();
+        showValue(42);
+    }
+}

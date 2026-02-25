@@ -1,0 +1,76 @@
+package shared;
+
+/**
+ * Shared memory primitives for cross-task communication.
+ *
+ * NOTE: This file is an INTRINSIC-BACKED STUB for IDE/tooling support.
+ * The function bodies are placeholders - actual implementation is provided
+ * by the compiler via intrinsic lowering to VM runtime functions.
+ *
+ * Shared provides thread-safe value sharing between concurrent tasks.
+ * Values stored via Shared are atomically accessible, making them safe
+ * for concurrent reads and writes without explicit locking.
+ *
+ * This is a low-level primitive. For most concurrent communication,
+ * prefer Channels or Actor messaging. Use Shared when you need:
+ * - Atomic counters or flags
+ * - Simple shared state between tasks
+ * - Lock-free data structures (advanced)
+ *
+ * Example usage:
+ * ```
+ * import shared.*;
+ * import concurrent.*;
+ *
+ * module Main {
+ *     public static void main() {
+ *         // Create shared counter
+ *         Int counter = Shared.new();
+ *         Shared.store(counter, 0);
+ *
+ *         // Spawn tasks that increment counter
+ *         Task.spawn(() -> {
+ *             Int val = Shared.load(counter);
+ *             Shared.store(counter, val + 1);
+ *         });
+ *
+ *         // Read final value
+ *         Int result = Shared.load(counter);
+ *     }
+ * }
+ * ```
+ *
+ * @see src/compiler/intrinsics.rs for intrinsic registry
+ * @see crates/arth-vm/src/runtime.rs for VM implementation
+ */
+
+module Shared {
+    /// Creates a new shared memory cell.
+    ///
+    /// The returned handle can be used with store/load to atomically
+    /// access the value from multiple tasks.
+    ///
+    /// @return A handle to the new shared cell (initialized to 0)
+    @intrinsic("shared.new")
+    public static Int new() { return 0; }
+
+    /// Atomically stores a value in a shared cell.
+    ///
+    /// This operation is atomic with respect to other store/load
+    /// operations on the same cell.
+    ///
+    /// @param cell The shared cell handle
+    /// @param value The value to store
+    @intrinsic("shared.store")
+    public static void store(Int cell, Int value) { }
+
+    /// Atomically loads a value from a shared cell.
+    ///
+    /// This operation is atomic with respect to other store/load
+    /// operations on the same cell.
+    ///
+    /// @param cell The shared cell handle
+    /// @return The current value in the cell
+    @intrinsic("shared.load")
+    public static Int load(Int cell) { return 0; }
+}

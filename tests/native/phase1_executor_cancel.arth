@@ -1,0 +1,16 @@
+package test.native;
+
+module Main {
+    public static void main() {
+        Int init = Executor.init(1);
+        Int task = Executor.spawn(42);
+        Int cancel_status = Executor.cancel(task);
+        Int joined = Executor.join(task);
+
+        if (init == 1 && cancel_status == 0 && joined == -1) {
+            println("PHASE1_CANCEL_OK");
+        } else {
+            println("PHASE1_CANCEL_BAD");
+        }
+    }
+}

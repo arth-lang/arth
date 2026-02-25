@@ -1,0 +1,201 @@
+package db;
+
+/**
+ * Connection pool provider for database connections.
+ *
+ * This module provides connection pooling to efficiently manage database
+ * connections across multiple tasks. Connection pooling:
+ * - Reduces connection overhead by reusing connections
+ * - Limits the number of concurrent database connections
+ * - Provides timeout handling for connection acquisition
+ *
+ * ## Provider Pattern
+ *
+ * DbPool is implemented as an Arth provider, allowing it to be dependency-
+ * injected and properly cleaned up when the scope ends.
+ *
+ * ## Implementation Status
+ *
+ * This module is a placeholder for Phase 5 implementation.
+ *
+ * @see docs/stdlib-database.md Phase 5 for implementation plan
+ * @see docs/spec.md section 5 for provider specification
+ */
+
+/**
+ * Configuration for a database connection pool.
+ */
+public struct PoolConfig {
+    /// Minimum number of idle connections to maintain
+    public final int minConnections;
+    /// Maximum number of connections in the pool
+    public final int maxConnections;
+    /// Maximum time to wait for a connection (milliseconds)
+    public final int acquireTimeoutMs;
+    /// Time after which idle connections are closed (milliseconds)
+    public final int idleTimeoutMs;
+    /// The database connection string
+    public final String connectionString;
+    /// The driver type for connections
+    public final DriverType driverType;
+}
+
+/**
+ * Module providing factory functions for PoolConfig.
+ */
+module PoolConfig {
+    /// Creates a PoolConfig with default settings.
+    ///
+    /// Defaults:
+    /// - minConnections: 1
+    /// - maxConnections: 10
+    /// - acquireTimeoutMs: 30000 (30 seconds)
+    /// - idleTimeoutMs: 600000 (10 minutes)
+    public static PoolConfig forSqlite(String connectionString) {
+        return PoolConfig {
+            minConnections: 1,
+            maxConnections: 10,
+            acquireTimeoutMs: 30000,
+            idleTimeoutMs: 600000,
+            connectionString: connectionString,
+            driverType: DriverType.SQLITE
+        };
+    }
+
+    /// Creates a PoolConfig for PostgreSQL with default settings.
+    public static PoolConfig forPostgres(String connectionString) {
+        return PoolConfig {
+            minConnections: 1,
+            maxConnections: 10,
+            acquireTimeoutMs: 30000,
+            idleTimeoutMs: 600000,
+            connectionString: connectionString,
+            driverType: DriverType.POSTGRES
+        };
+    }
+
+    /// Creates a PoolConfig with custom settings.
+    public static PoolConfig custom(
+        int minConnections,
+        int maxConnections,
+        int acquireTimeoutMs,
+        int idleTimeoutMs,
+        String connectionString,
+        DriverType driverType
+    ) {
+        return PoolConfig {
+            minConnections: minConnections,
+            maxConnections: maxConnections,
+            acquireTimeoutMs: acquireTimeoutMs,
+            idleTimeoutMs: idleTimeoutMs,
+            connectionString: connectionString,
+            driverType: driverType
+        };
+    }
+}
+
+/**
+ * Database connection pool provider.
+ *
+ * A DbPool manages a set of database connections that can be shared
+ * across tasks. Connections are acquired from the pool, used, and then
+ * released back to the pool.
+ *
+ * Example usage:
+ * ```arth
+ * // Create pool provider
+ * DbPool pool = DbPoolFns.new(PoolConfig.forSqlite("file:./mydb.sqlite"));
+ *
+ * // Acquire connection
+ * Connection conn = DbPoolFns.acquire(pool);
+ * try {
+ *     // Use connection...
+ * } finally {
+ *     DbPoolFns.release(pool, conn);
+ * }
+ * ```
+ */
+public provider DbPool {
+    /// Pool configuration
+    public final PoolConfig config;
+    /// Number of connections currently in use
+    public shared int activeCount;
+    /// Handle to internal pool state (connection list, wait queue)
+    public final int poolHandle;
+}
+
+/**
+ * Module providing pool operations.
+ *
+ * Note: This is a placeholder. Actual implementation requires
+ * the provider system and concurrent data structures.
+ */
+module DbPoolFns {
+    /// Creates a new connection pool.
+    ///
+    /// @param config Pool configuration
+    /// @returns A new DbPool provider
+    /// @throws (ConnectionError) if initial connections cannot be created
+    @intrinsic("db.pool_new")
+    public DbPool new(PoolConfig config) throws (ConnectionError) {
+        // Intrinsic: creates pool with initial connections
+        return DbPool {
+            config: config,
+            activeCount: 0,
+            poolHandle: 0
+        };
+    }
+
+    /// Destroys the pool and closes all connections.
+    @intrinsic("db.pool_deinit")
+    public void deinit(DbPool self) {
+        // Intrinsic: closes all connections in pool
+    }
+
+    /// Acquires a connection from the pool.
+    ///
+    /// If no connections are available, waits up to acquireTimeoutMs.
+    /// If timeout is exceeded, throws (PoolExhaustedError).
+    ///
+    /// @param pool The pool to acquire from
+    /// @returns An open Connection
+    /// @throws (PoolExhaustedError) if timeout exceeded
+    @intrinsic("db.pool_acquire")
+    public static Connection acquire(DbPool pool) throws (PoolExhaustedError) {
+        // Intrinsic: gets connection from pool or waits
+        return Connection {
+            handle: 0,
+            driverType: pool.config.driverType,
+            state: ConnectionState.OPEN,
+            connectionString: pool.config.connectionString
+        };
+    }
+
+    /// Releases a connection back to the pool.
+    ///
+    /// The connection must not have an open transaction.
+    /// If the connection is in an error state, it is closed instead of returned.
+    ///
+    /// @param pool The pool to release to
+    /// @param conn The connection to release
+    @intrinsic("db.pool_release")
+    public static void release(DbPool pool, Connection conn) {
+        // Intrinsic: returns connection to pool
+    }
+
+    /// Returns the number of connections currently in use.
+    public static int getActiveCount(DbPool pool) {
+        return pool.activeCount;
+    }
+
+    /// Returns the number of idle connections in the pool.
+    @intrinsic("db.pool_idle_count")
+    public static int getIdleCount(DbPool pool) {
+        return 0;
+    }
+
+    /// Returns the pool configuration.
+    public static PoolConfig getConfig(DbPool pool) {
+        return pool.config;
+    }
+}

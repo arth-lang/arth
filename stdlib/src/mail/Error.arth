@@ -1,0 +1,832 @@
+package mail;
+
+/**
+ * Mail exception hierarchy.
+ *
+ * All mail operations that can fail throw typed exceptions from this
+ * hierarchy. The base interface MailError is sealed, meaning all exception
+ * types are defined here and exhaustive matching is possible.
+ *
+ * Exception hierarchy:
+ * ```
+ * MailError (sealed interface)
+ * ├── AuthenticationError    # Login/auth failed
+ * ├── ConnectionError        # Failed to connect/disconnect
+ * ├── TransportError         # SMTP send failure
+ * ├── StoreError             # IMAP/POP3 access failure
+ * ├── FolderError            # Folder operation failed
+ * ├── MessageError           # Message parsing/construction failed
+ * ├── AddressError           # Invalid email address
+ * ├── EncodingError          # MIME encoding/decoding failed
+ * ├── TimeoutError           # Operation timed out
+ * ├── TlsError               # TLS/SSL handshake failed
+ * └── QuotaExceededError     # Mailbox quota exceeded
+ * ```
+ *
+ * Example usage:
+ * ```arth
+ * try {
+ *     await Mail.send(session, message);
+ * } catch (AuthenticationError e) {
+ *     Console.println("Login failed: " + e.message);
+ * } catch (TransportError e) {
+ *     Console.println("Send failed: " + e.message);
+ * } catch (ConnectionError e) {
+ *     Console.println("Connection failed: " + e.message);
+ * }
+ * ```
+ *
+ * @see mail.Transport for sending operations
+ * @see mail.Store for receiving operations
+ */
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Base Interface
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Base interface for all mail errors.
+ *
+ * This is a sealed interface - all implementations are defined in this file.
+ * This allows exhaustive catch matching for mail errors.
+ */
+public interface MailError {
+    /// Returns the error message.
+    String getMessage();
+
+    /// Returns the protocol-specific error code, or empty string if not applicable.
+    String getErrorCode();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Authentication Errors
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Error thrown when authentication fails.
+ *
+ * Common causes:
+ * - Invalid username or password
+ * - Account locked or disabled
+ * - OAuth2 token expired or revoked
+ * - Authentication mechanism not supported
+ */
+public struct AuthenticationError {
+    /// Human-readable error message
+    public final String message;
+    /// Protocol-specific error code (e.g., SMTP response code)
+    public final String errorCode;
+    /// The username that was attempted
+    public final String username;
+    /// The authentication mechanism used (PLAIN, LOGIN, OAUTH2)
+    public final String mechanism;
+}
+
+module AuthenticationError implements MailError {
+    /// Creates a new AuthenticationError with message only.
+    public static AuthenticationError new(String message) {
+        return AuthenticationError {
+            message: message,
+            errorCode: "",
+            username: "",
+            mechanism: ""
+        };
+    }
+
+    /// Creates a new AuthenticationError with username.
+    public static AuthenticationError forUser(String message, String username) {
+        return AuthenticationError {
+            message: message,
+            errorCode: "",
+            username: username,
+            mechanism: ""
+        };
+    }
+
+    /// Creates a new AuthenticationError with full details.
+    public static AuthenticationError full(String message, String errorCode, String username, String mechanism) {
+        return AuthenticationError {
+            message: message,
+            errorCode: errorCode,
+            username: username,
+            mechanism: mechanism
+        };
+    }
+
+    public String getMessage(AuthenticationError self) {
+        return self.message;
+    }
+
+    public String getErrorCode(AuthenticationError self) {
+        return self.errorCode;
+    }
+
+    public static String getUsername(AuthenticationError self) {
+        return self.username;
+    }
+
+    public static String getMechanism(AuthenticationError self) {
+        return self.mechanism;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Connection Errors
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Error thrown when a connection cannot be established or closed.
+ *
+ * Common causes:
+ * - Server unreachable (DNS failure, network error)
+ * - Connection refused (server not running, firewall)
+ * - Connection reset (server crashed, network issue)
+ * - Invalid host or port
+ */
+public struct ConnectionError {
+    /// Human-readable error message
+    public final String message;
+    /// Protocol-specific error code
+    public final String errorCode;
+    /// The host that was attempted
+    public final String host;
+    /// The port that was attempted
+    public final int port;
+}
+
+module ConnectionError implements MailError {
+    /// Creates a new ConnectionError with message only.
+    public static ConnectionError new(String message) {
+        return ConnectionError {
+            message: message,
+            errorCode: "",
+            host: "",
+            port: 0
+        };
+    }
+
+    /// Creates a new ConnectionError with host/port.
+    public static ConnectionError forHost(String message, String host, int port) {
+        return ConnectionError {
+            message: message,
+            errorCode: "",
+            host: host,
+            port: port
+        };
+    }
+
+    /// Creates a new ConnectionError with full details.
+    public static ConnectionError full(String message, String errorCode, String host, int port) {
+        return ConnectionError {
+            message: message,
+            errorCode: errorCode,
+            host: host,
+            port: port
+        };
+    }
+
+    public String getMessage(ConnectionError self) {
+        return self.message;
+    }
+
+    public String getErrorCode(ConnectionError self) {
+        return self.errorCode;
+    }
+
+    public static String getHost(ConnectionError self) {
+        return self.host;
+    }
+
+    public static int getPort(ConnectionError self) {
+        return self.port;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Transport Errors (SMTP)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Error thrown when sending mail via SMTP fails.
+ *
+ * Common causes:
+ * - Recipient rejected (invalid address, user unknown)
+ * - Sender rejected (relay denied, SPF failure)
+ * - Message rejected (too large, content filtered)
+ * - Server error (temporary failure, rate limit)
+ */
+public struct TransportError {
+    /// Human-readable error message
+    public final String message;
+    /// SMTP response code (e.g., "550", "421")
+    public final String errorCode;
+    /// The SMTP command that failed (e.g., "MAIL FROM", "RCPT TO", "DATA")
+    public final String command;
+    /// The recipient address that was rejected (if applicable)
+    public final String recipient;
+}
+
+module TransportError implements MailError {
+    /// Creates a new TransportError with message only.
+    public static TransportError new(String message) {
+        return TransportError {
+            message: message,
+            errorCode: "",
+            command: "",
+            recipient: ""
+        };
+    }
+
+    /// Creates a new TransportError with SMTP code.
+    public static TransportError withCode(String message, String errorCode) {
+        return TransportError {
+            message: message,
+            errorCode: errorCode,
+            command: "",
+            recipient: ""
+        };
+    }
+
+    /// Creates a new TransportError for a rejected recipient.
+    public static TransportError forRecipient(String message, String errorCode, String recipient) {
+        return TransportError {
+            message: message,
+            errorCode: errorCode,
+            command: "RCPT TO",
+            recipient: recipient
+        };
+    }
+
+    /// Creates a new TransportError with full details.
+    public static TransportError full(String message, String errorCode, String command, String recipient) {
+        return TransportError {
+            message: message,
+            errorCode: errorCode,
+            command: command,
+            recipient: recipient
+        };
+    }
+
+    public String getMessage(TransportError self) {
+        return self.message;
+    }
+
+    public String getErrorCode(TransportError self) {
+        return self.errorCode;
+    }
+
+    public static String getCommand(TransportError self) {
+        return self.command;
+    }
+
+    public static String getRecipient(TransportError self) {
+        return self.recipient;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Store Errors (IMAP/POP3)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Error thrown when accessing mail store (IMAP/POP3) fails.
+ *
+ * Common causes:
+ * - Command failed (NO response)
+ * - Protocol error (BAD response)
+ * - Server error (temporary failure)
+ * - Synchronization error (message deleted by another client)
+ */
+public struct StoreError {
+    /// Human-readable error message
+    public final String message;
+    /// Protocol-specific error code
+    public final String errorCode;
+    /// The protocol command that failed
+    public final String command;
+}
+
+module StoreError implements MailError {
+    /// Creates a new StoreError with message only.
+    public static StoreError new(String message) {
+        return StoreError {
+            message: message,
+            errorCode: "",
+            command: ""
+        };
+    }
+
+    /// Creates a new StoreError with command.
+    public static StoreError forCommand(String message, String command) {
+        return StoreError {
+            message: message,
+            errorCode: "",
+            command: command
+        };
+    }
+
+    /// Creates a new StoreError with full details.
+    public static StoreError full(String message, String errorCode, String command) {
+        return StoreError {
+            message: message,
+            errorCode: errorCode,
+            command: command
+        };
+    }
+
+    public String getMessage(StoreError self) {
+        return self.message;
+    }
+
+    public String getErrorCode(StoreError self) {
+        return self.errorCode;
+    }
+
+    public static String getCommand(StoreError self) {
+        return self.command;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Folder Errors
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Error thrown when folder operations fail.
+ *
+ * Common causes:
+ * - Folder not found
+ * - Folder already exists (on create)
+ * - Permission denied
+ * - Folder not open (read/write on closed folder)
+ * - Folder not selectable (e.g., namespace root)
+ */
+public struct FolderError {
+    /// Human-readable error message
+    public final String message;
+    /// Protocol-specific error code
+    public final String errorCode;
+    /// The folder name that was accessed
+    public final String folderName;
+    /// The operation that failed (OPEN, CLOSE, CREATE, DELETE, RENAME)
+    public final String operation;
+}
+
+module FolderError implements MailError {
+    /// Creates a new FolderError with message only.
+    public static FolderError new(String message) {
+        return FolderError {
+            message: message,
+            errorCode: "",
+            folderName: "",
+            operation: ""
+        };
+    }
+
+    /// Creates a new FolderError for a specific folder.
+    public static FolderError forFolder(String message, String folderName) {
+        return FolderError {
+            message: message,
+            errorCode: "",
+            folderName: folderName,
+            operation: ""
+        };
+    }
+
+    /// Creates a new FolderError with full details.
+    public static FolderError full(String message, String errorCode, String folderName, String operation) {
+        return FolderError {
+            message: message,
+            errorCode: errorCode,
+            folderName: folderName,
+            operation: operation
+        };
+    }
+
+    public String getMessage(FolderError self) {
+        return self.message;
+    }
+
+    public String getErrorCode(FolderError self) {
+        return self.errorCode;
+    }
+
+    public static String getFolderName(FolderError self) {
+        return self.folderName;
+    }
+
+    public static String getOperation(FolderError self) {
+        return self.operation;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Message Errors
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Error thrown when message parsing or construction fails.
+ *
+ * Common causes:
+ * - Malformed message structure
+ * - Missing required headers (From, Date)
+ * - Invalid header syntax
+ * - Corrupted MIME structure
+ * - Unsupported encoding
+ */
+public struct MessageError {
+    /// Human-readable error message
+    public final String message;
+    /// The header or part that caused the error (if applicable)
+    public final String context;
+    /// Line number in raw message where error occurred (0 if unknown)
+    public final int lineNumber;
+}
+
+module MessageError implements MailError {
+    /// Creates a new MessageError with message only.
+    public static MessageError new(String message) {
+        return MessageError {
+            message: message,
+            context: "",
+            lineNumber: 0
+        };
+    }
+
+    /// Creates a new MessageError with context.
+    public static MessageError withContext(String message, String context) {
+        return MessageError {
+            message: message,
+            context: context,
+            lineNumber: 0
+        };
+    }
+
+    /// Creates a new MessageError with full details.
+    public static MessageError full(String message, String context, int lineNumber) {
+        return MessageError {
+            message: message,
+            context: context,
+            lineNumber: lineNumber
+        };
+    }
+
+    public String getMessage(MessageError self) {
+        return self.message;
+    }
+
+    public String getErrorCode(MessageError self) {
+        return "";
+    }
+
+    public static String getContext(MessageError self) {
+        return self.context;
+    }
+
+    public static int getLineNumber(MessageError self) {
+        return self.lineNumber;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Address Errors
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Error thrown when email address parsing or validation fails.
+ *
+ * Common causes:
+ * - Missing @ symbol
+ * - Invalid characters in local part or domain
+ * - Domain not resolvable (if validation includes DNS)
+ * - Malformed group address syntax
+ */
+public struct AddressError {
+    /// Human-readable error message
+    public final String message;
+    /// The address string that failed parsing
+    public final String address;
+    /// Position in the address string where error was detected (0 if unknown)
+    public final int position;
+}
+
+module AddressError implements MailError {
+    /// Creates a new AddressError with message only.
+    public static AddressError new(String message) {
+        return AddressError {
+            message: message,
+            address: "",
+            position: 0
+        };
+    }
+
+    /// Creates a new AddressError for a specific address.
+    public static AddressError forAddress(String message, String address) {
+        return AddressError {
+            message: message,
+            address: address,
+            position: 0
+        };
+    }
+
+    /// Creates a new AddressError with full details.
+    public static AddressError full(String message, String address, int position) {
+        return AddressError {
+            message: message,
+            address: address,
+            position: position
+        };
+    }
+
+    public String getMessage(AddressError self) {
+        return self.message;
+    }
+
+    public String getErrorCode(AddressError self) {
+        return "";
+    }
+
+    public static String getAddress(AddressError self) {
+        return self.address;
+    }
+
+    public static int getPosition(AddressError self) {
+        return self.position;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Encoding Errors
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Error thrown when MIME encoding or decoding fails.
+ *
+ * Common causes:
+ * - Invalid base64 data
+ * - Invalid quoted-printable sequence
+ * - Unsupported charset
+ * - Malformed encoded-word (RFC 2047)
+ */
+public struct EncodingError {
+    /// Human-readable error message
+    public final String message;
+    /// The encoding type that failed (BASE64, QUOTED-PRINTABLE, charset name)
+    public final String encoding;
+    /// Position in input where error occurred (0 if unknown)
+    public final int position;
+}
+
+module EncodingError implements MailError {
+    /// Creates a new EncodingError with message only.
+    public static EncodingError new(String message) {
+        return EncodingError {
+            message: message,
+            encoding: "",
+            position: 0
+        };
+    }
+
+    /// Creates a new EncodingError for a specific encoding.
+    public static EncodingError forEncoding(String message, String encoding) {
+        return EncodingError {
+            message: message,
+            encoding: encoding,
+            position: 0
+        };
+    }
+
+    /// Creates a new EncodingError with full details.
+    public static EncodingError full(String message, String encoding, int position) {
+        return EncodingError {
+            message: message,
+            encoding: encoding,
+            position: position
+        };
+    }
+
+    public String getMessage(EncodingError self) {
+        return self.message;
+    }
+
+    public String getErrorCode(EncodingError self) {
+        return "";
+    }
+
+    public static String getEncoding(EncodingError self) {
+        return self.encoding;
+    }
+
+    public static int getPosition(EncodingError self) {
+        return self.position;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Timeout Errors
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Error thrown when a mail operation times out.
+ *
+ * Common causes:
+ * - Connection timeout (server not responding)
+ * - Read timeout (server slow to respond)
+ * - Write timeout (network congestion)
+ * - Operation timeout (long-running operation)
+ */
+public struct TimeoutError {
+    /// Human-readable error message
+    public final String message;
+    /// The operation that timed out
+    public final String operation;
+    /// The timeout duration in milliseconds
+    public final int timeoutMs;
+}
+
+module TimeoutError implements MailError {
+    /// Creates a new TimeoutError with message only.
+    public static TimeoutError new(String message) {
+        return TimeoutError {
+            message: message,
+            operation: "",
+            timeoutMs: 0
+        };
+    }
+
+    /// Creates a new TimeoutError for an operation.
+    public static TimeoutError forOperation(String message, String operation, int timeoutMs) {
+        return TimeoutError {
+            message: message,
+            operation: operation,
+            timeoutMs: timeoutMs
+        };
+    }
+
+    public String getMessage(TimeoutError self) {
+        return self.message;
+    }
+
+    public String getErrorCode(TimeoutError self) {
+        return "";
+    }
+
+    public static String getOperation(TimeoutError self) {
+        return self.operation;
+    }
+
+    public static int getTimeoutMs(TimeoutError self) {
+        return self.timeoutMs;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TLS Errors
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Error thrown when TLS/SSL operations fail.
+ *
+ * Common causes:
+ * - Certificate validation failed (expired, self-signed, hostname mismatch)
+ * - TLS version not supported
+ * - Cipher negotiation failed
+ * - STARTTLS not supported by server
+ */
+public struct TlsError {
+    /// Human-readable error message
+    public final String message;
+    /// The TLS operation that failed (HANDSHAKE, STARTTLS, VERIFY)
+    public final String operation;
+    /// Certificate error details (if applicable)
+    public final String certificateError;
+}
+
+module TlsError implements MailError {
+    /// Creates a new TlsError with message only.
+    public static TlsError new(String message) {
+        return TlsError {
+            message: message,
+            operation: "",
+            certificateError: ""
+        };
+    }
+
+    /// Creates a new TlsError for an operation.
+    public static TlsError forOperation(String message, String operation) {
+        return TlsError {
+            message: message,
+            operation: operation,
+            certificateError: ""
+        };
+    }
+
+    /// Creates a new TlsError with certificate details.
+    public static TlsError forCertificate(String message, String certificateError) {
+        return TlsError {
+            message: message,
+            operation: "VERIFY",
+            certificateError: certificateError
+        };
+    }
+
+    /// Creates a new TlsError with full details.
+    public static TlsError full(String message, String operation, String certificateError) {
+        return TlsError {
+            message: message,
+            operation: operation,
+            certificateError: certificateError
+        };
+    }
+
+    public String getMessage(TlsError self) {
+        return self.message;
+    }
+
+    public String getErrorCode(TlsError self) {
+        return "";
+    }
+
+    public static String getOperation(TlsError self) {
+        return self.operation;
+    }
+
+    public static String getCertificateError(TlsError self) {
+        return self.certificateError;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Quota Errors
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Error thrown when mailbox quota is exceeded.
+ *
+ * Common causes:
+ * - Mailbox storage quota exceeded
+ * - Message count quota exceeded
+ * - Attachment size limit exceeded
+ */
+public struct QuotaExceededError {
+    /// Human-readable error message
+    public final String message;
+    /// The quota type (STORAGE, MESSAGE_COUNT, ATTACHMENT_SIZE)
+    public final String quotaType;
+    /// Current usage (bytes or count)
+    public final int64 currentUsage;
+    /// Maximum allowed (bytes or count)
+    public final int64 maxAllowed;
+}
+
+module QuotaExceededError implements MailError {
+    /// Creates a new QuotaExceededError with message only.
+    public static QuotaExceededError new(String message) {
+        return QuotaExceededError {
+            message: message,
+            quotaType: "",
+            currentUsage: 0,
+            maxAllowed: 0
+        };
+    }
+
+    /// Creates a new QuotaExceededError with quota type.
+    public static QuotaExceededError forType(String message, String quotaType) {
+        return QuotaExceededError {
+            message: message,
+            quotaType: quotaType,
+            currentUsage: 0,
+            maxAllowed: 0
+        };
+    }
+
+    /// Creates a new QuotaExceededError with full details.
+    public static QuotaExceededError full(String message, String quotaType, int64 currentUsage, int64 maxAllowed) {
+        return QuotaExceededError {
+            message: message,
+            quotaType: quotaType,
+            currentUsage: currentUsage,
+            maxAllowed: maxAllowed
+        };
+    }
+
+    public String getMessage(QuotaExceededError self) {
+        return self.message;
+    }
+
+    public String getErrorCode(QuotaExceededError self) {
+        return "";
+    }
+
+    public static String getQuotaType(QuotaExceededError self) {
+        return self.quotaType;
+    }
+
+    public static int64 getCurrentUsage(QuotaExceededError self) {
+        return self.currentUsage;
+    }
+
+    public static int64 getMaxAllowed(QuotaExceededError self) {
+        return self.maxAllowed;
+    }
+}

@@ -1,0 +1,48 @@
+package conformance;
+
+// @spec: spec.md §5 - Operators and precedence
+// @expect: pass
+// @description: Validates all operators are correctly lexed
+
+module Main {
+    public static void main() {
+        Int a = 10;
+        Int b = 3;
+
+        // Arithmetic operators
+        Int add = a + b;
+        Int sub = a - b;
+        Int mul = a * b;
+        Int div = a / b;
+        Int mod = a % b;
+
+        // Comparison operators
+        Bool eq = a == b;
+        Bool ne = a != b;
+        Bool lt = a < b;
+        Bool le = a <= b;
+        Bool gt = a > b;
+        Bool ge = a >= b;
+
+        // Logical operators
+        Bool and = true && false;
+        Bool or = true || false;
+        Bool not = !true;
+
+        // Bitwise operators
+        Int bit_and = a & b;
+        Int bit_or = a | b;
+        Int bit_xor = a ^ b;
+        Int shl = a << 1;
+        Int shr = a >> 1;
+
+        // Unary operators
+        Int neg = -a;
+
+        // Assignment
+        Int x = 5;
+        x = x + 1;
+
+        println("operators: pass");
+    }
+}

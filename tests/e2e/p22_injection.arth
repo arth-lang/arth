@@ -1,0 +1,185 @@
+package test;
+
+// Test: Provider injection - passing providers as parameters to functions
+// This tests the explicit injection pattern from the Arth spec.
+//
+// Expected output:
+//   === Test 1: Provider as Parameter ===
+//   Counter value: 100
+//   After increment: 101
+//   Test 1: PASS
+//   === Test 2: Multiple Providers ===
+//   Config name: MyApp
+//   Counter value: 50
+//   Test 2: PASS (checks process(cfg,10)==50 && counter==50)
+//   === Test 3: Provider Bundle ===
+//   Bundle config name: BundledApp
+//   Bundle counter: 200
+//   After bundle increment: 201
+//   Test 3: PASS (checks counter==201)
+//   === Test 4: Nested Provider Access ===
+//   Processed with multiplier 10: 420
+//   Test 4: PASS
+//   === Summary ===
+//   Tests passed: 4/4
+//   === P22: PASSED ===
+
+// Provider with shared state
+provider Counter {
+    shared Int value;
+}
+
+// Provider with final configuration
+provider Config {
+    final String name;
+    final Int multiplier;
+}
+
+// Bundle struct holding multiple providers
+struct Providers {
+    Counter counter;
+    Config config;
+}
+
+// Module with functions that accept providers as parameters
+module CounterOps {
+    // Create a new counter
+    public static Counter create(Int initial) {
+        return Counter { value: initial };
+    }
+
+    // Get value from injected provider
+    public static Int getValue(Counter c) {
+        return c.value;
+    }
+
+    // Increment the injected provider's value
+    public static void increment(Counter c) {
+        c.value = c.value + 1;
+    }
+
+    // Add a specific amount
+    public static void add(Counter c, Int amount) {
+        c.value = c.value + amount;
+    }
+}
+
+module ConfigOps {
+    // Create a new config
+    public static Config create(String name, Int multiplier) {
+        return Config { name: name, multiplier: multiplier };
+    }
+
+    // Get name from injected provider
+    public static String getName(Config cfg) {
+        return cfg.name;
+    }
+
+    // Process a value using config's multiplier
+    public static Int process(Config cfg, Int value) {
+        return value * cfg.multiplier;
+    }
+}
+
+// Module that works with bundled providers
+module AppOps {
+    // Create a provider bundle
+    public static Providers createBundle(String name, Int counterValue, Int multiplier) {
+        Counter c = Counter { value: counterValue };
+        Config cfg = Config { name: name, multiplier: multiplier };
+        return Providers { counter: c, config: cfg };
+    }
+
+    // Use the bundle's counter
+    public static Int getCounterValue(Providers p) {
+        return p.counter.value;
+    }
+
+    // Use the bundle's config
+    public static String getConfigName(Providers p) {
+        return p.config.name;
+    }
+
+    // Increment using the bundle
+    public static void incrementCounter(Providers p) {
+        p.counter.value = p.counter.value + 1;
+    }
+
+    // Process using both providers from bundle
+    public static Int processWithBundle(Providers p, Int input) {
+        Int base = p.counter.value + input;
+        return base * p.config.multiplier;
+    }
+}
+
+module Main {
+    public static void main() {
+        Int passed = 0;
+
+        // Test 1: Provider as function parameter
+        println("=== Test 1: Provider as Parameter ===");
+        Counter c1 = CounterOps.create(100);
+        println("Counter value: " + CounterOps.getValue(c1));
+        CounterOps.increment(c1);
+        println("After increment: " + CounterOps.getValue(c1));
+        if (CounterOps.getValue(c1) == 101) {
+            println("Test 1: PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 1: FAIL");
+        }
+
+        // Test 2: Multiple providers as parameters
+        println("=== Test 2: Multiple Providers ===");
+        Config cfg = ConfigOps.create("MyApp", 5);
+        Counter c2 = CounterOps.create(50);
+        println("Config name: " + ConfigOps.getName(cfg));
+        println("Counter value: " + CounterOps.getValue(c2));
+        // Check multiplier and counter value (avoiding string comparison)
+        if (ConfigOps.process(cfg, 10) == 50 && CounterOps.getValue(c2) == 50) {
+            println("Test 2: PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 2: FAIL");
+        }
+
+        // Test 3: Provider bundle - direct mutation test
+        println("=== Test 3: Provider Bundle ===");
+        Providers bundle = AppOps.createBundle("BundledApp", 200, 2);
+        println("Bundle counter: " + AppOps.getCounterValue(bundle));
+
+        // Direct mutation: modify nested provider field directly
+        bundle.counter.value = bundle.counter.value + 1;
+        println("After direct increment: " + bundle.counter.value);
+
+        // Check counter value
+        if (bundle.counter.value == 201) {
+            println("Test 3: PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 3: FAIL - expected 201, got " + bundle.counter.value);
+        }
+
+        // Test 4: Nested provider access through bundle
+        println("=== Test 4: Nested Provider Access ===");
+        Providers p = AppOps.createBundle("Processor", 42, 10);
+        // processWithBundle: (counter.value + input) * config.multiplier = (42 + 0) * 10 = 420
+        Int result = AppOps.processWithBundle(p, 0);
+        println("Processed with multiplier 10: " + result);
+        if (result == 420) {
+            println("Test 4: PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 4: FAIL - expected 420, got " + result);
+        }
+
+        // Summary
+        println("=== Summary ===");
+        println("Tests passed: " + passed + "/4");
+        if (passed == 4) {
+            println("=== P22: PASSED ===");
+        } else {
+            println("=== P22: FAILED ===");
+        }
+    }
+}

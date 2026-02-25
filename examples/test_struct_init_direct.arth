@@ -1,0 +1,13 @@
+package test;
+
+struct Config {
+    public String appName;
+    public int version;
+}
+
+module Test {
+    public void main() {
+        // Direct MapLit initialization without type prefix
+        Config cfg = { appName: "MyApp", version: 1 };
+    }
+}

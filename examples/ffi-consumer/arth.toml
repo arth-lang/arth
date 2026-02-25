@@ -1,0 +1,8 @@
+[package]
+name = "ffi-consumer"
+version = "0.1.0"
+edition = "2025"
+entry = "src/app/Main.arth"
+
+[dependencies]
+"demo-math" = "^1.0.0"

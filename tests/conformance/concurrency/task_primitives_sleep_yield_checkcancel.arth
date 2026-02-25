@@ -1,0 +1,19 @@
+package conformance;
+
+// @spec: spec.md §9 - Task cooperative primitives
+// @expect: pass
+// @description: Validates Task.sleep/Task.yield/Task.checkCancel are callable in normal build/run flows
+
+module Main {
+    public static void main() {
+        Task.sleep(0);
+        Task.yield();
+
+        bool cancelled = Task.checkCancel();
+        if (cancelled) {
+            println("cancelled");
+        } else {
+            println("not-cancelled");
+        }
+    }
+}

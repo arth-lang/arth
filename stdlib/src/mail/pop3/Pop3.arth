@@ -1,0 +1,256 @@
+package mail.pop3;
+
+import mail.*;
+
+/**
+ * POP3 store implementation.
+ *
+ * This module provides the POP3 protocol implementation for reading mail.
+ *
+ * Note: POP3 is simpler than IMAP but has limitations:
+ * - Only one folder (INBOX)
+ * - Limited search capabilities (client-side only)
+ * - Messages are typically deleted after download
+ * - No server-side flags or folders
+ *
+ * Example usage:
+ * ```arth
+ * import mail.*;
+ * import mail.pop3.*;
+ *
+ * Session session = SessionBuilder.new()
+ *     .pop3s("pop.example.com", 995)
+ *     .auth("user@example.com", "password")
+ *     .build();
+ *
+ * Store store = await Pop3.connect(session);
+ * try {
+ *     Folder inbox = Store.getInbox(store);
+ *     await Folder.open(inbox, FolderMode.READ_ONLY);
+ *
+ *     Message[] messages = await Folder.getMessages(inbox);
+ *     // Process messages...
+ *
+ *     Folder.close(inbox, false);
+ * } finally {
+ *     Store.disconnect(store);
+ * }
+ * ```
+ *
+ * @see mail.Store for the store interface
+ * @see mail.Session for configuration
+ */
+
+module Pop3 {
+    /// Connects to a POP3 server.
+    ///
+    /// This establishes a connection, optionally upgrades to TLS,
+    /// and authenticates with USER/PASS commands.
+    @intrinsic("mail.pop3.connect")
+    public static async Store connect(Session session)
+        throws (ConnectionError, AuthenticationError, TlsError, TimeoutError) {
+        // Validate session
+        if (session.host == "") {
+            throw ConnectionError.new("POP3 host not configured");
+        }
+
+        return Store {
+            handle: 0,
+            session: session,
+            storeType: StoreType.POP3,
+            state: StoreState.AUTHENTICATED,
+            capabilities: new String[0]
+        };
+    }
+
+    /// Connects with explicit credentials.
+    @intrinsic("mail.pop3.connect_auth")
+    public static async Store connectWithAuth(Session session, String username, String password)
+        throws (ConnectionError, AuthenticationError, TlsError, TimeoutError) {
+        return Store {
+            handle: 0,
+            session: session,
+            storeType: StoreType.POP3,
+            state: StoreState.AUTHENTICATED,
+            capabilities: new String[0]
+        };
+    }
+
+    /// Connects with APOP authentication (more secure).
+    @intrinsic("mail.pop3.connect_apop")
+    public static async Store connectWithApop(Session session, String username, String password)
+        throws (ConnectionError, AuthenticationError, TlsError, TimeoutError) {
+        return Store {
+            handle: 0,
+            session: session,
+            storeType: StoreType.POP3,
+            state: StoreState.AUTHENTICATED,
+            capabilities: new String[0]
+        };
+    }
+
+    /// Gets message UIDs.
+    ///
+    /// Returns unique identifiers for all messages (UIDL command).
+    @intrinsic("mail.pop3.get_uids")
+    public static async Pop3Uid[] getUids(Store store) throws (StoreError, TimeoutError) {
+        return new Pop3Uid[0];
+    }
+
+    /// Gets message statistics.
+    ///
+    /// Returns message count and total size (STAT command).
+    @intrinsic("mail.pop3.stat")
+    public static async Pop3Stat stat(Store store) throws (StoreError, TimeoutError) {
+        return Pop3Stat {
+            messageCount: 0,
+            totalSize: 0
+        };
+    }
+
+    /// Resets deletion marks (RSET command).
+    ///
+    /// Messages marked for deletion will not be deleted on disconnect.
+    @intrinsic("mail.pop3.reset")
+    public static async void reset(Store store) throws (StoreError, TimeoutError) {
+        // Intrinsic implementation
+    }
+
+    /// Sends NOOP to keep connection alive.
+    @intrinsic("mail.pop3.noop")
+    public static async void noop(Store store) throws (StoreError) {
+        // Intrinsic implementation
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POP3 Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * POP3 message UID mapping.
+ */
+public struct Pop3Uid {
+    /// Message number (1-based)
+    public final int messageNum;
+    /// Unique identifier string
+    public final String uid;
+}
+
+module Pop3Uid {
+    /// Returns the message number.
+    public static int getMessageNum(Pop3Uid self) {
+        return self.messageNum;
+    }
+
+    /// Returns the UID.
+    public static String getUid(Pop3Uid self) {
+        return self.uid;
+    }
+}
+
+/**
+ * POP3 mailbox statistics.
+ */
+public struct Pop3Stat {
+    /// Number of messages
+    public final int messageCount;
+    /// Total size in bytes
+    public final int64 totalSize;
+}
+
+module Pop3Stat {
+    /// Returns the message count.
+    public static int getMessageCount(Pop3Stat self) {
+        return self.messageCount;
+    }
+
+    /// Returns the total size.
+    public static int64 getTotalSize(Pop3Stat self) {
+        return self.totalSize;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POP3 Configuration
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * POP3-specific configuration options.
+ */
+public struct Pop3Config {
+    /// Use APOP authentication if available
+    public final bool useApop;
+    /// Delete messages after retrieval
+    public final bool deleteAfterRetrieve;
+    /// Leave messages on server (don't delete on disconnect)
+    public final bool leaveOnServer;
+    /// Use UIDL to track already-seen messages
+    public final bool trackSeen;
+    /// Retrieve only headers first (TOP command)
+    public final bool headersOnly;
+    /// Maximum message size to retrieve (0 = unlimited)
+    public final int maxMessageSize;
+}
+
+module Pop3Config {
+    /// Returns default POP3 configuration.
+    public static Pop3Config defaults() {
+        return Pop3Config {
+            useApop: false,
+            deleteAfterRetrieve: false,
+            leaveOnServer: true,
+            trackSeen: true,
+            headersOnly: false,
+            maxMessageSize: 0
+        };
+    }
+
+    /// Returns a new config with leave-on-server setting.
+    public static Pop3Config withLeaveOnServer(Pop3Config self, bool leave) {
+        return Pop3Config {
+            useApop: self.useApop,
+            deleteAfterRetrieve: self.deleteAfterRetrieve,
+            leaveOnServer: leave,
+            trackSeen: self.trackSeen,
+            headersOnly: self.headersOnly,
+            maxMessageSize: self.maxMessageSize
+        };
+    }
+
+    /// Returns a new config with delete-after-retrieve setting.
+    public static Pop3Config withDeleteAfterRetrieve(Pop3Config self, bool delete) {
+        return Pop3Config {
+            useApop: self.useApop,
+            deleteAfterRetrieve: delete,
+            leaveOnServer: !delete,
+            trackSeen: self.trackSeen,
+            headersOnly: self.headersOnly,
+            maxMessageSize: self.maxMessageSize
+        };
+    }
+
+    /// Returns a new config with headers-only mode.
+    public static Pop3Config withHeadersOnly(Pop3Config self, bool headersOnly) {
+        return Pop3Config {
+            useApop: self.useApop,
+            deleteAfterRetrieve: self.deleteAfterRetrieve,
+            leaveOnServer: self.leaveOnServer,
+            trackSeen: self.trackSeen,
+            headersOnly: headersOnly,
+            maxMessageSize: self.maxMessageSize
+        };
+    }
+
+    /// Returns a new config with maximum message size.
+    public static Pop3Config withMaxMessageSize(Pop3Config self, int maxSize) {
+        return Pop3Config {
+            useApop: self.useApop,
+            deleteAfterRetrieve: self.deleteAfterRetrieve,
+            leaveOnServer: self.leaveOnServer,
+            trackSeen: self.trackSeen,
+            headersOnly: self.headersOnly,
+            maxMessageSize: maxSize
+        };
+    }
+}

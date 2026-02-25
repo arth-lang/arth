@@ -1,0 +1,3 @@
+package demo.single;
+
+struct Point { int x; int y; }

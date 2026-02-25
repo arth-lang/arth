@@ -1,0 +1,403 @@
+package mail;
+
+/**
+ * Email header parsing and manipulation.
+ *
+ * This module provides types for working with email headers according to
+ * RFC 5322 (Internet Message Format).
+ *
+ * Headers are stored case-insensitively (e.g., "Content-Type" and "content-type"
+ * are treated as the same header), but the original case is preserved for output.
+ *
+ * Example usage:
+ * ```arth
+ * import mail.*;
+ *
+ * Headers h = Headers.empty();
+ * h = Headers.set(h, "From", "sender@example.com");
+ * h = Headers.set(h, "To", "recipient@example.com");
+ * h = Headers.add(h, "Received", "from server1...");
+ * h = Headers.add(h, "Received", "from server2...");
+ *
+ * String from = Headers.get(h, "From");           // "sender@example.com"
+ * String[] received = Headers.getAll(h, "Received"); // both values
+ * ```
+ *
+ * @see mail.MimeMessage for using headers in messages
+ */
+
+import map.*;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Headers Structure
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Represents a collection of email headers.
+ *
+ * Headers can have multiple values (e.g., "Received" headers).
+ * Header names are case-insensitive but original case is preserved.
+ */
+public struct Headers {
+    /// Opaque handle to the header storage
+    public final int handle;
+    /// Number of headers (including duplicates)
+    public final int count;
+}
+
+/**
+ * Represents a single header name-value pair.
+ */
+public struct Header {
+    /// Header name (original case preserved)
+    public final String name;
+    /// Header value
+    public final String value;
+}
+
+module Headers {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Factory Methods
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Creates an empty Headers collection.
+    public static Headers empty() {
+        return Headers {
+            handle: Map.new(),
+            count: 0
+        };
+    }
+
+    /// Parses a raw header block (headers separated by CRLF).
+    ///
+    /// The input should be the header section of an email message,
+    /// ending with a blank line (CRLF CRLF).
+    ///
+    /// Handles:
+    /// - Header folding (continuation lines starting with whitespace)
+    /// - Multiple headers with the same name
+    ///
+    /// @throws MessageError if headers are malformed
+    @intrinsic("mail.headers.parse")
+    public static Headers parse(String rawHeaders) throws (MessageError) {
+        // Intrinsic implementation - placeholder
+        return Headers.empty();
+    }
+
+    /// Parses headers from a byte array.
+    @intrinsic("mail.headers.parse_bytes")
+    public static Headers parseBytes(bytes rawHeaders) throws (MessageError) {
+        // Intrinsic implementation - placeholder
+        return Headers.empty();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Accessors
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns the first value for a header, or empty string if not found.
+    ///
+    /// Header name lookup is case-insensitive.
+    @intrinsic("mail.headers.get")
+    public static String get(Headers self, String name) {
+        return Map.get(self.handle, toLowerCase(name));
+    }
+
+    /// Returns all values for a header (for headers like Received that can repeat).
+    ///
+    /// Returns an empty array if the header is not found.
+    @intrinsic("mail.headers.get_all")
+    public static String[] getAll(Headers self, String name) {
+        String[] result;
+        return result;
+    }
+
+    /// Returns true if the header exists.
+    public static bool contains(Headers self, String name) {
+        return get(self, name) != "";
+    }
+
+    /// Returns the number of headers (including duplicates).
+    public static int size(Headers self) {
+        return self.count;
+    }
+
+    /// Returns true if there are no headers.
+    public static bool isEmpty(Headers self) {
+        return self.count == 0;
+    }
+
+    /// Returns all header names (without duplicates).
+    @intrinsic("mail.headers.names")
+    public static String[] getNames(Headers self) {
+        String[] result;
+        return result;
+    }
+
+    /// Returns all headers as an array of Header structs.
+    @intrinsic("mail.headers.all")
+    public static Header[] getAll(Headers self) {
+        Header[] result;
+        return result;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Modification
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns a new Headers with a header set (replacing any existing values).
+    public static Headers set(Headers self, String name, String value) {
+        int newHandle = self.handle;
+        Map.put(newHandle, toLowerCase(name), value);
+        return Headers {
+            handle: newHandle,
+            count: self.count + 1
+        };
+    }
+
+    /// Returns a new Headers with a header added (preserving existing values).
+    ///
+    /// Use this for headers that can have multiple values (e.g., Received).
+    @intrinsic("mail.headers.add")
+    public static Headers add(Headers self, String name, String value) {
+        // Intrinsic implementation - placeholder
+        int newHandle = self.handle;
+        Map.put(newHandle, toLowerCase(name), value);
+        return Headers {
+            handle: newHandle,
+            count: self.count + 1
+        };
+    }
+
+    /// Returns a new Headers with a header removed.
+    @intrinsic("mail.headers.remove")
+    public static Headers remove(Headers self, String name) {
+        // Intrinsic implementation - placeholder
+        return self;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Standard Header Accessors
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns the Subject header.
+    public static String getSubject(Headers self) {
+        return get(self, "Subject");
+    }
+
+    /// Returns the Date header.
+    public static String getDate(Headers self) {
+        return get(self, "Date");
+    }
+
+    /// Returns the From header.
+    public static String getFrom(Headers self) {
+        return get(self, "From");
+    }
+
+    /// Returns the To header.
+    public static String getTo(Headers self) {
+        return get(self, "To");
+    }
+
+    /// Returns the Cc header.
+    public static String getCc(Headers self) {
+        return get(self, "Cc");
+    }
+
+    /// Returns the Bcc header.
+    public static String getBcc(Headers self) {
+        return get(self, "Bcc");
+    }
+
+    /// Returns the Reply-To header.
+    public static String getReplyTo(Headers self) {
+        return get(self, "Reply-To");
+    }
+
+    /// Returns the Message-ID header.
+    public static String getMessageId(Headers self) {
+        return get(self, "Message-ID");
+    }
+
+    /// Returns the In-Reply-To header.
+    public static String getInReplyTo(Headers self) {
+        return get(self, "In-Reply-To");
+    }
+
+    /// Returns the References header.
+    public static String getReferences(Headers self) {
+        return get(self, "References");
+    }
+
+    /// Returns the Content-Type header.
+    public static String getContentType(Headers self) {
+        return get(self, "Content-Type");
+    }
+
+    /// Returns the Content-Transfer-Encoding header.
+    public static String getContentTransferEncoding(Headers self) {
+        return get(self, "Content-Transfer-Encoding");
+    }
+
+    /// Returns the Content-Disposition header.
+    public static String getContentDisposition(Headers self) {
+        return get(self, "Content-Disposition");
+    }
+
+    /// Returns the Content-ID header.
+    public static String getContentId(Headers self) {
+        return get(self, "Content-ID");
+    }
+
+    /// Returns the MIME-Version header.
+    public static String getMimeVersion(Headers self) {
+        return get(self, "MIME-Version");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Formatting
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns the headers as a raw string (for writing to message).
+    ///
+    /// Each header is formatted as "Name: Value\r\n".
+    /// Long headers are folded at 78 characters.
+    @intrinsic("mail.headers.to_string")
+    public static String toString(Headers self) {
+        // Intrinsic implementation - placeholder
+        return "";
+    }
+
+    /// Returns the headers as bytes (for writing to message).
+    @intrinsic("mail.headers.to_bytes")
+    public static bytes toBytes(Headers self) {
+        // Intrinsic implementation - placeholder
+        bytes result;
+        return result;
+    }
+}
+
+module Header {
+    /// Creates a new Header.
+    public static Header of(String name, String value) {
+        return Header {
+            name: name,
+            value: value
+        };
+    }
+
+    /// Returns the header name.
+    public static String getName(Header self) {
+        return self.name;
+    }
+
+    /// Returns the header value.
+    public static String getValue(Header self) {
+        return self.value;
+    }
+
+    /// Returns the header as "Name: Value".
+    public static String toString(Header self) {
+        return self.name + ": " + self.value;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Header Encoding (RFC 2047)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Utilities for encoding and decoding header values containing non-ASCII characters.
+ *
+ * RFC 2047 defines the "encoded-word" syntax:
+ *   =?charset?encoding?encoded_text?=
+ *
+ * Where encoding is:
+ * - B: Base64 encoding
+ * - Q: Quoted-printable encoding
+ *
+ * Example: =?UTF-8?B?SGVsbG8gV29ybGQ=?= decodes to "Hello World"
+ */
+module HeaderEncoding {
+    /// Encodes a header value for use in a message.
+    ///
+    /// If the value contains non-ASCII characters, it will be encoded
+    /// using RFC 2047 encoded-word syntax with UTF-8 and Base64.
+    @intrinsic("mail.header.encode")
+    public static String encode(String value) {
+        // Intrinsic implementation - placeholder
+        return value;
+    }
+
+    /// Decodes an encoded header value.
+    ///
+    /// Handles RFC 2047 encoded-words (=?charset?encoding?text?=).
+    @intrinsic("mail.header.decode")
+    public static String decode(String encoded) throws (EncodingError) {
+        // Intrinsic implementation - placeholder
+        return encoded;
+    }
+
+    /// Returns true if the value contains non-ASCII characters.
+    public static bool needsEncoding(String value) {
+        int len = length(value);
+        for (int i = 0; i < len; i = i + 1) {
+            int c = charCodeAt(value, i);
+            if (c > 127) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// Encodes an address for use in a header (handles display name encoding).
+    public static String encodeAddress(InternetAddress addr) {
+        String personal = InternetAddress.getPersonal(addr);
+        String address = InternetAddress.getAddress(addr);
+
+        if (personal == "") {
+            return address;
+        }
+
+        if (needsEncoding(personal)) {
+            return encode(personal) + " <" + address + ">";
+        }
+
+        // Check if quoting is needed
+        if (needsQuoting(personal)) {
+            return "\"" + personal + "\" <" + address + ">";
+        }
+
+        return personal + " <" + address + ">";
+    }
+
+    static bool needsQuoting(String s) {
+        int len = length(s);
+        for (int i = 0; i < len; i = i + 1) {
+            char c = charAt(s, i);
+            if (c == ',' || c == ';' || c == ':' || c == '<' || c == '>' ||
+                c == '(' || c == ')' || c == '[' || c == ']' || c == '"' ||
+                c == '\\' || c == '@') {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// String Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+@intrinsic("string.to_lower_case")
+static String toLowerCase(String s) { return s; }
+
+@intrinsic("string.length")
+static int length(String s) { return 0; }
+
+@intrinsic("string.char_at")
+static char charAt(String s, int index) { return ' '; }
+
+@intrinsic("string.char_code_at")
+static int charCodeAt(String s, int index) { return 0; }

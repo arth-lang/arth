@@ -1,0 +1,30 @@
+package test;
+
+// Test: if/else control flow
+// Expected output:
+//   bigger
+//   equal
+//   smaller
+
+module Main {
+    public static void main() {
+        Int a = 10;
+        Int b = 5;
+
+        if (a > b) {
+            println("bigger");
+        } else {
+            println("not bigger");
+        }
+
+        if (a == 10) {
+            println("equal");
+        }
+
+        if (b > a) {
+            println("wrong");
+        } else {
+            println("smaller");
+        }
+    }
+}

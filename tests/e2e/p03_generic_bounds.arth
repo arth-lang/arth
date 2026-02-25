@@ -1,0 +1,64 @@
+package test;
+
+// Test: Generic type constraints (bounds) - Phase 1
+// Note: Full bounds checking is not yet implemented.
+// This test verifies that generic function declarations with bounds parse correctly
+// and that basic type inference works.
+// Expected output:
+//   point: 3, 4
+//   less: true
+//   identity: hello
+
+// Interface that types can implement
+public interface Describable {
+    String describe();
+}
+
+// Struct
+public struct Point {
+    public Int x;
+    public Int y;
+}
+
+module PointFns implements Describable {
+    public static Point newPoint(Int x, Int y) {
+        return Point { x: x, y: y };
+    }
+
+    public static Bool lessThan(Point self, Point other) {
+        Int selfMag = self.x * self.x + self.y * self.y;
+        Int otherMag = other.x * other.x + other.y * other.y;
+        return selfMag < otherMag;
+    }
+
+    public static String describe(Point self) {
+        return "Point";
+    }
+}
+
+// Generic function with bound (now enforced in type checking!)
+module BoundedFns {
+    // This declares a bounded generic - T extends Describable
+    // Bounds are now enforced during call site type-checking.
+    public static T identity<T extends Describable>(T value) {
+        return value;
+    }
+}
+
+module Main {
+    public static void main() {
+        // Test basic struct operations
+        Point p = PointFns.newPoint(3, 4);
+        println("point: " + p.x + ", " + p.y);
+
+        // Test comparison
+        Point p1 = PointFns.newPoint(1, 1);
+        Point p2 = PointFns.newPoint(3, 4);
+        Bool result = PointFns.lessThan(p1, p2);
+        println("less: " + result);
+
+        // Test generic function with bounds (using type inference)
+        Point p_id = BoundedFns.identity(p);
+        println("identity: " + PointFns.describe(p_id));
+    }
+}

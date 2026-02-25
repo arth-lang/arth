@@ -1,0 +1,25 @@
+package test.native;
+
+public enum Result {
+    Ok(Int),
+    Err(Int)
+}
+
+module Main {
+    public static void main() {
+        var r = Result.Ok(7);
+        Int got = -1;
+        switch (r) {
+            case Result.Ok(v):
+                got = v;
+            case Result.Err(e):
+                got = e;
+        }
+
+        if (got == 7) {
+            println("PHASE1_ENUM_OK");
+        } else {
+            println("PHASE1_ENUM_BAD");
+        }
+    }
+}

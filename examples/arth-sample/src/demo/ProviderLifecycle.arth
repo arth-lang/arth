@@ -1,0 +1,193 @@
+package demo;
+
+// Demonstrates provider lifecycle and dependency injection per spec §11
+
+import concurrent.*;
+
+// Database provider
+provider DbProvider {
+    public final String connectionString;
+    public final Int maxConnections;
+    public shared Int activeConnections;
+}
+
+// Cache provider with TTL
+provider CacheProvider {
+    public final Int capacity;
+    public final Int ttlSeconds;
+    public shared Int hitCount;
+    public shared Int missCount;
+}
+
+// HTTP client provider
+provider HttpProvider {
+    public final String baseUrl;
+    public final Int timeoutMs;
+}
+
+// Bundle of providers for application
+public struct AppProviders {
+    public final DbProvider db;
+    public final CacheProvider cache;
+    public final HttpProvider http;
+}
+
+// Provider factory functions
+module DbProviderFns {
+    public DbProvider new(String connStr, Int maxConn) {
+        return DbProvider {
+            connectionString: connStr,
+            maxConnections: maxConn,
+            activeConnections: 0
+        };
+    }
+
+    // Cleanup function - called at shutdown
+    public void deinit(DbProvider p) {
+        // Close all database connections
+        // Release connection pool
+    }
+}
+
+module CacheProviderFns {
+    public CacheProvider new(Int capacity, Int ttlSeconds) {
+        return CacheProvider {
+            capacity: capacity,
+            ttlSeconds: ttlSeconds,
+            hitCount: 0,
+            missCount: 0
+        };
+    }
+
+    public Float hitRate(CacheProvider p) {
+        Int total = p.hitCount + p.missCount;
+        if (total == 0) {
+            return 0.0;
+        }
+        return p.hitCount / total;
+    }
+
+    public void deinit(CacheProvider p) {
+        // Flush cache to disk if needed
+        // Clear memory
+    }
+}
+
+module HttpProviderFns {
+    public HttpProvider new(String baseUrl, Int timeoutMs) {
+        return HttpProvider {
+            baseUrl: baseUrl,
+            timeoutMs: timeoutMs
+        };
+    }
+
+    public void deinit(HttpProvider p) {
+        // Close any persistent connections
+    }
+}
+
+// Application bootstrap
+module AppBootstrap {
+    // Create all providers at application start
+    public AppProviders initialize() {
+        DbProvider db = DbProviderFns.new(
+            "postgres://localhost/mydb",
+            10
+        );
+
+        CacheProvider cache = CacheProviderFns.new(
+            1000,   // capacity
+            300     // TTL 5 minutes
+        );
+
+        HttpProvider http = HttpProviderFns.new(
+            "https://api.example.com",
+            30000   // 30 second timeout
+        );
+
+        return AppProviders {
+            db: db,
+            cache: cache,
+            http: http
+        };
+    }
+
+    // Cleanup all providers at shutdown
+    public void shutdown(AppProviders p) {
+        // Clean up in reverse order of creation
+        HttpProviderFns.deinit(p.http);
+        CacheProviderFns.deinit(p.cache);
+        DbProviderFns.deinit(p.db);
+    }
+}
+
+// Service that uses providers
+public struct UserError {
+    public String message;
+}
+
+module UserService {
+    // Services receive providers explicitly - no globals
+    public String getUser(AppProviders p, String userId) throws (UserError) {
+        // Check cache first using cache provider
+        Int cacheCapacity = p.cache.capacity;
+
+        // Then query database using db provider
+        String connStr = p.db.connectionString;
+
+        return "user:" + userId;
+    }
+
+    // Can also accept individual providers
+    public String getUserFromDb(DbProvider db, String userId) throws (UserError) {
+        if (db.activeConnections >= db.maxConnections) {
+            throw UserError { message: "connection pool exhausted" };
+        }
+        return "user:" + userId;
+    }
+}
+
+// Scoped provider for request context
+provider RequestContext {
+    public final String requestId;
+    public final String userId;
+    public final Int startTime;
+}
+
+module RequestContextFns {
+    public RequestContext new(String requestId, String userId) {
+        return RequestContext {
+            requestId: requestId,
+            userId: userId,
+            startTime: 0  // Would use system time
+        };
+    }
+
+    public Int duration(RequestContext ctx) {
+        // Return elapsed time since request start
+        return 0;  // Placeholder
+    }
+}
+
+module Main {
+    public static void main() {
+        // Bootstrap application
+        AppProviders providers = AppBootstrap.initialize();
+
+        // Use services with providers
+        try {
+            String user = UserService.getUser(providers, "123");
+            println("Got user: " + user);
+        } catch (UserError e) {
+            println("Error: " + e.message);
+        }
+
+        // Per-request context
+        RequestContext ctx = RequestContextFns.new("req-001", "user-456");
+
+        // Shutdown
+        AppBootstrap.shutdown(providers);
+
+        println("ProviderLifecycle demo complete");
+    }
+}

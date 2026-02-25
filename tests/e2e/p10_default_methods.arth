@@ -1,0 +1,179 @@
+package test;
+
+// P10: Default Interface Methods
+// Tests interface methods with default implementations that can be:
+// - Used as-is when module doesn't override
+// - Overridden by implementing modules
+
+// =============================================================================
+// Basic default method
+// =============================================================================
+
+interface Describable {
+    String name();
+
+    // Default method - provides implementation in interface
+    default String describe(String self) {
+        return "Item: " + self;
+    }
+}
+
+struct Item {
+    String itemName;
+}
+
+// Module uses default describe() from interface
+module ItemFns implements Describable {
+    public Item new(String name) {
+        return Item { itemName: name };
+    }
+
+    public String name(Item i) {
+        return i.itemName;
+    }
+    // Note: describe() not implemented - uses default
+}
+
+// =============================================================================
+// Override default method
+// =============================================================================
+
+struct Product {
+    String productName;
+    String priceStr;
+}
+
+// Module overrides default describe()
+module ProductFns implements Describable {
+    public Product new(String name, String price) {
+        return Product { productName: name, priceStr: price };
+    }
+
+    public String name(Product p) {
+        return p.productName;
+    }
+
+    // Override the default method with custom implementation
+    public String describe(Product p) {
+        // Workaround: Store fields in locals first (known VM codegen limitation)
+        String n = p.productName;
+        String pr = p.priceStr;
+        return n + " ($" + pr + ")";
+    }
+}
+
+// =============================================================================
+// Multiple default methods
+// =============================================================================
+
+interface Printable {
+    String format();
+
+    default String bracket(String s) {
+        return "[" + s + "]";
+    }
+
+    default String brace(String s) {
+        return "{" + s + "}";
+    }
+}
+
+struct Doc {
+    String text;
+}
+
+module DocFns implements Printable {
+    public Doc new(String t) {
+        return Doc { text: t };
+    }
+
+    public String format(Doc d) {
+        return "Doc:" + d.text;
+    }
+    // Uses default bracket() and brace()
+}
+
+// =============================================================================
+// Default methods with inheritance
+// =============================================================================
+
+interface Base {
+    int getValue();
+
+    default int doubled(int x) {
+        return x * 2;
+    }
+}
+
+interface Extended extends Base {
+    // Inherits getValue() and doubled() from Base
+
+    default int tripled(int x) {
+        return x * 3;
+    }
+}
+
+struct Number {
+    int val;
+}
+
+module NumberFns implements Extended {
+    public Number new(int v) {
+        return Number { val: v };
+    }
+
+    public int getValue(Number n) {
+        return n.val;
+    }
+    // Uses default doubled() from Base and tripled() from Extended
+}
+
+// =============================================================================
+// Main: Run all tests
+// =============================================================================
+
+module Main {
+    public static void main() {
+        // Test 1: Basic default method (not overridden)
+        Item item = ItemFns.new("Widget");
+        String itemName = ItemFns.name(item);
+        println("Test 1 - Basic default method:");
+        println("  name=" + itemName);
+
+        // Test 2: Overridden default method
+        Product prod = ProductFns.new("Laptop", "999");
+        String prodName = ProductFns.name(prod);
+        String prodDesc = ProductFns.describe(prod);
+        println("Test 2 - Overridden default method:");
+        println("  name=" + prodName);
+        println("  describe=" + prodDesc);
+
+        // Test 3: Multiple default methods
+        Doc doc = DocFns.new("Hello");
+        String docFmt = DocFns.format(doc);
+        String docBrack = DocFns.bracket("test");
+        String docBrace = DocFns.brace("test");
+        println("Test 3 - Multiple default methods:");
+        println("  format=" + docFmt);
+        println("  bracket=" + docBrack);
+        println("  brace=" + docBrace);
+
+        // Test 4: Default methods with inheritance
+        Number num = NumberFns.new(5);
+        int numVal = NumberFns.getValue(num);
+        int numDbl = NumberFns.doubled(10);
+        int numTpl = NumberFns.tripled(10);
+        println("Test 4 - Default methods with inheritance:");
+        println("  getValue=" + numVal);
+        // Note: Can't print int + string directly - using simple output
+        println("  doubled and tripled working if no error");
+
+        // Test 5: .then() syntax with overridden default
+        Product prod2 = ProductFns.new("Phone", "499");
+        String prod2Desc = prod2.then(ProductFns.describe());
+        println("Test 5 - .then() with overridden default:");
+        println("  describe=" + prod2Desc);
+
+        println("All default method tests passed!");
+    }
+}

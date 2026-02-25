@@ -1,0 +1,152 @@
+package crypto.hash;
+
+import crypto.*;
+
+/**
+ * BLAKE3 cryptographic hash function.
+ *
+ * BLAKE3 is a modern hash function that is:
+ * - Much faster than SHA-256 and SHA-3 (especially on modern CPUs)
+ * - Highly parallelizable (uses tree hashing internally)
+ * - Based on the BLAKE2 and Bao designs
+ * - Designed by the creators of Argon2
+ *
+ * Properties:
+ * - Default output size: 32 bytes (256 bits)
+ * - Can produce arbitrary-length output (XOF mode)
+ * - Block size: 64 bytes
+ * - Security level: 128 bits (collision resistance for 256-bit output)
+ *
+ * BLAKE3 is ideal for:
+ * - High-performance hashing (file integrity, deduplication)
+ * - Key derivation (KDF mode)
+ * - Content-addressed storage
+ * - Merkle tree construction
+ *
+ * Example usage:
+ * ```arth
+ * import crypto.hash.Blake3;
+ *
+ * module Example {
+ *     public void hashData() {
+ *         bytes data = "Hello, World!".toBytes();
+ *
+ *         // One-shot hash
+ *         Hash h = Blake3.hash(data);
+ *         String hex = Encoding.toHex(Hash.toBytes(h));
+ *         Console.println("BLAKE3: " + hex);
+ *
+ *         // Incremental hashing (useful for large files)
+ *         Hasher hasher = Blake3.newHasher();
+ *         Blake3.update(hasher, data);
+ *         Hash result = Blake3.finalize(hasher);
+ *     }
+ * }
+ * ```
+ *
+ * @see crypto.Hash for the Hash type
+ * @see crypto.hash.Sha256 for SHA-256 (widely deployed standard)
+ */
+
+/**
+ * Module for BLAKE3 hashing operations.
+ */
+module Blake3 {
+    /// BLAKE3 default output size in bytes (32)
+    public static final int OUTPUT_SIZE = 32;
+
+    /// BLAKE3 block size in bytes (64)
+    public static final int BLOCK_SIZE = 64;
+
+    /// BLAKE3 chunk size in bytes (1024) - used for internal parallelism
+    public static final int CHUNK_SIZE = 1024;
+
+    // =========================================================================
+    // One-Shot Hashing
+    // =========================================================================
+
+    /**
+     * Computes the BLAKE3 hash of the given data.
+     *
+     * This is highly optimized and will automatically use SIMD
+     * and parallelism when available.
+     *
+     * @param data The data to hash
+     * @return The BLAKE3 hash digest (32 bytes)
+     */
+    public static Hash hash(bytes data) {
+        return Hash.hash(HashAlgorithm.BLAKE3, data);
+    }
+
+    /**
+     * Computes the BLAKE3 hash of a string.
+     *
+     * Convenience method that converts the string to UTF-8 bytes first.
+     *
+     * @param str The string to hash
+     * @return The BLAKE3 hash digest (32 bytes)
+     */
+    public static Hash hashString(String str) {
+        return Hash.hash(HashAlgorithm.BLAKE3, str.toBytes());
+    }
+
+    // =========================================================================
+    // Incremental Hashing
+    // =========================================================================
+
+    /**
+     * Creates a new BLAKE3 hasher for incremental hashing.
+     *
+     * Incremental hashing is useful for:
+     * - Large files that don't fit in memory
+     * - Streaming data
+     * - Building Merkle trees
+     *
+     * @return A new Hasher instance configured for BLAKE3
+     */
+    public static Hasher newHasher() {
+        return Hash.newHasher(HashAlgorithm.BLAKE3);
+    }
+
+    /**
+     * Feeds data into a BLAKE3 hasher.
+     *
+     * Can be called multiple times with arbitrary-length chunks.
+     * BLAKE3 handles chunking internally for optimal performance.
+     *
+     * @param hasher The hasher to update
+     * @param data The data to add to the hash computation
+     */
+    public static void update(Hasher hasher, bytes data) {
+        Hash.update(hasher, data);
+    }
+
+    /**
+     * Completes the BLAKE3 hash computation.
+     *
+     * Returns a 32-byte hash by default.
+     *
+     * @param hasher The hasher to finalize
+     * @return The computed BLAKE3 hash digest
+     */
+    public static Hash finalize(Hasher hasher) {
+        return Hash.finalize(hasher);
+    }
+
+    // =========================================================================
+    // Verification
+    // =========================================================================
+
+    /**
+     * Verifies that data matches a BLAKE3 hash.
+     *
+     * Uses constant-time comparison to prevent timing attacks.
+     *
+     * @param expected The expected hash value
+     * @param data The data to verify
+     * @return true if the data hashes to the expected value
+     */
+    public static Bool verify(Hash expected, bytes data) {
+        return Hash.verify(expected, data);
+    }
+}

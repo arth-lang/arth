@@ -1,0 +1,78 @@
+package conformance;
+
+// @spec: spec.md §5 - Expressions and operator precedence
+// @expect: pass
+// @description: Validates expression parsing with correct precedence
+
+public struct Point {
+    public Int x;
+    public Int y;
+}
+
+module PointFns {
+    public Point new(Int x, Int y) {
+        return Point { x: x, y: y };
+    }
+}
+
+module Main {
+    public static void main() {
+        // Arithmetic precedence (* before +)
+        Int a = 2 + 3 * 4;  // = 14, not 20
+
+        // Parentheses override precedence
+        Int b = (2 + 3) * 4;  // = 20
+
+        // Comparison and logical
+        Bool c = 1 < 2 && 3 > 2;
+        Bool d = 1 > 2 || 3 < 4;
+
+        // Short-circuit evaluation
+        Bool e = true || false;  // false not evaluated
+        Bool f = false && true;  // true not evaluated
+
+        // Ternary operator
+        Int g = true ? 1 : 2;
+        Int h = (a > b) ? a : b;
+
+        // Assignment expressions
+        Int i = 0;
+        i = 5;
+        i += 1;
+        i -= 1;
+        i *= 2;
+        i /= 2;
+
+        // Chained assignment (right-associative)
+        Int j = 0;
+        Int k = 0;
+        j = k = 10;
+
+        // Field access
+        Point p = PointFns.new(10, 20);
+        Int px = p.x;
+        Int py = p.y;
+
+        // Method calls (module functions)
+        Int sum = add(1, 2);
+
+        // Nested expressions
+        Int complex = (1 + 2) * (3 + 4) / (5 - 3);
+
+        // Unary operators
+        Int neg = -a;
+        Bool notB = !true;
+
+        // Bitwise with precedence
+        Int bitwise = 1 | 2 & 3 ^ 4;
+
+        // Shift operators
+        Int shifted = 1 << 2 >> 1;
+
+        println("expressions: pass");
+    }
+
+    static Int add(Int a, Int b) {
+        return a + b;
+    }
+}

@@ -1,0 +1,398 @@
+package time;
+
+/**
+ * Date and time representation and operations.
+ *
+ * DateTime represents a point in time with millisecond precision.
+ * Internally stored as milliseconds since Unix epoch (1970-01-01T00:00:00Z).
+ *
+ * Intrinsic-backed operations:
+ * - now() - requires syscall
+ * - fromMillis()/toMillis() - construction/conversion primitives
+ * - parse()/format() - require complex date parsing/formatting libraries
+ * - year/month/day/hour/minute/second/dayOfWeek/dayOfYear - calendar calculations
+ *
+ * Pure Arth operations (no intrinsics):
+ * - epoch() - just fromMillis(0)
+ * - add/sub - millis arithmetic
+ * - compare - millis comparison
+ * - addDuration/subDuration - Duration interop
+ * - eq/lt/gt/lte/gte - convenience comparisons
+ * - diff - difference between two DateTimes as Duration
+ *
+ * Example usage:
+ * ```
+ * import time.*;
+ *
+ * module Main {
+ *     public static void main() {
+ *         DateTime now = DateTime.now();
+ *         Int year = DateTime.year(now);
+ *         Int month = DateTime.month(now);
+ *         String formatted = DateTime.format(now, "yyyy-MM-dd");
+ *
+ *         // Add one hour using Duration
+ *         Duration oneHour = Duration.fromHours(1);
+ *         DateTime later = DateTime.addDuration(now, oneHour);
+ *     }
+ * }
+ * ```
+ *
+ * @see src/compiler/intrinsics.rs for intrinsic registry
+ * @see crates/arth-vm/src/runtime.rs for VM implementation
+ */
+
+/// Represents a point in time with millisecond precision.
+/// DateTime values are immutable and represent UTC time.
+/// Internally stored as milliseconds since Unix epoch.
+public struct DateTime {
+    /// Milliseconds since Unix epoch (1970-01-01T00:00:00Z)
+    public final Int millis;
+}
+
+module DateTime {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Construction (intrinsics needed for syscalls)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns the current date and time in UTC.
+    ///
+    /// @return The current DateTime
+    @intrinsic("time.now")
+    public static DateTime now() { return DateTime { millis: 0 }; }
+
+    /// Creates a DateTime from milliseconds since Unix epoch.
+    ///
+    /// @param millis Milliseconds since 1970-01-01T00:00:00Z
+    /// @return A DateTime representing that point in time
+    public static DateTime fromMillis(Int ms) {
+        return DateTime { millis: ms };
+    }
+
+    /// Returns the Unix epoch (1970-01-01T00:00:00Z).
+    ///
+    /// Pure Arth: just creates DateTime with millis = 0.
+    ///
+    /// @return The Unix epoch DateTime
+    public static DateTime epoch() {
+        return DateTime { millis: 0 };
+    }
+
+    /// Parses a DateTime from a string using the given format pattern.
+    ///
+    /// @param s The string to parse
+    /// @param pattern The format pattern (e.g., "yyyy-MM-dd HH:mm:ss")
+    /// @return The parsed DateTime
+    @intrinsic("time.parse")
+    public static DateTime parse(String s, String pattern) { return DateTime { millis: 0 }; }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Conversion (intrinsics for formatting)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns the number of milliseconds since Unix epoch.
+    ///
+    /// @param self The DateTime
+    /// @return Milliseconds since 1970-01-01T00:00:00Z
+    public static Int toMillis(DateTime self) {
+        return self.millis;
+    }
+
+    /// Formats the DateTime as a string using the given pattern.
+    ///
+    /// @param self The DateTime
+    /// @param pattern The format pattern (e.g., "yyyy-MM-dd HH:mm:ss")
+    /// @return The formatted string
+    @intrinsic("time.format")
+    public static String format(DateTime self, String pattern) { return ""; }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Component Access (pure Arth calendar calculations)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns the hour component (0-23).
+    public static Int hour(DateTime self) {
+        Int totalSeconds = self.millis / 1000;
+        Int secondsInDay = totalSeconds % 86400;
+        if (secondsInDay < 0) {
+            secondsInDay = secondsInDay + 86400;
+        }
+        return secondsInDay / 3600;
+    }
+
+    /// Returns the minute component (0-59).
+    public static Int minute(DateTime self) {
+        Int totalSeconds = self.millis / 1000;
+        Int secondsInDay = totalSeconds % 86400;
+        if (secondsInDay < 0) {
+            secondsInDay = secondsInDay + 86400;
+        }
+        return (secondsInDay % 3600) / 60;
+    }
+
+    /// Returns the second component (0-59).
+    public static Int second(DateTime self) {
+        Int totalSeconds = self.millis / 1000;
+        Int secondsInDay = totalSeconds % 86400;
+        if (secondsInDay < 0) {
+            secondsInDay = secondsInDay + 86400;
+        }
+        return secondsInDay % 60;
+    }
+
+    /// Helper: returns true if year is a leap year.
+    static Bool isLeapYear(Int year) {
+        if (year % 400 == 0) {
+            return true;
+        }
+        if (year % 100 == 0) {
+            return false;
+        }
+        if (year % 4 == 0) {
+            return true;
+        }
+        return false;
+    }
+
+    /// Helper: returns days in a given month (1-12) for a given year.
+    static Int daysInMonth(Int year, Int month) {
+        if (month == 2) {
+            if (DateTime.isLeapYear(year)) {
+                return 29;
+            }
+            return 28;
+        }
+        if (month == 4 || month == 6 || month == 9 || month == 11) {
+            return 30;
+        }
+        return 31;
+    }
+
+    /// Helper: returns total days from epoch to start of given year.
+    static Int daysToYear(Int year) {
+        if (year >= 1970) {
+            Int days = 0;
+            Int y = 1970;
+            while (y < year) {
+                if (DateTime.isLeapYear(y)) {
+                    days = days + 366;
+                } else {
+                    days = days + 365;
+                }
+                y = y + 1;
+            }
+            return days;
+        } else {
+            Int days = 0;
+            Int y = 1969;
+            while (y >= year) {
+                if (DateTime.isLeapYear(y)) {
+                    days = days - 366;
+                } else {
+                    days = days - 365;
+                }
+                y = y - 1;
+            }
+            return days;
+        }
+    }
+
+    /// Returns the year component (e.g., 2024).
+    public static Int year(DateTime self) {
+        Int totalDays = self.millis / 86400000;
+        Int year = 1970;
+        if (totalDays >= 0) {
+            while (true) {
+                Int daysInYear = 365;
+                if (DateTime.isLeapYear(year)) {
+                    daysInYear = 366;
+                }
+                if (totalDays < daysInYear) {
+                    return year;
+                }
+                totalDays = totalDays - daysInYear;
+                year = year + 1;
+            }
+        } else {
+            year = 1969;
+            totalDays = totalDays + 1;
+            while (true) {
+                Int daysInYear = 365;
+                if (DateTime.isLeapYear(year)) {
+                    daysInYear = 366;
+                }
+                totalDays = totalDays + daysInYear;
+                if (totalDays > 0) {
+                    return year;
+                }
+                year = year - 1;
+            }
+        }
+        return year;
+    }
+
+    /// Returns the day of year (1-366).
+    public static Int dayOfYear(DateTime self) {
+        Int year = DateTime.year(self);
+        Int startOfYear = DateTime.daysToYear(year) * 86400000;
+        Int msIntoYear = self.millis - startOfYear;
+        Int dayOfYear = msIntoYear / 86400000;
+        return dayOfYear + 1;
+    }
+
+    /// Returns the month component (1-12).
+    public static Int month(DateTime self) {
+        Int year = DateTime.year(self);
+        Int doy = DateTime.dayOfYear(self);
+        Int month = 1;
+        while (month <= 12) {
+            Int dim = DateTime.daysInMonth(year, month);
+            if (doy <= dim) {
+                return month;
+            }
+            doy = doy - dim;
+            month = month + 1;
+        }
+        return 12;
+    }
+
+    /// Returns the day of month component (1-31).
+    public static Int day(DateTime self) {
+        Int year = DateTime.year(self);
+        Int doy = DateTime.dayOfYear(self);
+        Int month = 1;
+        while (month <= 12) {
+            Int dim = DateTime.daysInMonth(year, month);
+            if (doy <= dim) {
+                return doy;
+            }
+            doy = doy - dim;
+            month = month + 1;
+        }
+        return doy;
+    }
+
+    /// Returns the day of week (1=Monday, 7=Sunday).
+    public static Int dayOfWeek(DateTime self) {
+        // Jan 1, 1970 was a Thursday (day 4)
+        Int totalDays = self.millis / 86400000;
+        Int dow = (totalDays + 4) % 7;
+        if (dow <= 0) {
+            dow = dow + 7;
+        }
+        return dow;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Arithmetic (pure Arth - no intrinsics needed)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Adds milliseconds to this DateTime.
+    ///
+    /// @param self The DateTime
+    /// @param duration The number of milliseconds to add
+    /// @return A new DateTime with the duration added
+    public static DateTime add(DateTime self, Int duration) {
+        return DateTime { millis: self.millis + duration };
+    }
+
+    /// Subtracts milliseconds from this DateTime.
+    ///
+    /// @param self The DateTime
+    /// @param duration The number of milliseconds to subtract
+    /// @return A new DateTime with the duration subtracted
+    public static DateTime sub(DateTime self, Int duration) {
+        return DateTime { millis: self.millis - duration };
+    }
+
+    /// Adds a Duration to this DateTime.
+    ///
+    /// @param self The DateTime
+    /// @param d The Duration to add
+    /// @return A new DateTime with the duration added
+    public static DateTime addDuration(DateTime self, Duration d) {
+        return DateTime { millis: self.millis + d.millis };
+    }
+
+    /// Subtracts a Duration from this DateTime.
+    ///
+    /// @param self The DateTime
+    /// @param d The Duration to subtract
+    /// @return A new DateTime with the duration subtracted
+    public static DateTime subDuration(DateTime self, Duration d) {
+        return DateTime { millis: self.millis - d.millis };
+    }
+
+    /// Returns the difference between two DateTimes as a Duration.
+    ///
+    /// @param a First DateTime
+    /// @param b Second DateTime
+    /// @return Duration representing a - b
+    public static Duration diff(DateTime a, DateTime b) {
+        return Duration { millis: a.millis - b.millis };
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Comparison (pure Arth - no intrinsics needed)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Compares two DateTimes.
+    ///
+    /// @param a First DateTime
+    /// @param b Second DateTime
+    /// @return -1 if a < b, 0 if a == b, 1 if a > b
+    public static Int compare(DateTime a, DateTime b) {
+        if (a.millis < b.millis) {
+            return -1;
+        }
+        if (a.millis > b.millis) {
+            return 1;
+        }
+        return 0;
+    }
+
+    /// Checks if two DateTimes are equal.
+    ///
+    /// @param a First DateTime
+    /// @param b Second DateTime
+    /// @return true if equal, false otherwise
+    public static Bool eq(DateTime a, DateTime b) {
+        return a.millis == b.millis;
+    }
+
+    /// Checks if DateTime a is before b.
+    ///
+    /// @param a First DateTime
+    /// @param b Second DateTime
+    /// @return true if a < b
+    public static Bool lt(DateTime a, DateTime b) {
+        return a.millis < b.millis;
+    }
+
+    /// Checks if DateTime a is after b.
+    ///
+    /// @param a First DateTime
+    /// @param b Second DateTime
+    /// @return true if a > b
+    public static Bool gt(DateTime a, DateTime b) {
+        return a.millis > b.millis;
+    }
+
+    /// Checks if DateTime a is before or equal to b.
+    ///
+    /// @param a First DateTime
+    /// @param b Second DateTime
+    /// @return true if a <= b
+    public static Bool lte(DateTime a, DateTime b) {
+        return a.millis <= b.millis;
+    }
+
+    /// Checks if DateTime a is after or equal to b.
+    ///
+    /// @param a First DateTime
+    /// @param b Second DateTime
+    /// @return true if a >= b
+    public static Bool gte(DateTime a, DateTime b) {
+        return a.millis >= b.millis;
+    }
+}

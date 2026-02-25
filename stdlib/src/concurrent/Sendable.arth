@@ -1,0 +1,115 @@
+/**
+ * Marker interfaces for concurrency and unwind safety.
+ *
+ * These interfaces are used as bounds for generic type parameters to ensure
+ * type safety when transferring data across task boundaries or panic/catch boundaries.
+ *
+ * The compiler automatically derives Sendable/Shareable/UnwindSafe for types based on
+ * their fields:
+ * - Primitives (int, float, bool, char, string, bytes) are Sendable, Shareable, and UnwindSafe
+ * - Structs are Sendable if ALL fields are Sendable
+ * - Structs are Shareable if ALL fields are Shareable
+ * - Structs are UnwindSafe if ALL fields are UnwindSafe
+ * - Enums follow the same rules based on variant payloads
+ *
+ * Special wrapper types have specific traits:
+ * - Owned<T>: Sendable and UnwindSafe (exclusive ownership transfers)
+ * - Shared<T>: Shareable but NOT UnwindSafe (interior mutability unsafe during unwind)
+ * - Atomic<T>: Shareable and UnwindSafe (thread-safe, isolated atomic ops)
+ * - Watch<T>: Shareable but NOT UnwindSafe (interior mutability unsafe during unwind)
+ * - Notify: Sendable, Shareable, and UnwindSafe
+ *
+ * Function types are neither Sendable nor Shareable (may capture non-safe state).
+ * Function types are UnwindSafe (they don't hold mutable state themselves).
+ *
+ * @see src/compiler/typeck/mod.rs - Sendable/Shareable/UnwindSafe derivation and checking
+ */
+package concurrent;
+
+/**
+ * Marker interface for types that can be safely transferred across task boundaries.
+ *
+ * A type is Sendable if it can be moved from one task to another. This requires
+ * that the type and all its components can be safely transferred to a different
+ * execution context.
+ *
+ * Use as a generic bound:
+ * ```
+ * public void process<T extends Sendable>(T data) {
+ *     spawn { handleData(data); };
+ * }
+ * ```
+ *
+ * The compiler automatically enforces Sendable bounds at:
+ * - spawn() and spawnBlocking() calls
+ * - Channel send operations
+ * - async function parameters
+ */
+public interface Sendable {
+    // Marker interface - no methods required
+}
+
+/**
+ * Marker interface for types that can be safely shared across task boundaries.
+ *
+ * A type is Shareable if multiple tasks can hold references to it simultaneously
+ * without data races. This typically requires the type to be either immutable
+ * or protected by synchronization mechanisms (like Atomic<T> or Shared<T>).
+ *
+ * Use as a generic bound:
+ * ```
+ * public void broadcast<T extends Shareable>(T data) {
+ *     // Multiple tasks can access data concurrently
+ * }
+ * ```
+ *
+ * Note: Shareable is a stronger guarantee than Sendable. A type can be:
+ * - Sendable but not Shareable: can transfer ownership but not share (e.g., Owned<T>)
+ * - Shareable but not Sendable: can share but not transfer (e.g., Shared<T>, Atomic<T>)
+ * - Both: can transfer and share (e.g., primitives, Notify)
+ * - Neither: not safe for cross-task use (e.g., function types with captures)
+ */
+public interface Shareable {
+    // Marker interface - no methods required
+}
+
+/**
+ * Marker interface for types that are safe to hold across panic/unwind boundaries.
+ *
+ * A type is UnwindSafe if its invariants are preserved even when a panic occurs
+ * and stack unwinding happens. Types with interior mutability may have their
+ * internal state left inconsistent during a panic (e.g., mid-mutation), making
+ * them unsafe to observe after unwinding.
+ *
+ * Use as a generic bound:
+ * ```
+ * public void withRecovery<T extends UnwindSafe>(T data) {
+ *     try {
+ *         riskyOperation(data);
+ *     } catch (SomeError e) {
+ *         // Safe to access data here because it's UnwindSafe
+ *         recover(data);
+ *     }
+ * }
+ * ```
+ *
+ * Types that are NOT UnwindSafe:
+ * - Shared<T>: Interior mutability means state may be mid-mutation during panic
+ * - Watch<T>: Same as Shared<T>
+ * - Exclusive borrows: The borrowed value might be in an inconsistent state
+ *
+ * Types that ARE UnwindSafe:
+ * - Primitives: No internal state to corrupt
+ * - Atomic<T>: Atomic operations are isolated and complete
+ * - Owned<T>: Exclusive ownership means no one else observes the state
+ * - Immutable structs: Cannot be mid-mutation
+ *
+ * Use @notUnwindSafe attribute to explicitly mark a type as not unwind-safe:
+ * ```
+ * @notUnwindSafe
+ * struct UnsafeBuffer { ... }
+ * ```
+ */
+public interface UnwindSafe {
+    // Marker interface - no methods required
+}

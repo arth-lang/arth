@@ -1,0 +1,30 @@
+package test;
+
+// Test: Provider namespacing to prevent shared field collisions (Objective 1)
+// Each provider should have its own isolated storage for shared fields, 
+// even if those fields have the same name.
+// Expected output:
+//   Auth token: secret
+//   Config token: visible
+
+provider Auth {
+    shared String token;
+}
+
+provider Config {
+    shared String token;
+}
+
+module Main {
+    public static void main() {
+        // Initialize Auth token
+        Auth.token = "secret";
+        
+        // Initialize Config token with same field name
+        Config.token = "visible";
+        
+        // Verify they are distinct
+        println("Auth token: " + Auth.token);
+        println("Config token: " + Config.token);
+    }
+}

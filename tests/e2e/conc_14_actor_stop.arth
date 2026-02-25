@@ -1,0 +1,540 @@
+package test;
+
+// Test: C14 - Actor Graceful Stop
+//
+// This test verifies graceful actor shutdown:
+// - actor.stop() marks actor as Stopping and closes mailbox
+// - No new sends accepted after stop (returns error 2)
+// - Existing messages can be drained from mailbox
+// - After draining, recv returns -3 (closed/empty)
+// - Actor can be marked as Stopped after draining
+//
+// Graceful stop protocol:
+// 1. stop() called -> state = Stopping, mailbox closed
+// 2. New sends rejected with error 2
+// 3. Actor drains remaining messages via recv
+// 4. recv returns -3 when mailbox empty and closed
+// 5. Actor can call markStopped() -> state = Stopped
+
+module Executor {
+    // Executor intrinsics mapped to __arth_executor_* VM calls
+}
+
+module Actor {
+    // Actor intrinsics mapped to __arth_actor_* VM calls
+}
+
+module Instants {
+    // Time measurement intrinsics
+}
+
+module Main {
+    public static void main() {
+        println("=== C14: Actor Graceful Stop ===");
+
+        // Initialize thread pool
+        println("Initializing pool with 4 threads...");
+        Int initResult = Executor.init(4);
+        println("Pool initialized: " + initResult);
+
+        Int resetResult = Executor.resetStats();
+
+        println("=== Test 1: Basic Graceful Stop ===");
+        // Send 10 messages, stop, then drain all 10
+        Int actor1 = Actor.create(20);
+        println("Created actor with capacity 20");
+
+        // Send 10 messages
+        Int i = 1;
+        while (i <= 10) {
+            Actor.send(actor1, i);
+            i = i + 1;
+        }
+        println("Sent 10 messages (1-10)");
+
+        // Verify mailbox has 10 messages
+        Int len1 = Actor.mailboxLen(actor1);
+        println("Mailbox length before stop: " + len1);
+
+        // Stop the actor
+        Int stopResult = Actor.stop(actor1);
+        println("Stop result: " + stopResult);
+
+        // Verify state is now Stopping (1)
+        Int state1 = Actor.getState(actor1);
+        println("State after stop: " + state1 + " (expected 1 = Stopping)");
+
+        // Drain all messages
+        Int sum1 = 0;
+        Int drained1 = 0;
+        i = 0;
+        while (i < 10) {
+            Int val = Actor.recv(actor1);
+            if (val > 0) {
+                sum1 = sum1 + val;
+                drained1 = drained1 + 1;
+            }
+            i = i + 1;
+        }
+        println("Drained " + drained1 + " messages, sum = " + sum1);
+
+        // Expected sum: 1+2+...+10 = 55
+        Int expectedSum1 = 55;
+        Int test1Pass = 0;
+        if (state1 == 1) {
+            if (drained1 == 10) {
+                if (sum1 == expectedSum1) {
+                    println("Test 1 (basic graceful stop): PASS");
+                    test1Pass = 1;
+                }
+            }
+        }
+        if (test1Pass == 0) {
+            println("Test 1 FAIL: expected state=1, drained=10, sum=55");
+        }
+
+        println("=== Test 2: Send After Stop Returns Error ===");
+        // Try to send after stop
+        Int sendAfterStop = Actor.send(actor1, 999);
+        println("Send after stop result: " + sendAfterStop + " (expected 2)");
+
+        Int sendBlockingAfterStop = Actor.sendBlocking(actor1, 888);
+        println("SendBlocking after stop result: " + sendBlockingAfterStop + " (expected 2)");
+
+        Int test2Pass = 0;
+        if (sendAfterStop == 2) {
+            if (sendBlockingAfterStop == 2) {
+                println("Test 2 (send after stop rejected): PASS");
+                test2Pass = 1;
+            }
+        }
+        if (test2Pass == 0) {
+            println("Test 2 FAIL: expected both sends to return 2");
+        }
+
+        println("=== Test 3: Recv Returns -3 When Drained ===");
+        // After draining, recv should return -3 (closed and empty)
+        Int recvAfterDrain = Actor.recv(actor1);
+        println("Recv after drain: " + recvAfterDrain + " (expected -3)");
+
+        Int test3Pass = 0;
+        if (recvAfterDrain == -3) {
+            println("Test 3 (recv after drain): PASS");
+            test3Pass = 1;
+        } else {
+            println("Test 3 FAIL: expected -3");
+        }
+
+        // Mark as stopped
+        Actor.markStopped(actor1);
+
+        println("=== Test 4: State Transitions ===");
+        // Test full state transition: Running -> Stopping -> Stopped
+        Int actor2 = Actor.create(10);
+
+        Int stateA = Actor.getState(actor2);
+        Int runningA = Actor.isRunning(actor2);
+        println("Initial: state=" + stateA + ", isRunning=" + runningA);
+
+        Actor.stop(actor2);
+        Int stateB = Actor.getState(actor2);
+        Int runningB = Actor.isRunning(actor2);
+        println("After stop: state=" + stateB + ", isRunning=" + runningB);
+
+        Actor.markStopped(actor2);
+        Int stateC = Actor.getState(actor2);
+        Int runningC = Actor.isRunning(actor2);
+        println("After markStopped: state=" + stateC + ", isRunning=" + runningC);
+
+        Int test4Pass = 0;
+        if (stateA == 0) {  // Running
+            if (runningA == 1) {
+                if (stateB == 1) {  // Stopping
+                    if (runningB == 0) {
+                        if (stateC == 2) {  // Stopped
+                            if (runningC == 0) {
+                                println("Test 4 (state transitions): PASS");
+                                test4Pass = 1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (test4Pass == 0) {
+            println("Test 4 FAIL: state transitions incorrect");
+        }
+
+        println("=== Test 5: Empty Actor Stop ===");
+        // Stop an actor with no messages
+        Int actor3 = Actor.create(10);
+        Int isEmpty3 = Actor.mailboxEmpty(actor3);
+        println("Empty before stop: " + isEmpty3);
+
+        Actor.stop(actor3);
+        Int state3 = Actor.getState(actor3);
+
+        // Recv should immediately return -3
+        Int recv3 = Actor.recv(actor3);
+        println("Recv from empty stopped: " + recv3);
+
+        Int test5Pass = 0;
+        if (isEmpty3 == 1) {
+            if (state3 == 1) {
+                if (recv3 == -3) {
+                    println("Test 5 (empty actor stop): PASS");
+                    test5Pass = 1;
+                }
+            }
+        }
+        if (test5Pass == 0) {
+            println("Test 5 FAIL");
+        }
+
+        Actor.markStopped(actor3);
+
+        println("=== Test 6: High Volume Drain After Stop ===");
+        // Send 1000 messages, stop, drain all
+        Int actor4 = Actor.create(1000);
+        Int hvCount = 1000;
+
+        // Send hvCount messages
+        i = 0;
+        while (i < hvCount) {
+            Actor.send(actor4, i);
+            i = i + 1;
+        }
+        println("Sent " + hvCount + " messages");
+
+        // Stop
+        Actor.stop(actor4);
+        println("Actor stopped");
+
+        // Verify no more sends accepted
+        Int rejectedSend = Actor.send(actor4, 9999);
+        println("Send after stop: " + rejectedSend + " (expected 2)");
+
+        // Drain all and verify sum
+        Int hvSum = 0;
+        Int hvDrained = 0;
+        Int startTime = Instants.now();
+        i = 0;
+        while (i < hvCount) {
+            Int val = Actor.recv(actor4);
+            if (val >= 0) {
+                hvSum = hvSum + val;
+                hvDrained = hvDrained + 1;
+            }
+            i = i + 1;
+        }
+        Int drainTime = Instants.elapsed(startTime);
+        println("Drained " + hvDrained + " messages in " + drainTime + " ms");
+
+        // Expected sum: 0+1+2+...+999 = 999*1000/2 = 499500
+        Int hvExpected = 499500;
+        println("Sum: " + hvSum + " (expected " + hvExpected + ")");
+
+        Int test6Pass = 0;
+        if (rejectedSend == 2) {
+            if (hvDrained == hvCount) {
+                if (hvSum == hvExpected) {
+                    println("Test 6 (high volume drain): PASS");
+                    test6Pass = 1;
+                }
+            }
+        }
+        if (test6Pass == 0) {
+            println("Test 6 FAIL");
+        }
+
+        Actor.markStopped(actor4);
+
+        println("=== Test 7: Multiple Actors Independent Stop ===");
+        // Stop one actor, others should be unaffected
+        Int actorA = Actor.create(10);
+        Int actorB = Actor.create(10);
+        Int actorC = Actor.create(10);
+
+        // Send to all
+        Actor.send(actorA, 100);
+        Actor.send(actorB, 200);
+        Actor.send(actorC, 300);
+
+        // Stop only actorB
+        Actor.stop(actorB);
+
+        // Send more to A and C (should succeed)
+        Int sendA = Actor.send(actorA, 101);
+        Int sendC = Actor.send(actorC, 301);
+
+        // Send to B (should fail)
+        Int sendB = Actor.send(actorB, 201);
+
+        println("Send to A after B stopped: " + sendA);
+        println("Send to B after B stopped: " + sendB);
+        println("Send to C after B stopped: " + sendC);
+
+        // Drain A and C
+        Int a1 = Actor.recv(actorA);
+        Int a2 = Actor.recv(actorA);
+        Int c1 = Actor.recv(actorC);
+        Int c2 = Actor.recv(actorC);
+
+        // Drain B (should have 1 message)
+        Int b1 = Actor.recv(actorB);
+        Int b2 = Actor.recv(actorB);  // Should be -3
+
+        println("A received: " + a1 + ", " + a2);
+        println("B received: " + b1 + ", " + b2);
+        println("C received: " + c1 + ", " + c2);
+
+        Int test7Pass = 0;
+        if (sendA == 0) {
+            if (sendB == 2) {
+                if (sendC == 0) {
+                    if (a1 == 100) {
+                        if (a2 == 101) {
+                            if (b1 == 200) {
+                                if (b2 == -3) {
+                                    if (c1 == 300) {
+                                        if (c2 == 301) {
+                                            println("Test 7 (multiple actors): PASS");
+                                            test7Pass = 1;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (test7Pass == 0) {
+            println("Test 7 FAIL: actors not independent");
+        }
+
+        Actor.close(actorA);
+        Actor.markStopped(actorB);
+        Actor.close(actorC);
+
+        println("=== Test 8: Stop vs Close Behavior ===");
+        // stop() and close() should both transition to Stopping
+        Int actor5 = Actor.create(10);
+        Int actor6 = Actor.create(10);
+
+        Actor.stop(actor5);
+        Int state5 = Actor.getState(actor5);
+
+        Actor.close(actor6);
+        Int state6 = Actor.getState(actor6);
+
+        println("State after stop: " + state5);
+        println("State after close: " + state6);
+
+        Int test8Pass = 0;
+        if (state5 == 1) {
+            if (state6 == 1) {
+                println("Test 8 (stop vs close): PASS");
+                test8Pass = 1;
+            }
+        }
+        if (test8Pass == 0) {
+            println("Test 8 FAIL: expected both to be Stopping (1)");
+        }
+
+        Actor.markStopped(actor5);
+        Actor.markStopped(actor6);
+
+        println("=== Test 9: Blocking Recv After Stop ===");
+        // Test recvBlocking behavior when actor is stopped
+        Int actor7 = Actor.create(10);
+
+        // Send 3 messages
+        Actor.send(actor7, 10);
+        Actor.send(actor7, 20);
+        Actor.send(actor7, 30);
+
+        // Stop
+        Actor.stop(actor7);
+
+        // Blocking recv should still drain
+        Int br1 = Actor.recvBlocking(actor7);
+        Int br2 = Actor.recvBlocking(actor7);
+        Int br3 = Actor.recvBlocking(actor7);
+        println("Blocking recv drained: " + br1 + ", " + br2 + ", " + br3);
+
+        // Next blocking recv should return -3 (don't block forever)
+        Int br4 = Actor.recv(actor7);  // Use non-blocking to check empty
+        println("Recv after drain: " + br4);
+
+        Int test9Pass = 0;
+        if (br1 == 10) {
+            if (br2 == 20) {
+                if (br3 == 30) {
+                    if (br4 == -3) {
+                        println("Test 9 (blocking recv after stop): PASS");
+                        test9Pass = 1;
+                    }
+                }
+            }
+        }
+        if (test9Pass == 0) {
+            println("Test 9 FAIL");
+        }
+
+        Actor.markStopped(actor7);
+
+        println("=== Test 10: Message Count Preserved After Stop ===");
+        // Message count should still be accurate after stop
+        Int actor8 = Actor.create(50);
+
+        // Send 25 messages
+        i = 0;
+        while (i < 25) {
+            Actor.send(actor8, i);
+            i = i + 1;
+        }
+
+        Int countBefore = Actor.messageCount(actor8);
+        println("Message count before stop: " + countBefore);
+
+        Actor.stop(actor8);
+
+        Int countAfter = Actor.messageCount(actor8);
+        println("Message count after stop: " + countAfter);
+
+        // Drain and verify
+        Int drainCount = 0;
+        i = 0;
+        while (i < 25) {
+            Int val = Actor.recv(actor8);
+            if (val >= 0) {
+                drainCount = drainCount + 1;
+            }
+            i = i + 1;
+        }
+        println("Actually drained: " + drainCount);
+
+        Int test10Pass = 0;
+        if (countBefore == 25) {
+            if (countAfter == 25) {
+                if (drainCount == 25) {
+                    println("Test 10 (message count preserved): PASS");
+                    test10Pass = 1;
+                }
+            }
+        }
+        if (test10Pass == 0) {
+            println("Test 10 FAIL");
+        }
+
+        Actor.markStopped(actor8);
+
+        println("=== Test 11: Double Stop Idempotent ===");
+        // Calling stop twice should be safe
+        Int actor9 = Actor.create(10);
+        Actor.send(actor9, 42);
+
+        Int stop1 = Actor.stop(actor9);
+        Int state9a = Actor.getState(actor9);
+
+        Int stop2 = Actor.stop(actor9);
+        Int state9b = Actor.getState(actor9);
+
+        println("First stop: result=" + stop1 + ", state=" + state9a);
+        println("Second stop: result=" + stop2 + ", state=" + state9b);
+
+        // Should still be able to drain
+        Int val9 = Actor.recv(actor9);
+        println("Drained after double stop: " + val9);
+
+        Int test11Pass = 0;
+        if (stop1 == 0) {
+            if (stop2 == 0) {
+                if (state9a == 1) {
+                    if (state9b == 1) {
+                        if (val9 == 42) {
+                            println("Test 11 (double stop idempotent): PASS");
+                            test11Pass = 1;
+                        }
+                    }
+                }
+            }
+        }
+        if (test11Pass == 0) {
+            println("Test 11 FAIL");
+        }
+
+        Actor.markStopped(actor9);
+
+        println("=== Test 12: Partial Drain Then Complete ===");
+        // Send 20 messages, drain 10, stop, drain remaining 10
+        Int actor10 = Actor.create(30);
+
+        // Send 20 messages
+        i = 1;
+        while (i <= 20) {
+            Actor.send(actor10, i);
+            i = i + 1;
+        }
+
+        // Drain first 10
+        Int sum10a = 0;
+        i = 0;
+        while (i < 10) {
+            Int val = Actor.recv(actor10);
+            sum10a = sum10a + val;
+            i = i + 1;
+        }
+        println("First 10 sum: " + sum10a + " (expected 55)");
+
+        // Stop
+        Actor.stop(actor10);
+        println("Stopped after partial drain");
+
+        // Try to send (should fail)
+        Int sendAfterPartial = Actor.send(actor10, 999);
+        println("Send after partial drain + stop: " + sendAfterPartial);
+
+        // Drain remaining 10
+        Int sum10b = 0;
+        i = 0;
+        while (i < 10) {
+            Int val = Actor.recv(actor10);
+            if (val > 0) {
+                sum10b = sum10b + val;
+            }
+            i = i + 1;
+        }
+        println("Remaining 10 sum: " + sum10b + " (expected 155)");
+
+        // 1+2+...+10 = 55, 11+12+...+20 = 155
+        Int test12Pass = 0;
+        if (sum10a == 55) {
+            if (sendAfterPartial == 2) {
+                if (sum10b == 155) {
+                    println("Test 12 (partial drain then complete): PASS");
+                    test12Pass = 1;
+                }
+            }
+        }
+        if (test12Pass == 0) {
+            println("Test 12 FAIL");
+        }
+
+        Actor.markStopped(actor10);
+
+        // Summary
+        println("=== Summary ===");
+        Int totalPassed = test1Pass + test2Pass + test3Pass + test4Pass + test5Pass +
+                          test6Pass + test7Pass + test8Pass + test9Pass + test10Pass +
+                          test11Pass + test12Pass;
+        println("Tests passed: " + totalPassed + "/12");
+
+        if (totalPassed == 12) {
+            println("=== C14: PASSED - Actor graceful stop works correctly ===");
+        } else {
+            println("=== C14: FAILED ===");
+        }
+    }
+}

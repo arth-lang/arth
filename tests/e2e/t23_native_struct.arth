@@ -1,0 +1,32 @@
+package test;
+
+// Test: Native struct operations with type name preserved
+// Expected output:
+//   x: 10
+//   y: 20
+//   name: Bob
+//   age: 25
+
+public struct Point {
+    public Int x;
+    public Int y;
+}
+
+public struct Person {
+    public String name;
+    public Int age;
+}
+
+module Main {
+    public static void main() {
+        // Test struct construction with multiple fields
+        Point p = Point { x: 10, y: 20 };
+        println("x: " + p.x);
+        println("y: " + p.y);
+
+        // Test struct with different field types
+        Person person = Person { name: "Bob", age: 25 };
+        println("name: " + person.name);
+        println("age: " + person.age);
+    }
+}

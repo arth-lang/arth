@@ -1,0 +1,615 @@
+package mail;
+
+/**
+ * Mail session configuration and management.
+ *
+ * A Session holds configuration for connecting to mail servers:
+ * - SMTP settings for sending mail
+ * - IMAP/POP3 settings for receiving mail
+ * - Authentication credentials
+ * - TLS/SSL settings
+ * - Timeouts
+ *
+ * Example usage:
+ * ```arth
+ * import mail.*;
+ *
+ * // Create a session for sending via Gmail SMTP
+ * Session session = SessionBuilder.new()
+ *     .smtp("smtp.gmail.com", 587)
+ *     .startTls(true)
+ *     .auth("user@gmail.com", "app-password")
+ *     .build();
+ *
+ * // Create a session for reading via IMAP
+ * Session session = SessionBuilder.new()
+ *     .imap("imap.gmail.com", 993)
+ *     .tls(true)
+ *     .auth("user@gmail.com", "app-password")
+ *     .build();
+ * ```
+ *
+ * @see mail.Transport for using sessions to send mail
+ * @see mail.Store for using sessions to read mail
+ */
+
+import time.Duration;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Protocol Enumeration
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Supported mail protocols.
+ */
+public enum Protocol {
+    /// Simple Mail Transfer Protocol (sending)
+    SMTP,
+    /// SMTP over implicit TLS
+    SMTPS,
+    /// Internet Message Access Protocol (receiving)
+    IMAP,
+    /// IMAP over implicit TLS
+    IMAPS,
+    /// Post Office Protocol v3 (receiving)
+    POP3,
+    /// POP3 over implicit TLS
+    POP3S
+}
+
+module Protocol {
+    /// Returns the default port for a protocol.
+    public static int defaultPort(Protocol p) {
+        match p {
+            Protocol.SMTP => { return 25; }
+            Protocol.SMTPS => { return 465; }
+            Protocol.IMAP => { return 143; }
+            Protocol.IMAPS => { return 993; }
+            Protocol.POP3 => { return 110; }
+            Protocol.POP3S => { return 995; }
+        }
+    }
+
+    /// Returns true if this is a sending protocol (SMTP).
+    public static bool isSending(Protocol p) {
+        return p == Protocol.SMTP || p == Protocol.SMTPS;
+    }
+
+    /// Returns true if this is a receiving protocol (IMAP/POP3).
+    public static bool isReceiving(Protocol p) {
+        return !isSending(p);
+    }
+
+    /// Returns true if this protocol uses implicit TLS.
+    public static bool isImplicitTls(Protocol p) {
+        return p == Protocol.SMTPS || p == Protocol.IMAPS || p == Protocol.POP3S;
+    }
+
+    /// Returns the protocol name as a string.
+    public static String toString(Protocol p) {
+        match p {
+            Protocol.SMTP => { return "smtp"; }
+            Protocol.SMTPS => { return "smtps"; }
+            Protocol.IMAP => { return "imap"; }
+            Protocol.IMAPS => { return "imaps"; }
+            Protocol.POP3 => { return "pop3"; }
+            Protocol.POP3S => { return "pop3s"; }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Authentication Type
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Supported authentication mechanisms.
+ */
+public enum AuthType {
+    /// No authentication
+    NONE,
+    /// PLAIN authentication (username + password)
+    PLAIN,
+    /// LOGIN authentication (legacy)
+    LOGIN,
+    /// CRAM-MD5 challenge-response
+    CRAM_MD5,
+    /// OAuth 2.0 bearer token
+    OAUTH2,
+    /// XOAUTH2 (Gmail-style OAuth)
+    XOAUTH2
+}
+
+module AuthType {
+    /// Returns the SASL mechanism name.
+    public static String mechanism(AuthType a) {
+        match a {
+            AuthType.NONE => { return ""; }
+            AuthType.PLAIN => { return "PLAIN"; }
+            AuthType.LOGIN => { return "LOGIN"; }
+            AuthType.CRAM_MD5 => { return "CRAM-MD5"; }
+            AuthType.OAUTH2 => { return "OAUTHBEARER"; }
+            AuthType.XOAUTH2 => { return "XOAUTH2"; }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Session Configuration
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Represents mail session configuration.
+ */
+public struct Session {
+    /// Mail server hostname
+    public final String host;
+    /// Server port
+    public final int port;
+    /// Protocol (SMTP, IMAP, POP3)
+    public final Protocol protocol;
+    /// Use implicit TLS (connect with TLS from start)
+    public final bool useTls;
+    /// Use STARTTLS (upgrade to TLS after connect)
+    public final bool useStartTls;
+    /// Verify server certificate
+    public final bool verifyCertificate;
+    /// Authentication type
+    public final AuthType authType;
+    /// Username for authentication
+    public final String username;
+    /// Password or token for authentication
+    public final String password;
+    /// OAuth2 access token (if using OAuth)
+    public final String accessToken;
+    /// Connection timeout
+    public final int connectTimeoutMs;
+    /// Read timeout
+    public final int readTimeoutMs;
+    /// Write timeout
+    public final int writeTimeoutMs;
+    /// Enable debug logging
+    public final bool debug;
+}
+
+module Session {
+    /// Returns the host.
+    public static String getHost(Session self) {
+        return self.host;
+    }
+
+    /// Returns the port.
+    public static int getPort(Session self) {
+        return self.port;
+    }
+
+    /// Returns the protocol.
+    public static Protocol getProtocol(Session self) {
+        return self.protocol;
+    }
+
+    /// Returns true if TLS is enabled (implicit or STARTTLS).
+    public static bool isTlsEnabled(Session self) {
+        return self.useTls || self.useStartTls;
+    }
+
+    /// Returns true if authentication is configured.
+    public static bool isAuthenticated(Session self) {
+        return self.authType != AuthType.NONE;
+    }
+
+    /// Returns the username.
+    public static String getUsername(Session self) {
+        return self.username;
+    }
+
+    /// Returns debug mode.
+    public static bool isDebug(Session self) {
+        return self.debug;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Session Builder
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Fluent builder for Session configuration.
+ */
+public struct SessionBuilder {
+    /// Mail server hostname
+    public final String host;
+    /// Server port (0 = use protocol default)
+    public final int port;
+    /// Protocol
+    public final Protocol protocol;
+    /// Use implicit TLS
+    public final bool useTls;
+    /// Use STARTTLS
+    public final bool useStartTls;
+    /// Verify certificate
+    public final bool verifyCertificate;
+    /// Auth type
+    public final AuthType authType;
+    /// Username
+    public final String username;
+    /// Password
+    public final String password;
+    /// OAuth token
+    public final String accessToken;
+    /// Connect timeout (ms)
+    public final int connectTimeoutMs;
+    /// Read timeout (ms)
+    public final int readTimeoutMs;
+    /// Write timeout (ms)
+    public final int writeTimeoutMs;
+    /// Debug mode
+    public final bool debug;
+}
+
+module SessionBuilder {
+    /// Creates a new SessionBuilder with defaults.
+    public static SessionBuilder new() {
+        return SessionBuilder {
+            host: "",
+            port: 0,
+            protocol: Protocol.SMTP,
+            useTls: false,
+            useStartTls: false,
+            verifyCertificate: true,
+            authType: AuthType.NONE,
+            username: "",
+            password: "",
+            accessToken: "",
+            connectTimeoutMs: 30000,
+            readTimeoutMs: 60000,
+            writeTimeoutMs: 60000,
+            debug: false
+        };
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Protocol Configuration
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Configures for SMTP.
+    public static SessionBuilder smtp(SessionBuilder self, String host, int port) {
+        return SessionBuilder {
+            host: host,
+            port: port,
+            protocol: Protocol.SMTP,
+            useTls: self.useTls,
+            useStartTls: self.useStartTls,
+            verifyCertificate: self.verifyCertificate,
+            authType: self.authType,
+            username: self.username,
+            password: self.password,
+            accessToken: self.accessToken,
+            connectTimeoutMs: self.connectTimeoutMs,
+            readTimeoutMs: self.readTimeoutMs,
+            writeTimeoutMs: self.writeTimeoutMs,
+            debug: self.debug
+        };
+    }
+
+    /// Configures for SMTPS (SMTP over TLS).
+    public static SessionBuilder smtps(SessionBuilder self, String host, int port) {
+        return SessionBuilder {
+            host: host,
+            port: port,
+            protocol: Protocol.SMTPS,
+            useTls: true,
+            useStartTls: false,
+            verifyCertificate: self.verifyCertificate,
+            authType: self.authType,
+            username: self.username,
+            password: self.password,
+            accessToken: self.accessToken,
+            connectTimeoutMs: self.connectTimeoutMs,
+            readTimeoutMs: self.readTimeoutMs,
+            writeTimeoutMs: self.writeTimeoutMs,
+            debug: self.debug
+        };
+    }
+
+    /// Configures for IMAP.
+    public static SessionBuilder imap(SessionBuilder self, String host, int port) {
+        return SessionBuilder {
+            host: host,
+            port: port,
+            protocol: Protocol.IMAP,
+            useTls: self.useTls,
+            useStartTls: self.useStartTls,
+            verifyCertificate: self.verifyCertificate,
+            authType: self.authType,
+            username: self.username,
+            password: self.password,
+            accessToken: self.accessToken,
+            connectTimeoutMs: self.connectTimeoutMs,
+            readTimeoutMs: self.readTimeoutMs,
+            writeTimeoutMs: self.writeTimeoutMs,
+            debug: self.debug
+        };
+    }
+
+    /// Configures for IMAPS (IMAP over TLS).
+    public static SessionBuilder imaps(SessionBuilder self, String host, int port) {
+        return SessionBuilder {
+            host: host,
+            port: port,
+            protocol: Protocol.IMAPS,
+            useTls: true,
+            useStartTls: false,
+            verifyCertificate: self.verifyCertificate,
+            authType: self.authType,
+            username: self.username,
+            password: self.password,
+            accessToken: self.accessToken,
+            connectTimeoutMs: self.connectTimeoutMs,
+            readTimeoutMs: self.readTimeoutMs,
+            writeTimeoutMs: self.writeTimeoutMs,
+            debug: self.debug
+        };
+    }
+
+    /// Configures for POP3.
+    public static SessionBuilder pop3(SessionBuilder self, String host, int port) {
+        return SessionBuilder {
+            host: host,
+            port: port,
+            protocol: Protocol.POP3,
+            useTls: self.useTls,
+            useStartTls: self.useStartTls,
+            verifyCertificate: self.verifyCertificate,
+            authType: self.authType,
+            username: self.username,
+            password: self.password,
+            accessToken: self.accessToken,
+            connectTimeoutMs: self.connectTimeoutMs,
+            readTimeoutMs: self.readTimeoutMs,
+            writeTimeoutMs: self.writeTimeoutMs,
+            debug: self.debug
+        };
+    }
+
+    /// Configures for POP3S (POP3 over TLS).
+    public static SessionBuilder pop3s(SessionBuilder self, String host, int port) {
+        return SessionBuilder {
+            host: host,
+            port: port,
+            protocol: Protocol.POP3S,
+            useTls: true,
+            useStartTls: false,
+            verifyCertificate: self.verifyCertificate,
+            authType: self.authType,
+            username: self.username,
+            password: self.password,
+            accessToken: self.accessToken,
+            connectTimeoutMs: self.connectTimeoutMs,
+            readTimeoutMs: self.readTimeoutMs,
+            writeTimeoutMs: self.writeTimeoutMs,
+            debug: self.debug
+        };
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // TLS Configuration
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Enables implicit TLS (connection starts with TLS).
+    public static SessionBuilder tls(SessionBuilder self, bool enabled) {
+        return SessionBuilder {
+            host: self.host,
+            port: self.port,
+            protocol: self.protocol,
+            useTls: enabled,
+            useStartTls: enabled ? false : self.useStartTls,
+            verifyCertificate: self.verifyCertificate,
+            authType: self.authType,
+            username: self.username,
+            password: self.password,
+            accessToken: self.accessToken,
+            connectTimeoutMs: self.connectTimeoutMs,
+            readTimeoutMs: self.readTimeoutMs,
+            writeTimeoutMs: self.writeTimeoutMs,
+            debug: self.debug
+        };
+    }
+
+    /// Enables STARTTLS (upgrade to TLS after connect).
+    public static SessionBuilder startTls(SessionBuilder self, bool enabled) {
+        return SessionBuilder {
+            host: self.host,
+            port: self.port,
+            protocol: self.protocol,
+            useTls: enabled ? false : self.useTls,
+            useStartTls: enabled,
+            verifyCertificate: self.verifyCertificate,
+            authType: self.authType,
+            username: self.username,
+            password: self.password,
+            accessToken: self.accessToken,
+            connectTimeoutMs: self.connectTimeoutMs,
+            readTimeoutMs: self.readTimeoutMs,
+            writeTimeoutMs: self.writeTimeoutMs,
+            debug: self.debug
+        };
+    }
+
+    /// Sets whether to verify the server certificate.
+    public static SessionBuilder verifyCertificate(SessionBuilder self, bool verify) {
+        return SessionBuilder {
+            host: self.host,
+            port: self.port,
+            protocol: self.protocol,
+            useTls: self.useTls,
+            useStartTls: self.useStartTls,
+            verifyCertificate: verify,
+            authType: self.authType,
+            username: self.username,
+            password: self.password,
+            accessToken: self.accessToken,
+            connectTimeoutMs: self.connectTimeoutMs,
+            readTimeoutMs: self.readTimeoutMs,
+            writeTimeoutMs: self.writeTimeoutMs,
+            debug: self.debug
+        };
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Authentication Configuration
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Sets authentication credentials (auto-detects PLAIN or LOGIN).
+    public static SessionBuilder auth(SessionBuilder self, String username, String password) {
+        return SessionBuilder {
+            host: self.host,
+            port: self.port,
+            protocol: self.protocol,
+            useTls: self.useTls,
+            useStartTls: self.useStartTls,
+            verifyCertificate: self.verifyCertificate,
+            authType: AuthType.PLAIN,
+            username: username,
+            password: password,
+            accessToken: self.accessToken,
+            connectTimeoutMs: self.connectTimeoutMs,
+            readTimeoutMs: self.readTimeoutMs,
+            writeTimeoutMs: self.writeTimeoutMs,
+            debug: self.debug
+        };
+    }
+
+    /// Sets authentication with explicit mechanism.
+    public static SessionBuilder authWithType(SessionBuilder self, AuthType authType, String username, String password) {
+        return SessionBuilder {
+            host: self.host,
+            port: self.port,
+            protocol: self.protocol,
+            useTls: self.useTls,
+            useStartTls: self.useStartTls,
+            verifyCertificate: self.verifyCertificate,
+            authType: authType,
+            username: username,
+            password: password,
+            accessToken: self.accessToken,
+            connectTimeoutMs: self.connectTimeoutMs,
+            readTimeoutMs: self.readTimeoutMs,
+            writeTimeoutMs: self.writeTimeoutMs,
+            debug: self.debug
+        };
+    }
+
+    /// Sets OAuth2 authentication.
+    public static SessionBuilder oauth2(SessionBuilder self, String username, String accessToken) {
+        return SessionBuilder {
+            host: self.host,
+            port: self.port,
+            protocol: self.protocol,
+            useTls: self.useTls,
+            useStartTls: self.useStartTls,
+            verifyCertificate: self.verifyCertificate,
+            authType: AuthType.XOAUTH2,
+            username: username,
+            password: "",
+            accessToken: accessToken,
+            connectTimeoutMs: self.connectTimeoutMs,
+            readTimeoutMs: self.readTimeoutMs,
+            writeTimeoutMs: self.writeTimeoutMs,
+            debug: self.debug
+        };
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Timeout Configuration
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Sets the connection timeout.
+    public static SessionBuilder connectTimeout(SessionBuilder self, int timeoutMs) {
+        return SessionBuilder {
+            host: self.host,
+            port: self.port,
+            protocol: self.protocol,
+            useTls: self.useTls,
+            useStartTls: self.useStartTls,
+            verifyCertificate: self.verifyCertificate,
+            authType: self.authType,
+            username: self.username,
+            password: self.password,
+            accessToken: self.accessToken,
+            connectTimeoutMs: timeoutMs,
+            readTimeoutMs: self.readTimeoutMs,
+            writeTimeoutMs: self.writeTimeoutMs,
+            debug: self.debug
+        };
+    }
+
+    /// Sets the read timeout.
+    public static SessionBuilder readTimeout(SessionBuilder self, int timeoutMs) {
+        return SessionBuilder {
+            host: self.host,
+            port: self.port,
+            protocol: self.protocol,
+            useTls: self.useTls,
+            useStartTls: self.useStartTls,
+            verifyCertificate: self.verifyCertificate,
+            authType: self.authType,
+            username: self.username,
+            password: self.password,
+            accessToken: self.accessToken,
+            connectTimeoutMs: self.connectTimeoutMs,
+            readTimeoutMs: timeoutMs,
+            writeTimeoutMs: self.writeTimeoutMs,
+            debug: self.debug
+        };
+    }
+
+    /// Enables debug logging.
+    public static SessionBuilder debug(SessionBuilder self, bool enabled) {
+        return SessionBuilder {
+            host: self.host,
+            port: self.port,
+            protocol: self.protocol,
+            useTls: self.useTls,
+            useStartTls: self.useStartTls,
+            verifyCertificate: self.verifyCertificate,
+            authType: self.authType,
+            username: self.username,
+            password: self.password,
+            accessToken: self.accessToken,
+            connectTimeoutMs: self.connectTimeoutMs,
+            readTimeoutMs: self.readTimeoutMs,
+            writeTimeoutMs: self.writeTimeoutMs,
+            debug: enabled
+        };
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Build
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Builds the Session configuration.
+    public static Session build(SessionBuilder self) {
+        int port = self.port;
+        if (port == 0) {
+            port = Protocol.defaultPort(self.protocol);
+        }
+
+        return Session {
+            host: self.host,
+            port: port,
+            protocol: self.protocol,
+            useTls: self.useTls,
+            useStartTls: self.useStartTls,
+            verifyCertificate: self.verifyCertificate,
+            authType: self.authType,
+            username: self.username,
+            password: self.password,
+            accessToken: self.accessToken,
+            connectTimeoutMs: self.connectTimeoutMs,
+            readTimeoutMs: self.readTimeoutMs,
+            writeTimeoutMs: self.writeTimeoutMs,
+            debug: self.debug
+        };
+    }
+}

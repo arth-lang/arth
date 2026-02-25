@@ -1,0 +1,18 @@
+package demo.interfaces;
+
+// Generic interface over a receiver type T
+interface CacheKey<T> { String key(T self); }
+
+// Simple data type
+struct User { public final String id; }
+
+// Implement CacheKey for User via module header specialization
+module Keys implements CacheKey for User {
+  public String key(User self) { return self.id; }
+}
+
+// Tiny entrypoint to keep the example discoverable
+module Demo {
+  public void main() { println("interfaces demo compiled"); }
+}
+

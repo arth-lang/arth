@@ -1,0 +1,52 @@
+package test;
+
+// Test: Native enum operations with payload pattern matching
+// Expected output:
+//   result: Some(42)
+//   x is: 42
+//   error: Invalid input
+//   got none
+
+public enum Result {
+    Ok(Int),
+    Err(String)
+}
+
+public enum Option {
+    Some(Int),
+    None
+}
+
+module Main {
+    public static void main() {
+        // Test enum variant with payload
+        Result r = Result.Ok(42);
+        println("result: Some(42)");
+
+        // Test pattern matching with payload extraction
+        switch (r) {
+            case Result.Ok(x):
+                println("x is: " + x);
+            case Result.Err(msg):
+                println("error: " + msg);
+        }
+
+        // Test error variant
+        Result err = Result.Err("Invalid input");
+        switch (err) {
+            case Result.Ok(x):
+                println("x is: " + x);
+            case Result.Err(msg):
+                println("error: " + msg);
+        }
+
+        // Test unit variant
+        Option none = Option.None;
+        switch (none) {
+            case Option.Some(v):
+                println("got some: " + v);
+            case Option.None:
+                println("got none");
+        }
+    }
+}

@@ -1,0 +1,223 @@
+package db.postgres;
+
+import db.*;
+
+/**
+ * PostgreSQL database driver.
+ *
+ * This module provides PostgreSQL database connectivity through FFI bindings
+ * to the libpq library. PostgreSQL is a client-server database accessed over
+ * a network connection.
+ *
+ * ## Connection Strings
+ *
+ * | Format | Example |
+ * |--------|---------|
+ * | URI | `postgres://user:pass@host:5432/dbname` |
+ * | With options | `postgres://user:pass@host/db?sslmode=require` |
+ * | Unix socket | `postgres:///dbname?host=/var/run/postgresql` |
+ *
+ * ## Example Usage
+ *
+ * ```arth
+ * import db.*;
+ * import db.postgres.*;
+ *
+ * // Connect to database (async)
+ * Connection conn = await Postgres.connect("postgres://user:pass@localhost/mydb");
+ *
+ * // Create table
+ * await Postgres.execute(conn, "CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, name TEXT)");
+ *
+ * // Insert data (note: PostgreSQL uses $1, $2 for parameters)
+ * int affected = await Postgres.execute(conn, "INSERT INTO users (name) VALUES ($1)", [Param.textParam(1, "Alice")]);
+ *
+ * // Query data
+ * Row[] rows = await Postgres.query(conn, "SELECT * FROM users WHERE name = $1", [Param.textParam(1, "Alice")]);
+ *
+ * // Transaction
+ * await Postgres.begin(conn);
+ * try {
+ *     await Postgres.execute(conn, "UPDATE users SET name = $1 WHERE id = $2", [Param.textParam(1, "Bob"), Param.intParam(2, 1)]);
+ *     await Postgres.commit(conn);
+ * } catch (QueryError e) {
+ *     await Postgres.rollback(conn);
+ *     throw e;
+ * }
+ *
+ * // Close connection
+ * Postgres.disconnect(conn);
+ * ```
+ *
+ * ## Async Support
+ *
+ * PostgreSQL operations are async by default, integrating with Arth's event
+ * loop for non-blocking I/O. Use `await` for all query and transaction operations.
+ *
+ * ## Implementation Status
+ *
+ * This module is a placeholder for Phase 3 implementation. The FFI bindings
+ * and VM host functions are not yet implemented.
+ *
+ * @see db.Connection for connection lifecycle
+ * @see db.Statement for prepared statements
+ * @see docs/stdlib-database.md Phase 3 for implementation plan
+ */
+
+/**
+ * PostgreSQL driver module.
+ *
+ * Operations are async by default, using libpq's async API for non-blocking
+ * database access.
+ */
+module Postgres {
+    /// Opens a PostgreSQL database connection asynchronously.
+    ///
+    /// @param connectionString PostgreSQL connection URI
+    /// @returns An open Connection with driverType = POSTGRES
+    /// @throws (ConnectionError) if connection fails
+    @intrinsic("postgres.connect")
+    public async static Connection connect(String connectionString) throws (ConnectionError) {
+        // Intrinsic: opens PostgreSQL connection
+        return Connection {
+            handle: 0,
+            driverType: DriverType.POSTGRES,
+            state: ConnectionState.OPEN,
+            connectionString: connectionString
+        };
+    }
+
+    /// Closes a PostgreSQL database connection.
+    ///
+    /// @param conn The connection to close
+    /// @throws (ConnectionError) if disconnect fails
+    @intrinsic("postgres.disconnect")
+    public static void disconnect(Connection conn) throws (ConnectionError) {
+        // Intrinsic: closes PostgreSQL connection
+    }
+
+    /// Executes a query that returns results asynchronously.
+    ///
+    /// @param conn The connection to use
+    /// @param sql The SQL SELECT query
+    /// @param params Query parameters (use $1, $2, ... placeholders)
+    /// @returns Array of result rows
+    /// @throws (QueryError) if query execution fails
+    @intrinsic("postgres.query")
+    public async static List<Row> query(Connection conn, String sql, List<Param> params) throws (QueryError) {
+        // Intrinsic: executes SELECT query
+        return [];
+    }
+
+    /// Executes a query with no parameters.
+    public async static List<Row> queryNoParams(Connection conn, String sql) throws (QueryError) {
+        return await Postgres.query(conn, sql, []);
+    }
+
+    /// Executes a statement that modifies data asynchronously.
+    ///
+    /// @param conn The connection to use
+    /// @param sql The SQL INSERT/UPDATE/DELETE statement
+    /// @param params Statement parameters (use $1, $2, ... placeholders)
+    /// @returns Number of affected rows
+    /// @throws (QueryError) if execution fails
+    @intrinsic("postgres.execute")
+    public async static int execute(Connection conn, String sql, List<Param> params) throws (QueryError) {
+        // Intrinsic: executes modification statement
+        return 0;
+    }
+
+    /// Executes a statement with no parameters.
+    public async static int executeNoParams(Connection conn, String sql) throws (QueryError) {
+        return await Postgres.execute(conn, sql, []);
+    }
+
+    /// Prepares a SQL statement for repeated execution.
+    ///
+    /// @param conn The connection to use
+    /// @param sql The SQL to prepare (use $1, $2 for placeholders)
+    /// @returns A prepared Statement
+    /// @throws (PrepareError) if preparation fails
+    @intrinsic("postgres.prepare")
+    public static Statement prepare(Connection conn, String sql) throws (PrepareError) {
+        // Intrinsic: prepares statement
+        return Statement {
+            handle: 0,
+            connectionHandle: conn.handle,
+            sql: sql,
+            paramCount: 0,
+            state: StatementState.PREPARED
+        };
+    }
+
+    /// Begins a transaction asynchronously.
+    ///
+    /// @param conn The connection to use
+    /// @throws (TransactionError) if already in a transaction or begin fails
+    @intrinsic("postgres.begin")
+    public async static void begin(Connection conn) throws (TransactionError) {
+        // Intrinsic: BEGIN TRANSACTION
+    }
+
+    /// Commits the current transaction asynchronously.
+    ///
+    /// @param conn The connection to use
+    /// @throws (TransactionError) if not in a transaction or commit fails
+    @intrinsic("postgres.commit")
+    public async static void commit(Connection conn) throws (TransactionError) {
+        // Intrinsic: COMMIT
+    }
+
+    /// Rolls back the current transaction asynchronously.
+    ///
+    /// @param conn The connection to use
+    /// @throws (TransactionError) if not in a transaction or rollback fails
+    @intrinsic("postgres.rollback")
+    public async static void rollback(Connection conn) throws (TransactionError) {
+        // Intrinsic: ROLLBACK
+    }
+
+    /// Creates a savepoint for nested transaction support.
+    ///
+    /// @param conn The connection to use
+    /// @param name The savepoint name
+    /// @throws (TransactionError) if savepoint creation fails
+    @intrinsic("postgres.savepoint")
+    public async static void savepoint(Connection conn, String name) throws (TransactionError) {
+        // Intrinsic: SAVEPOINT name
+    }
+
+    /// Releases a savepoint.
+    ///
+    /// @param conn The connection to use
+    /// @param name The savepoint name
+    /// @throws (TransactionError) if release fails
+    @intrinsic("postgres.release_savepoint")
+    public async static void releaseSavepoint(Connection conn, String name) throws (TransactionError) {
+        // Intrinsic: RELEASE SAVEPOINT name
+    }
+
+    /// Rolls back to a savepoint.
+    ///
+    /// @param conn The connection to use
+    /// @param name The savepoint name
+    /// @throws (TransactionError) if rollback fails
+    @intrinsic("postgres.rollback_to_savepoint")
+    public async static void rollbackToSavepoint(Connection conn, String name) throws (TransactionError) {
+        // Intrinsic: ROLLBACK TO SAVEPOINT name
+    }
+
+    /// Returns the PostgreSQL server version.
+    @intrinsic("postgres.version")
+    public static String version(Connection conn) {
+        // Intrinsic: PQserverVersion
+        return "";
+    }
+
+    /// Checks if the connection is still alive.
+    @intrinsic("postgres.ping")
+    public static bool ping(Connection conn) {
+        // Intrinsic: PQstatus check
+        return false;
+    }
+}

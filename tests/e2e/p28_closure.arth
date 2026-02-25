@@ -1,0 +1,107 @@
+package test;
+
+// Test: Closures with Capture - P28
+// Closures can capture variables from their enclosing scope.
+// Captured variables are passed to the lambda at creation time.
+//
+// Expected output:
+//   === Test 1: Capture Single Variable ===
+//   Result: 50
+//   Test 1: PASS
+//   === Test 2: Capture Multiple Variables ===
+//   Sum: 60
+//   Test 2: PASS
+//   === Test 3: Capture in Expression ===
+//   Offset result: 25
+//   Test 3: PASS
+//   === Test 4: Multiple Closures Same Capture ===
+//   Double: 20
+//   Triple: 30
+//   Test 4: PASS
+//   === Summary ===
+//   All 4 tests passed!
+//   === P28: PASSED ===
+
+module Main {
+    public static void main() {
+        int passed = 0;
+
+        // Test 1: Closure capturing a single variable
+        println("=== Test 1: Capture Single Variable ===");
+        int multiplier = 10;
+        var multiply = fn(int x) {
+            return x * multiplier;
+        };
+        int r1 = multiply(5);
+        println("Result: " + r1);
+        if (r1 == 50) {
+            println("Test 1: PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 1: FAIL");
+        }
+
+        // Test 2: Closure capturing multiple variables
+        println("=== Test 2: Capture Multiple Variables ===");
+        int a = 10;
+        int b = 20;
+        int c = 30;
+        var sumAll = fn() {
+            return a + b + c;
+        };
+        int r2 = sumAll();
+        println("Sum: " + r2);
+        if (r2 == 60) {
+            println("Test 2: PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 2: FAIL");
+        }
+
+        // Test 3: Capture used in arithmetic expression
+        println("=== Test 3: Capture in Expression ===");
+        int offset = 5;
+        var addOffset = fn(int x) {
+            int result = x + offset;
+            return result * 2 - offset;
+        };
+        int r3 = addOffset(10);
+        println("Offset result: " + r3);
+        if (r3 == 25) {
+            println("Test 3: PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 3: FAIL");
+        }
+
+        // Test 4: Multiple closures capturing same variable
+        println("=== Test 4: Multiple Closures Same Capture ===");
+        int base = 10;
+        var doubleIt = fn() {
+            return base * 2;
+        };
+        var tripleIt = fn() {
+            return base * 3;
+        };
+        int r4a = doubleIt();
+        int r4b = tripleIt();
+        println("Double: " + r4a);
+        println("Triple: " + r4b);
+        if (r4a == 20 && r4b == 30) {
+            println("Test 4: PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 4: FAIL");
+        }
+
+        // Summary
+        println("=== Summary ===");
+        if (passed == 4) {
+            println("All 4 tests passed!");
+            println("=== P28: PASSED ===");
+        } else {
+            println("Some tests failed!");
+            println("=== P28: FAILED ===");
+        }
+    }
+}

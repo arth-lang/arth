@@ -1,0 +1,57 @@
+[package]
+name = "arth-vm"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "arth_vm"
+path = "src/lib.rs"
+
+[features]
+default = []
+# Enable Cranelift JIT compilation for hot functions.
+# This enables tiered compilation: Tier 0 (interpreter) -> Tier 1 (JIT).
+jit = [
+    "cranelift",
+    "cranelift-codegen",
+    "cranelift-frontend",
+    "cranelift-module",
+    "cranelift-jit",
+    "cranelift-native",
+    "target-lexicon",
+    "lazy_static",
+]
+
+[dependencies]
+# Arth native runtime (C FFI layer)
+arth-rt = { path = "../arth-rt", features = ["io", "time", "sqlite", "postgres", "net", "tls", "http", "html", "crypto"] }
+
+# Work-stealing thread pool for concurrent runtime
+crossbeam-deque = "0.8"
+crossbeam-utils = "0.8"
+
+# MPMC channels for thread-safe communication
+crossbeam-channel = "0.5"
+
+# Parking lot for efficient synchronization
+parking_lot = "0.12"
+
+# Low-level libc bindings for event loop (pipes, poll)
+libc = "0.2"
+
+# SHA-1 for WebSocket handshake
+sha1 = "0.10"
+
+# JSON serialization for HostCallGeneric
+serde_json = "1"
+serde = { version = "1", features = ["derive"] }
+
+# Cranelift JIT compilation (optional)
+cranelift = { version = "0.125", optional = true }
+cranelift-codegen = { version = "0.125", optional = true }
+cranelift-frontend = { version = "0.125", optional = true }
+cranelift-module = { version = "0.125", optional = true }
+cranelift-jit = { version = "0.125", optional = true }
+cranelift-native = { version = "0.125", optional = true }
+target-lexicon = { version = "0.13", optional = true }
+lazy_static = { version = "1.4", optional = true }

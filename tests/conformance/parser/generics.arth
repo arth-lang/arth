@@ -1,0 +1,27 @@
+package conformance;
+
+// @spec: spec.md §12 - Generics
+// @expect: pass
+// @description: Validates generic function parsing
+
+// Generic interface (declaration only)
+public interface Mapper<T, R> {
+    R map(T input);
+}
+
+// Module with generic functions
+module GenericFns {
+    public T identity<T>(T value) {
+        return value;
+    }
+}
+
+module Main {
+    public static void main() {
+        // Generic function calls with inference
+        Int x = GenericFns.identity(42);
+        String s = GenericFns.identity("hi");
+
+        println("generics: pass");
+    }
+}

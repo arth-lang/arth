@@ -1,0 +1,49 @@
+package test;
+
+// Test: Type inference with 'var' keyword - Phase 2
+// The 'var' keyword infers the type from the initializer expression.
+// Expected output:
+//   intVar: 42
+//   strVar: hello
+//   boolVar: 1
+//   floatVar: 3.14
+//   sumResult: 15
+//   doubled: 84
+
+module MathFns {
+    public static Int sum(Int a, Int b) {
+        return a + b;
+    }
+
+    public static Int double(Int x) {
+        return x * 2;
+    }
+}
+
+module Main {
+    public static void main() {
+        // Type inference from integer literal
+        var intVar = 42;
+        println("intVar: " + intVar);
+
+        // Type inference from string literal
+        var strVar = "hello";
+        println("strVar: " + strVar);
+
+        // Type inference from boolean literal
+        var boolVar = true;
+        println("boolVar: " + boolVar);
+
+        // Type inference from float literal
+        var floatVar = 3.14;
+        println("floatVar: " + floatVar);
+
+        // Type inference from function call
+        var sumResult = MathFns.sum(10, 5);
+        println("sumResult: " + sumResult);
+
+        // Type inference from another variable
+        var doubled = MathFns.double(intVar);
+        println("doubled: " + doubled);
+    }
+}

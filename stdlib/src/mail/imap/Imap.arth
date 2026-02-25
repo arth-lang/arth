@@ -1,0 +1,223 @@
+package mail.imap;
+
+import mail.*;
+
+/**
+ * IMAP store implementation.
+ *
+ * This module provides the IMAP protocol implementation for reading mail.
+ *
+ * Example usage:
+ * ```arth
+ * import mail.*;
+ * import mail.imap.*;
+ *
+ * Session session = SessionBuilder.new()
+ *     .imaps("imap.gmail.com", 993)
+ *     .auth("user@gmail.com", "app-password")
+ *     .build();
+ *
+ * Store store = await Imap.connect(session);
+ * try {
+ *     Folder inbox = Store.getInbox(store);
+ *     await Folder.open(inbox, FolderMode.READ_ONLY);
+ *
+ *     Message[] messages = await Folder.getMessages(inbox);
+ *     // Process messages...
+ *
+ *     Folder.close(inbox, false);
+ * } finally {
+ *     Store.disconnect(store);
+ * }
+ * ```
+ *
+ * @see mail.Store for the store interface
+ * @see mail.Folder for folder operations
+ * @see mail.Session for configuration
+ */
+
+module Imap {
+    /// Connects to an IMAP server.
+    ///
+    /// This establishes a connection, optionally upgrades to TLS,
+    /// and authenticates if credentials are set.
+    @intrinsic("mail.imap.connect")
+    public static async Store connect(Session session)
+        throws (ConnectionError, AuthenticationError, TlsError, TimeoutError) {
+        // Validate session
+        if (session.host == "") {
+            throw ConnectionError.new("IMAP host not configured");
+        }
+
+        return Store {
+            handle: 0,
+            session: session,
+            storeType: StoreType.IMAP,
+            state: StoreState.AUTHENTICATED,
+            capabilities: new String[0]
+        };
+    }
+
+    /// Connects with explicit credentials.
+    @intrinsic("mail.imap.connect_auth")
+    public static async Store connectWithAuth(Session session, String username, String password)
+        throws (ConnectionError, AuthenticationError, TlsError, TimeoutError) {
+        return Store {
+            handle: 0,
+            session: session,
+            storeType: StoreType.IMAP,
+            state: StoreState.AUTHENTICATED,
+            capabilities: new String[0]
+        };
+    }
+
+    /// Connects with OAuth2 token.
+    @intrinsic("mail.imap.connect_oauth")
+    public static async Store connectWithOAuth(Session session, String username, String accessToken)
+        throws (ConnectionError, AuthenticationError, TlsError, TimeoutError) {
+        return Store {
+            handle: 0,
+            session: session,
+            storeType: StoreType.IMAP,
+            state: StoreState.AUTHENTICATED,
+            capabilities: new String[0]
+        };
+    }
+
+    /// Starts IDLE mode for push notifications (IMAP IDLE extension).
+    ///
+    /// Returns when a change occurs in the mailbox.
+    @intrinsic("mail.imap.idle")
+    public static async IdleEvent idle(Store store, Folder folder, int timeoutMs)
+        throws (StoreError, TimeoutError) {
+        return IdleEvent {
+            eventType: IdleEventType.EXISTS,
+            messageCount: 0
+        };
+    }
+
+    /// Sends a NOOP command to keep the connection alive.
+    @intrinsic("mail.imap.noop")
+    public static async void noop(Store store) throws (StoreError) {
+        // Intrinsic implementation
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// IDLE Events
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Type of IDLE event.
+ */
+public enum IdleEventType {
+    /// New message arrived
+    EXISTS,
+    /// Message expunged
+    EXPUNGE,
+    /// Recent count changed
+    RECENT,
+    /// Fetch response (flags changed)
+    FETCH,
+    /// Timeout (no event occurred)
+    TIMEOUT
+}
+
+/**
+ * Event returned from IDLE.
+ */
+public struct IdleEvent {
+    /// Type of event
+    public final IdleEventType eventType;
+    /// New message count (for EXISTS)
+    public final int messageCount;
+}
+
+module IdleEvent {
+    /// Returns the event type.
+    public static IdleEventType getType(IdleEvent self) {
+        return self.eventType;
+    }
+
+    /// Returns true if a new message arrived.
+    public static bool isNewMessage(IdleEvent self) {
+        return self.eventType == IdleEventType.EXISTS;
+    }
+
+    /// Returns true if this was a timeout (no event).
+    public static bool isTimeout(IdleEvent self) {
+        return self.eventType == IdleEventType.TIMEOUT;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// IMAP Configuration
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * IMAP-specific configuration options.
+ */
+public struct ImapConfig {
+    /// Use COMPRESS extension if available
+    public final bool useCompression;
+    /// Use CONDSTORE extension if available
+    public final bool useCondstore;
+    /// Use QRESYNC extension if available
+    public final bool useQresync;
+    /// Fetch size for message batches
+    public final int fetchBatchSize;
+    /// IDLE timeout in milliseconds
+    public final int idleTimeoutMs;
+    /// Automatically subscribe to new folders
+    public final bool autoSubscribe;
+}
+
+module ImapConfig {
+    /// Returns default IMAP configuration.
+    public static ImapConfig defaults() {
+        return ImapConfig {
+            useCompression: false,
+            useCondstore: true,
+            useQresync: true,
+            fetchBatchSize: 50,
+            idleTimeoutMs: 1740000, // 29 minutes
+            autoSubscribe: false
+        };
+    }
+
+    /// Returns a new config with compression enabled.
+    public static ImapConfig withCompression(ImapConfig self, bool enabled) {
+        return ImapConfig {
+            useCompression: enabled,
+            useCondstore: self.useCondstore,
+            useQresync: self.useQresync,
+            fetchBatchSize: self.fetchBatchSize,
+            idleTimeoutMs: self.idleTimeoutMs,
+            autoSubscribe: self.autoSubscribe
+        };
+    }
+
+    /// Returns a new config with fetch batch size.
+    public static ImapConfig withFetchBatchSize(ImapConfig self, int size) {
+        return ImapConfig {
+            useCompression: self.useCompression,
+            useCondstore: self.useCondstore,
+            useQresync: self.useQresync,
+            fetchBatchSize: size,
+            idleTimeoutMs: self.idleTimeoutMs,
+            autoSubscribe: self.autoSubscribe
+        };
+    }
+
+    /// Returns a new config with IDLE timeout.
+    public static ImapConfig withIdleTimeout(ImapConfig self, int timeoutMs) {
+        return ImapConfig {
+            useCompression: self.useCompression,
+            useCondstore: self.useCondstore,
+            useQresync: self.useQresync,
+            fetchBatchSize: self.fetchBatchSize,
+            idleTimeoutMs: timeoutMs,
+            autoSubscribe: self.autoSubscribe
+        };
+    }
+}

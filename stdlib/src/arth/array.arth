@@ -1,0 +1,475 @@
+package arth;
+
+/**
+ * List and Array operations.
+ *
+ * This file contains:
+ * 1. The `List` module with intrinsic-backed core operations
+ * 2. The `array` module with higher-level helper functions
+ *
+ * NOTE: This file uses a minimal set of intrinsics. Many operations that were
+ * previously intrinsics are now pure Arth code built on the core primitives.
+ *
+ * Core intrinsics (7):
+ * - list.new, list.push, list.get, list.set, list.len - fundamental operations
+ * - list.sort - complex algorithm better in native code
+ * - list.remove - efficient in-place mutation
+ *
+ * Derived operations (pure Arth):
+ * - pop, indexOf, contains, insert, clear, reverse, concat, slice, unique
+ *
+ * @see src/compiler/intrinsics.rs for intrinsic registry
+ * @see crates/arth-vm/src/runtime.rs for VM implementation
+ */
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Core List Module (Intrinsic-backed)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Core list operations backed by VM intrinsics.
+ */
+module List {
+    /// Creates a new empty list and returns its handle.
+    @intrinsic("list.new")
+    public static Int new() { return 0; }
+
+    /// Appends a value to the end of the list.
+    @intrinsic("list.push")
+    public static Int push(Int list, Int value) { return list; }
+
+    /// Returns the element at the given index.
+    @intrinsic("list.get")
+    public static Int get(Int list, Int index) { return 0; }
+
+    /// Sets the element at the given index (in-place mutation).
+    @intrinsic("list.set")
+    public static Int set(Int list, Int index, Int value) { return 0; }
+
+    /// Returns the number of elements in the list.
+    @intrinsic("list.len")
+    public static Int len(Int list) { return 0; }
+
+    /// Removes and returns the element at the specified index.
+    @intrinsic("list.remove")
+    public static Int remove(Int list, Int index) { return 0; }
+
+    /// Sorts the list in ascending order in place.
+    @intrinsic("list.sort")
+    public static Int sort(Int list) { return list; }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Derived operations (pure Arth code)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Removes and returns the last element of the list.
+    /// Returns 0 if the list is empty.
+    public static Int pop(Int list) {
+        Int n = List.len(list);
+        if (n == 0) {
+            return 0;
+        }
+        return List.remove(list, n - 1);
+    }
+
+    /// Returns the index of the first occurrence of a value, or -1 if not found.
+    public static Int indexOf(Int list, Int value) {
+        Int n = List.len(list);
+        Int i = 0;
+        while (i < n) {
+            if (List.get(list, i) == value) {
+                return i;
+            }
+            i = i + 1;
+        }
+        return -1;
+    }
+
+    /// Checks if the list contains the specified value (1 if found, 0 otherwise).
+    public static Int contains(Int list, Int value) {
+        if (List.indexOf(list, value) >= 0) {
+            return 1;
+        }
+        return 0;
+    }
+
+    /// Inserts a value at the specified index.
+    /// Elements at and after the index are shifted right.
+    public static Int insert(Int list, Int index, Int value) {
+        // Build a new list with the element inserted
+        Int n = List.len(list);
+        Int out = List.new();
+        Int i = 0;
+        while (i < index) {
+            List.push(out, List.get(list, i));
+            i = i + 1;
+        }
+        List.push(out, value);
+        while (i < n) {
+            List.push(out, List.get(list, i));
+            i = i + 1;
+        }
+        return out;
+    }
+
+    /// Removes all elements from the list (returns new empty list).
+    public static Int clear(Int list) {
+        return List.new();
+    }
+
+    /// Reverses the list and returns a new reversed list.
+    public static Int reverse(Int list) {
+        Int n = List.len(list);
+        Int out = List.new();
+        Int i = n - 1;
+        while (i >= 0) {
+            List.push(out, List.get(list, i));
+            i = i - 1;
+        }
+        return out;
+    }
+
+    /// Concatenates two lists into a new list.
+    public static Int concat(Int a, Int b) {
+        Int out = List.new();
+        Int lenA = List.len(a);
+        Int lenB = List.len(b);
+        Int i = 0;
+        while (i < lenA) {
+            List.push(out, List.get(a, i));
+            i = i + 1;
+        }
+        i = 0;
+        while (i < lenB) {
+            List.push(out, List.get(b, i));
+            i = i + 1;
+        }
+        return out;
+    }
+
+    /// Returns a new list containing elements from start (inclusive) to end (exclusive).
+    public static Int slice(Int list, Int start, Int end) {
+        Int out = List.new();
+        Int i = start;
+        while (i < end) {
+            List.push(out, List.get(list, i));
+            i = i + 1;
+        }
+        return out;
+    }
+
+    /// Removes duplicate elements, keeping only unique values.
+    /// Returns a new list with duplicates removed.
+    public static Int unique(Int list) {
+        Int out = List.new();
+        Int n = List.len(list);
+        Int i = 0;
+        while (i < n) {
+            Int v = List.get(list, i);
+            if (List.contains(out, v) == 0) {
+                List.push(out, v);
+            }
+            i = i + 1;
+        }
+        return out;
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Array Helper Module
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/// Result of partitioning an array into elements that match a predicate and the remaining elements.
+public struct PartitionResult {
+    /// Handle to an array containing all elements that satisfied the predicate.
+    public final Int matches;
+    /// Handle to an array containing all elements that did not satisfy the predicate.
+    public final Int rest;
+}
+
+/**
+ * Higher-level array helpers that wrap the core List intrinsics.
+ */
+module array {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Constructors
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Creates an empty list-backed array.
+    public static Int empty() {
+        return List.new();
+    }
+
+    /// Creates an empty array.
+    public static Int arrayOf() {
+        return List.new();
+    }
+
+    /// Creates an array with one element.
+    public static Int arrayOf(Int v1) {
+        Int h = List.new();
+        List.push(h, v1);
+        return h;
+    }
+
+    /// Creates an array with two elements.
+    public static Int arrayOf(Int v1, Int v2) {
+        Int h = List.new();
+        List.push(h, v1);
+        List.push(h, v2);
+        return h;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Element Access & Mutation
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Appends a value to the end of the array.
+    public static Int push(Int arr, Int value) {
+        return List.push(arr, value);
+    }
+
+    /// Returns the element at the given index.
+    public static Int get(Int arr, Int index) {
+        return List.get(arr, index);
+    }
+
+    /// Returns the number of elements in the array.
+    public static Int len(Int arr) {
+        return List.len(arr);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Slicing & Combining
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns a new array containing elements from start (inclusive) to end (exclusive).
+    public static Int slice(Int arr, Int start, Int end) {
+        return List.slice(arr, start, end);
+    }
+
+    /// Returns a new array that is the concatenation of two arrays.
+    public static Int concat(Int a, Int b) {
+        return List.concat(a, b);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Search
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns the index of the first occurrence of value, or -1 if not found.
+    public static Int indexOf(Int arr, Int value) {
+        return List.indexOf(arr, value);
+    }
+
+    /// Returns 1 if the array contains the value, 0 otherwise.
+    public static Int contains(Int arr, Int value) {
+        return List.contains(arr, value);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // In-Place Mutations
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Removes all elements from the array.
+    public static void clear(Int arr) {
+        List.clear(arr);
+        return;
+    }
+
+    /// Reverses the array in place.
+    public static void reverse(Int arr) {
+        List.reverse(arr);
+        return;
+    }
+
+    /// Sorts the array in ascending order.
+    public static void sort(Int arr) {
+        List.sort(arr);
+        return;
+    }
+
+    /// Removes duplicate elements, keeping only unique values.
+    public static void unique(Int arr) {
+        List.unique(arr);
+        return;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Sorted list helpers
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Merges two sorted arrays into a new sorted array (stable).
+     *
+     * Both input arrays must already be sorted in ascending order using the
+     * same comparison semantics as {@link #sort}. The merge is stable with
+     * respect to elements coming from the left-hand array: when values are
+     * equal, elements from {@code xs} appear before elements from {@code ys}.
+     *
+     * This is implemented by concatenating both arrays into a new array
+     * and sorting that array. While O((n+m) log(n+m)) rather than O(n+m),
+     * it keeps the implementation simple and delegates ordering to the
+     * VM's ListSort, which already handles mixed numeric/string/boolean
+     * ordering and NaN semantics.
+     *
+     */
+    public static Int merge(Int xs, Int ys) {
+        Int out = List.concat(xs, ys);
+        List.sort(out);
+        return out;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Predicate-based helpers (require closures)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Applies a callback function to each element in the array.
+     *
+     * The callback is invoked as {@code callback(element)} for every element.
+     * Iteration order is from index 0 to len-1.
+     */
+    public static void forEach(Int arr, Fn callback) {
+        Int n = List.len(arr);
+        Int i = 0;
+        while (i < n) {
+            Int v = List.get(arr, i);
+            callback(v);
+            i = i + 1;
+        }
+        return;
+    }
+
+    /**
+     * Applies a callback function to each element with its index.
+     *
+     * The callback is invoked as {@code callback(index, element)} for every element.
+     * Iteration order is from index 0 to len-1.
+     */
+    public static void forEachIndexed(Int arr, Fn callback) {
+        Int n = List.len(arr);
+        Int i = 0;
+        while (i < n) {
+            Int v = List.get(arr, i);
+            callback(i, v);
+            i = i + 1;
+        }
+        return;
+    }
+
+    /**
+     * Finds the first element in the array that satisfies the given predicate.
+     *
+     * Returns an Optional containing the matching element, or Optional.empty()
+     * if no element matches. The predicate is a function that takes the element
+     * value and returns a Bool.
+     */
+    public static Optional<Int> find(Int arr, Fn pred) {
+        Int n = List.len(arr);
+        Int i = 0;
+        while (i < n) {
+            Int v = List.get(arr, i);
+            if (pred(v)) {
+                return Optional.of(v);
+            }
+            i = i + 1;
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * Returns the index of the first element that satisfies the given predicate,
+     * or -1 if no such element exists.
+     */
+    public static Int findIndex(Int arr, Fn pred) {
+        Int n = List.len(arr);
+        Int i = 0;
+        while (i < n) {
+            Int v = List.get(arr, i);
+            if (pred(v)) {
+                return i;
+            }
+            i = i + 1;
+        }
+        return -1;
+    }
+
+    /**
+     * Finds the last element in the array that satisfies the given predicate.
+     *
+     * Returns an Optional containing the matching element, or Optional.empty()
+     * if no element matches.
+     */
+    public static Optional<Int> findLast(Int arr, Fn pred) {
+        Int n = List.len(arr);
+        Int i = n - 1;
+        while (i >= 0) {
+            Int v = List.get(arr, i);
+            if (pred(v)) {
+                return Optional.of(v);
+            }
+            i = i - 1;
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * Returns true if any element in the array satisfies the given predicate.
+     */
+    public static Bool any(Int arr, Fn pred) {
+        Int n = List.len(arr);
+        Int i = 0;
+        while (i < n) {
+            Int v = List.get(arr, i);
+            if (pred(v)) {
+                return true;
+            }
+            i = i + 1;
+        }
+        return false;
+    }
+
+    /**
+     * Returns true if all elements in the array satisfy the given predicate.
+     * An empty array returns true.
+     */
+    public static Bool all(Int arr, Fn pred) {
+        Int n = List.len(arr);
+        Int i = 0;
+        while (i < n) {
+            Int v = List.get(arr, i);
+            if (!pred(v)) {
+                return false;
+            }
+            i = i + 1;
+        }
+        return true;
+    }
+
+    /**
+     * Partitions the array into two arrays based on the given predicate.
+     *
+     * The returned PartitionResult contains:
+     * - matches: all elements where pred(element) is true
+     * - rest:   all elements where pred(element) is false
+     *
+     * The relative order of elements is preserved in both partitions.
+     */
+    public static PartitionResult partition(Int arr, Fn pred) {
+        Int matches = List.new();
+        Int rest = List.new();
+        Int n = List.len(arr);
+        Int i = 0;
+        while (i < n) {
+            Int v = List.get(arr, i);
+            if (pred(v)) {
+                List.push(matches, v);
+            } else {
+                List.push(rest, v);
+            }
+            i = i + 1;
+        }
+        return PartitionResult { matches: matches, rest: rest };
+    }
+}

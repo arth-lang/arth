@@ -1,0 +1,917 @@
+package cli;
+
+/**
+ * Command line argument parsing module.
+ *
+ * Provides utilities for parsing command line arguments including:
+ * - Flags (--flag, -f)
+ * - Options with values (--name=value, --name value, -n value)
+ * - Short flag bundling (-abc expands to -a -b -c)
+ * - Positional arguments
+ * - Automatic help/usage generation
+ *
+ * This is a PURE ARTH implementation that builds on top of the
+ * Env.args() intrinsic and text.Strings operations.
+ *
+ * Example usage:
+ * ```
+ * import cli.Args;
+ * import cli.ArgSpec;
+ * import io.Console;
+ * import process.Process;
+ *
+ * module Main {
+ *     public static void main() {
+ *         // Option 1: Simple parsing (no spec)
+ *         Args.parse();
+ *
+ *         if (Args.hasFlag("help") || Args.hasFlag("h")) {
+ *             Console.println("Usage: myapp [options] <files...>");
+ *             Process.exit(0);
+ *         }
+ *
+ *         String name = Args.getOptionOr("name", "World");
+ *         Console.println("Hello, " + name + "!");
+ *
+ *         // Option 2: With ArgSpec for validation and help generation
+ *         Int spec = ArgSpec.create("myapp", "A sample application");
+ *         ArgSpec.addFlag(spec, "verbose", "v", "Enable verbose output");
+ *         ArgSpec.addFlag(spec, "help", "h", "Show this help message");
+ *         ArgSpec.addOption(spec, "output", "o", "Output file path", "FILE");
+ *         ArgSpec.addOption(spec, "count", "n", "Number of iterations", "NUM");
+ *         ArgSpec.addPositional(spec, "input", "Input file(s)", true);
+ *
+ *         if (!Args.parseWithSpec(spec)) {
+ *             Console.println(ArgSpec.usage(spec));
+ *             Process.exit(1);
+ *         }
+ *
+ *         if (Args.hasFlag("help")) {
+ *             Console.println(ArgSpec.usage(spec));
+ *             Process.exit(0);
+ *         }
+ *     }
+ * }
+ * ```
+ *
+ * Supported argument formats:
+ * - Long flags: --verbose, --help
+ * - Short flags: -v, -h
+ * - Short flag bundling: -abc (expands to -a -b -c)
+ * - Long options: --name=value, --name value
+ * - Short options: -n value, -n=value
+ * - Positional: anything not starting with -
+ * - Separator: -- (everything after is positional)
+ */
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// String Helper Intrinsics (imported from text.Strings)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// We re-declare the string intrinsics here to avoid circular import issues
+// and keep the module self-contained.
+
+@intrinsic("str.len")
+static Int strLen(String s) { return 0; }
+
+@intrinsic("str.char_at")
+static String strCharAt(String s, Int index) { return ""; }
+
+@intrinsic("str.substring")
+static String strSubstring(String s, Int start, Int end) { return ""; }
+
+@intrinsic("str.index_of")
+static Int strIndexOf(String s, String needle) { return -1; }
+
+@intrinsic("str.starts_with")
+static Bool strStartsWith(String s, String prefix) { return false; }
+
+@intrinsic("str.concat")
+static String strConcat(String a, String b) { return ""; }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// List Helper Intrinsics
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@intrinsic("list.new")
+static Int listNew() { return 0; }
+
+@intrinsic("list.push")
+static Int listPush(Int handle, Int value) { return 0; }
+
+@intrinsic("list.get")
+static Int listGet(Int handle, Int index) { return 0; }
+
+@intrinsic("list.len")
+static Int listLen(Int handle) { return 0; }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Args Module - Main Argument Parsing
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export module Args {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Internal Storage
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // Parsed results stored as list handles
+    // - flags: list of flag names (String handles)
+    // - optionKeys: list of option names (String handles)
+    // - optionValues: list of option values (String handles), parallel to optionKeys
+    // - positionals: list of positional arguments (String handles)
+
+    static Int flagsHandle = 0;
+    static Int optionKeysHandle = 0;
+    static Int optionValuesHandle = 0;
+    static Int positionalsHandle = 0;
+    static Bool isParsed = false;
+    static String parseError = "";
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Raw Args Access
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Gets the raw command line arguments from the environment.
+    /// Returns a list handle containing String handles.
+    @intrinsic("env.args")
+    public static Int rawArgs() { return 0; }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Parsing
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Parse command line arguments.
+    ///
+    /// This function parses argv and categorizes arguments into:
+    /// - Flags (boolean switches like --verbose or -v)
+    /// - Options (key-value pairs like --name=value)
+    /// - Positionals (non-option arguments)
+    ///
+    /// Supports:
+    /// - Long flags: --verbose
+    /// - Short flags: -v
+    /// - Short flag bundling: -abc (becomes -a, -b, -c)
+    /// - Long options: --name=value or --name value
+    /// - Short options: -n=value or -n value
+    /// - Separator: -- (everything after is positional)
+    ///
+    /// @return true on success, false on error
+    public static Bool parse() {
+        // Initialize storage
+        flagsHandle = listNew();
+        optionKeysHandle = listNew();
+        optionValuesHandle = listNew();
+        positionalsHandle = listNew();
+        parseError = "";
+
+        Int args = rawArgs();
+        Int argc = listLen(args);
+
+        Bool seenSeparator = false;
+        Int i = 1; // Skip program name at index 0
+
+        while (i < argc) {
+            Int argHandle = listGet(args, i);
+            String arg = handleToString(argHandle);
+
+            if (seenSeparator) {
+                // After --, everything is positional
+                listPush(positionalsHandle, argHandle);
+                i = i + 1;
+                continue;
+            }
+
+            if (arg == "--") {
+                // Separator: everything after is positional
+                seenSeparator = true;
+                i = i + 1;
+                continue;
+            }
+
+            if (strStartsWith(arg, "--")) {
+                // Long option or flag: --name or --name=value or --name value
+                String rest = strSubstring(arg, 2, strLen(arg));
+                Int eqPos = strIndexOf(rest, "=");
+
+                if (eqPos >= 0) {
+                    // --name=value
+                    String name = strSubstring(rest, 0, eqPos);
+                    String value = strSubstring(rest, eqPos + 1, strLen(rest));
+                    addOption(name, value);
+                } else {
+                    // Could be --flag or --name value
+                    // Look ahead to see if next arg is a value
+                    if (i + 1 < argc) {
+                        Int nextHandle = listGet(args, i + 1);
+                        String nextArg = handleToString(nextHandle);
+
+                        if (!strStartsWith(nextArg, "-")) {
+                            // --name value
+                            addOption(rest, nextArg);
+                            i = i + 1; // consume the value
+                        } else {
+                            // --flag (next arg is another option)
+                            addFlag(rest);
+                        }
+                    } else {
+                        // --flag (no more args)
+                        addFlag(rest);
+                    }
+                }
+                i = i + 1;
+                continue;
+            }
+
+            if (strStartsWith(arg, "-") && strLen(arg) > 1) {
+                // Short option(s): -v, -abc, -n=value, -n value
+                String rest = strSubstring(arg, 1, strLen(arg));
+                Int eqPos = strIndexOf(rest, "=");
+
+                if (eqPos >= 0) {
+                    // -n=value or -abc=value (treat first char as option name)
+                    String name = strSubstring(rest, 0, eqPos);
+                    String value = strSubstring(rest, eqPos + 1, strLen(rest));
+
+                    if (strLen(name) == 1) {
+                        // -n=value
+                        addOption(name, value);
+                    } else {
+                        // -abc=value: bundle -a -b, then -c=value
+                        Int j = 0;
+                        while (j < strLen(name) - 1) {
+                            addFlag(strCharAt(name, j));
+                            j = j + 1;
+                        }
+                        addOption(strCharAt(name, strLen(name) - 1), value);
+                    }
+                } else if (strLen(rest) == 1) {
+                    // Single short: -v or -n value
+                    if (i + 1 < argc) {
+                        Int nextHandle = listGet(args, i + 1);
+                        String nextArg = handleToString(nextHandle);
+
+                        if (!strStartsWith(nextArg, "-")) {
+                            // -n value
+                            addOption(rest, nextArg);
+                            i = i + 1; // consume the value
+                        } else {
+                            // -v (flag, next is another option)
+                            addFlag(rest);
+                        }
+                    } else {
+                        // -v (flag, no more args)
+                        addFlag(rest);
+                    }
+                } else {
+                    // Multiple shorts: -abc (bundle as flags)
+                    // But last char might take a value: -vn value
+                    // For simplicity, treat all as flags unless next arg is non-option
+                    Int j = 0;
+                    while (j < strLen(rest) - 1) {
+                        addFlag(strCharAt(rest, j));
+                        j = j + 1;
+                    }
+
+                    // Last character
+                    String lastChar = strCharAt(rest, strLen(rest) - 1);
+                    if (i + 1 < argc) {
+                        Int nextHandle = listGet(args, i + 1);
+                        String nextArg = handleToString(nextHandle);
+
+                        if (!strStartsWith(nextArg, "-")) {
+                            // -vn value: last char takes the value
+                            addOption(lastChar, nextArg);
+                            i = i + 1;
+                        } else {
+                            addFlag(lastChar);
+                        }
+                    } else {
+                        addFlag(lastChar);
+                    }
+                }
+                i = i + 1;
+                continue;
+            }
+
+            // Positional argument
+            listPush(positionalsHandle, argHandle);
+            i = i + 1;
+        }
+
+        isParsed = true;
+        return true;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Internal Helpers
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Convert a string handle to String (identity for now).
+    /// In the VM, strings are passed as handles that resolve to String values.
+    static String handleToString(Int handle) {
+        // The handle IS the string in the VM's value representation
+        // This is a type-casting operation
+        return __handle_to_string(handle);
+    }
+
+    @intrinsic("vm.handle_to_string")
+    static String __handle_to_string(Int handle) { return ""; }
+
+    /// Convert a String to handle for storage.
+    static Int stringToHandle(String s) {
+        return __string_to_handle(s);
+    }
+
+    @intrinsic("vm.string_to_handle")
+    static Int __string_to_handle(String s) { return 0; }
+
+    /// Add a flag to the flags list.
+    static void addFlag(String name) {
+        listPush(flagsHandle, stringToHandle(name));
+    }
+
+    /// Add an option key-value pair.
+    static void addOption(String key, String value) {
+        listPush(optionKeysHandle, stringToHandle(key));
+        listPush(optionValuesHandle, stringToHandle(value));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Flag Access
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Checks if a flag was provided on the command line.
+    ///
+    /// Flags are boolean switches that don't take values.
+    /// Examples: --verbose, -v, --help, -h
+    ///
+    /// @param name The flag name (without -- or -)
+    /// @return true if the flag was present
+    public static Bool hasFlag(String name) {
+        if (!isParsed) {
+            parse();
+        }
+
+        Int len = listLen(flagsHandle);
+        Int i = 0;
+        while (i < len) {
+            Int flagHandle = listGet(flagsHandle, i);
+            String flag = handleToString(flagHandle);
+            if (flag == name) {
+                return true;
+            }
+            i = i + 1;
+        }
+        return false;
+    }
+
+    /// Gets all flags as a list of names.
+    /// @return List handle containing flag name handles
+    public static Int flags() {
+        if (!isParsed) {
+            parse();
+        }
+        return flagsHandle;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Option Access
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Gets the value of a named option.
+    ///
+    /// Options are key-value pairs. Supports formats:
+    /// - --name=value
+    /// - --name value
+    /// - -n value
+    /// - -n=value
+    ///
+    /// @param name The option name (without -- or -)
+    /// @return The option value, or empty string if not provided
+    public static String getOption(String name) {
+        if (!isParsed) {
+            parse();
+        }
+
+        Int len = listLen(optionKeysHandle);
+        Int i = 0;
+        while (i < len) {
+            Int keyHandle = listGet(optionKeysHandle, i);
+            String key = handleToString(keyHandle);
+            if (key == name) {
+                Int valHandle = listGet(optionValuesHandle, i);
+                return handleToString(valHandle);
+            }
+            i = i + 1;
+        }
+        return "";
+    }
+
+    /// Checks if an option was provided on the command line.
+    ///
+    /// @param name The option name (without -- or -)
+    /// @return true if the option was present
+    public static Bool hasOption(String name) {
+        if (!isParsed) {
+            parse();
+        }
+
+        Int len = listLen(optionKeysHandle);
+        Int i = 0;
+        while (i < len) {
+            Int keyHandle = listGet(optionKeysHandle, i);
+            String key = handleToString(keyHandle);
+            if (key == name) {
+                return true;
+            }
+            i = i + 1;
+        }
+        return false;
+    }
+
+    /// Gets the value of a named option with a default value.
+    ///
+    /// @param name The option name
+    /// @param defaultValue Value to return if option is not set
+    /// @return The option value or default
+    public static String getOptionOr(String name, String defaultValue) {
+        if (!hasOption(name)) {
+            return defaultValue;
+        }
+        return getOption(name);
+    }
+
+    /// Gets an option value parsed as an integer.
+    ///
+    /// @param name The option name
+    /// @param defaultValue Value to return if option is not set or not a valid int
+    /// @return The parsed integer value or default
+    public static Int getOptionInt(String name, Int defaultValue) {
+        if (!hasOption(name)) {
+            return defaultValue;
+        }
+        String val = getOption(name);
+        return strParseInt(val, defaultValue);
+    }
+
+    @intrinsic("str.parse_int")
+    static Int strParseIntRaw(String s) { return 0; }
+
+    static Int strParseInt(String s, Int defaultValue) {
+        if (strLen(s) == 0) {
+            return defaultValue;
+        }
+        // Simple validation: first char should be digit or minus
+        String first = strCharAt(s, 0);
+        if (first != "-" && (first < "0" || first > "9")) {
+            return defaultValue;
+        }
+        return strParseIntRaw(s);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Positional Argument Access
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Gets the number of positional arguments.
+    ///
+    /// Positional arguments are non-option arguments. Everything after
+    /// -- is treated as positional.
+    ///
+    /// @return The count of positional arguments
+    public static Int positionalCount() {
+        if (!isParsed) {
+            parse();
+        }
+        return listLen(positionalsHandle);
+    }
+
+    /// Gets a positional argument by index.
+    ///
+    /// @param index 0-based index of the positional argument
+    /// @return The argument, or empty string if index is out of bounds
+    public static String getPositional(Int index) {
+        if (!isParsed) {
+            parse();
+        }
+        Int len = listLen(positionalsHandle);
+        if (index < 0 || index >= len) {
+            return "";
+        }
+        Int handle = listGet(positionalsHandle, index);
+        return handleToString(handle);
+    }
+
+    /// Gets all positional arguments as a list handle.
+    ///
+    /// @return Handle to the list of positional arguments
+    public static Int positionals() {
+        if (!isParsed) {
+            parse();
+        }
+        return positionalsHandle;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Utility Functions
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Gets the program name (argv[0]).
+    ///
+    /// @return The program name/path
+    public static String programName() {
+        Int args = rawArgs();
+        if (listLen(args) > 0) {
+            Int handle = listGet(args, 0);
+            return handleToString(handle);
+        }
+        return "";
+    }
+
+    /// Gets the last parse error message (if any).
+    ///
+    /// @return Error message, or empty string if no error
+    public static String error() {
+        return parseError;
+    }
+
+    /// Resets the parser state, allowing re-parsing.
+    public static void reset() {
+        isParsed = false;
+        flagsHandle = 0;
+        optionKeysHandle = 0;
+        optionValuesHandle = 0;
+        positionalsHandle = 0;
+        parseError = "";
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ArgSpec Module - Argument Specification and Help Generation
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/// Specification for a command line flag.
+public struct FlagSpec {
+    /// Long name (without --), e.g., "verbose"
+    public final String longName;
+    /// Short name (without -), e.g., "v", or empty if none
+    public final String shortName;
+    /// Description for help text
+    public final String description;
+}
+
+/// Specification for a command line option.
+public struct OptionSpec {
+    /// Long name (without --), e.g., "output"
+    public final String longName;
+    /// Short name (without -), e.g., "o", or empty if none
+    public final String shortName;
+    /// Description for help text
+    public final String description;
+    /// Placeholder for the value in help text, e.g., "FILE"
+    public final String valueName;
+    /// Whether this option is required
+    public final Bool required;
+    /// Default value (empty string if none)
+    public final String defaultValue;
+}
+
+/// Specification for a positional argument.
+public struct PositionalSpec {
+    /// Name for help text, e.g., "input"
+    public final String name;
+    /// Description for help text
+    public final String description;
+    /// Whether this positional is required
+    public final Bool required;
+    /// Whether this accepts multiple values (vararg)
+    public final Bool multiple;
+}
+
+/**
+ * Argument specification module for defining CLI structure and generating help.
+ *
+ * Use this module to:
+ * - Define expected flags, options, and positional arguments
+ * - Generate usage/help text automatically
+ * - Validate parsed arguments against the spec
+ */
+export module ArgSpec {
+    // Storage for specs (using parallel arrays)
+    static Int programNameHandle = 0;
+    static Int descriptionHandle = 0;
+    static Int flagsHandle = 0;      // List of FlagSpec handles
+    static Int optionsHandle = 0;    // List of OptionSpec handles
+    static Int positionalsHandle = 0; // List of PositionalSpec handles
+
+    // Counter for spec handle allocation
+    static Int nextSpecId = 1;
+    static Int currentSpecId = 0;
+
+    /// Creates a new argument specification.
+    ///
+    /// @param programName The program name for help text
+    /// @param description Short description of the program
+    /// @return Spec handle for use with other ArgSpec functions
+    public static Int create(String programName, String description) {
+        currentSpecId = nextSpecId;
+        nextSpecId = nextSpecId + 1;
+
+        programNameHandle = stringToHandle(programName);
+        descriptionHandle = stringToHandle(description);
+        flagsHandle = listNew();
+        optionsHandle = listNew();
+        positionalsHandle = listNew();
+
+        return currentSpecId;
+    }
+
+    static Int stringToHandle(String s) {
+        return __string_to_handle(s);
+    }
+
+    @intrinsic("vm.string_to_handle")
+    static Int __string_to_handle(String s) { return 0; }
+
+    static String handleToString(Int handle) {
+        return __handle_to_string(handle);
+    }
+
+    @intrinsic("vm.handle_to_string")
+    static String __handle_to_string(Int handle) { return ""; }
+
+    /// Adds a flag definition to the spec.
+    ///
+    /// @param spec The spec handle from create()
+    /// @param longName Long flag name (without --), e.g., "verbose"
+    /// @param shortName Short flag name (without -), e.g., "v", or "" for none
+    /// @param description Help text description
+    public static void addFlag(Int spec, String longName, String shortName, String description) {
+        // Store as concatenated string: "longName|shortName|description"
+        String entry = strConcat(longName, "|");
+        entry = strConcat(entry, shortName);
+        entry = strConcat(entry, "|");
+        entry = strConcat(entry, description);
+        listPush(flagsHandle, stringToHandle(entry));
+    }
+
+    /// Adds an option definition to the spec.
+    ///
+    /// @param spec The spec handle from create()
+    /// @param longName Long option name (without --), e.g., "output"
+    /// @param shortName Short option name (without -), e.g., "o", or "" for none
+    /// @param description Help text description
+    /// @param valueName Placeholder name for the value, e.g., "FILE"
+    public static void addOption(Int spec, String longName, String shortName,
+                                  String description, String valueName) {
+        // Store as: "longName|shortName|description|valueName|0|"
+        String entry = strConcat(longName, "|");
+        entry = strConcat(entry, shortName);
+        entry = strConcat(entry, "|");
+        entry = strConcat(entry, description);
+        entry = strConcat(entry, "|");
+        entry = strConcat(entry, valueName);
+        entry = strConcat(entry, "|0|"); // not required, no default
+        listPush(optionsHandle, stringToHandle(entry));
+    }
+
+    /// Adds a required option definition to the spec.
+    public static void addRequiredOption(Int spec, String longName, String shortName,
+                                          String description, String valueName) {
+        String entry = strConcat(longName, "|");
+        entry = strConcat(entry, shortName);
+        entry = strConcat(entry, "|");
+        entry = strConcat(entry, description);
+        entry = strConcat(entry, "|");
+        entry = strConcat(entry, valueName);
+        entry = strConcat(entry, "|1|"); // required
+        listPush(optionsHandle, stringToHandle(entry));
+    }
+
+    /// Adds an option with a default value.
+    public static void addOptionWithDefault(Int spec, String longName, String shortName,
+                                             String description, String valueName,
+                                             String defaultValue) {
+        String entry = strConcat(longName, "|");
+        entry = strConcat(entry, shortName);
+        entry = strConcat(entry, "|");
+        entry = strConcat(entry, description);
+        entry = strConcat(entry, "|");
+        entry = strConcat(entry, valueName);
+        entry = strConcat(entry, "|0|"); // not required
+        entry = strConcat(entry, defaultValue);
+        listPush(optionsHandle, stringToHandle(entry));
+    }
+
+    /// Adds a positional argument definition to the spec.
+    ///
+    /// @param spec The spec handle from create()
+    /// @param name Name for help text, e.g., "input"
+    /// @param description Help text description
+    /// @param required Whether this positional is required
+    public static void addPositional(Int spec, String name, String description, Bool required) {
+        String entry = strConcat(name, "|");
+        entry = strConcat(entry, description);
+        entry = strConcat(entry, "|");
+        if (required) {
+            entry = strConcat(entry, "1|0");
+        } else {
+            entry = strConcat(entry, "0|0");
+        }
+        listPush(positionalsHandle, stringToHandle(entry));
+    }
+
+    /// Adds a variadic positional argument (accepts multiple values).
+    public static void addVariadicPositional(Int spec, String name, String description,
+                                              Bool required) {
+        String entry = strConcat(name, "|");
+        entry = strConcat(entry, description);
+        entry = strConcat(entry, "|");
+        if (required) {
+            entry = strConcat(entry, "1|1");
+        } else {
+            entry = strConcat(entry, "0|1");
+        }
+        listPush(positionalsHandle, stringToHandle(entry));
+    }
+
+    /// Generates usage/help text for the argument specification.
+    ///
+    /// @param spec The spec handle from create()
+    /// @return Formatted help text
+    public static String usage(Int spec) {
+        String result = "";
+        String progName = handleToString(programNameHandle);
+        String desc = handleToString(descriptionHandle);
+
+        // Header
+        result = strConcat(result, "Usage: ");
+        result = strConcat(result, progName);
+        result = strConcat(result, " [OPTIONS]");
+
+        // Add positionals to usage line
+        Int posLen = listLen(positionalsHandle);
+        Int i = 0;
+        while (i < posLen) {
+            Int entryHandle = listGet(positionalsHandle, i);
+            String entry = handleToString(entryHandle);
+            String name = extractField(entry, 0);
+            String reqStr = extractField(entry, 2);
+            String multiStr = extractField(entry, 3);
+
+            result = strConcat(result, " ");
+            if (reqStr == "0") {
+                result = strConcat(result, "[");
+            }
+            result = strConcat(result, "<");
+            result = strConcat(result, name);
+            if (multiStr == "1") {
+                result = strConcat(result, "...");
+            }
+            result = strConcat(result, ">");
+            if (reqStr == "0") {
+                result = strConcat(result, "]");
+            }
+            i = i + 1;
+        }
+
+        result = strConcat(result, "\n\n");
+
+        // Description
+        if (strLen(desc) > 0) {
+            result = strConcat(result, desc);
+            result = strConcat(result, "\n\n");
+        }
+
+        // Options section
+        Int flagLen = listLen(flagsHandle);
+        Int optLen = listLen(optionsHandle);
+
+        if (flagLen > 0 || optLen > 0) {
+            result = strConcat(result, "Options:\n");
+
+            // Flags
+            i = 0;
+            while (i < flagLen) {
+                Int entryHandle = listGet(flagsHandle, i);
+                String entry = handleToString(entryHandle);
+                String longName = extractField(entry, 0);
+                String shortName = extractField(entry, 1);
+                String flagDesc = extractField(entry, 2);
+
+                result = strConcat(result, "  ");
+                if (strLen(shortName) > 0) {
+                    result = strConcat(result, "-");
+                    result = strConcat(result, shortName);
+                    result = strConcat(result, ", ");
+                } else {
+                    result = strConcat(result, "    ");
+                }
+                result = strConcat(result, "--");
+                result = strConcat(result, longName);
+                result = strConcat(result, "\n        ");
+                result = strConcat(result, flagDesc);
+                result = strConcat(result, "\n");
+                i = i + 1;
+            }
+
+            // Options
+            i = 0;
+            while (i < optLen) {
+                Int entryHandle = listGet(optionsHandle, i);
+                String entry = handleToString(entryHandle);
+                String longName = extractField(entry, 0);
+                String shortName = extractField(entry, 1);
+                String optDesc = extractField(entry, 2);
+                String valueName = extractField(entry, 3);
+                String reqStr = extractField(entry, 4);
+
+                result = strConcat(result, "  ");
+                if (strLen(shortName) > 0) {
+                    result = strConcat(result, "-");
+                    result = strConcat(result, shortName);
+                    result = strConcat(result, ", ");
+                } else {
+                    result = strConcat(result, "    ");
+                }
+                result = strConcat(result, "--");
+                result = strConcat(result, longName);
+                result = strConcat(result, "=<");
+                result = strConcat(result, valueName);
+                result = strConcat(result, ">");
+                if (reqStr == "1") {
+                    result = strConcat(result, " (required)");
+                }
+                result = strConcat(result, "\n        ");
+                result = strConcat(result, optDesc);
+                result = strConcat(result, "\n");
+                i = i + 1;
+            }
+        }
+
+        // Positionals section
+        if (posLen > 0) {
+            result = strConcat(result, "\nArguments:\n");
+            i = 0;
+            while (i < posLen) {
+                Int entryHandle = listGet(positionalsHandle, i);
+                String entry = handleToString(entryHandle);
+                String name = extractField(entry, 0);
+                String posDesc = extractField(entry, 1);
+                String reqStr = extractField(entry, 2);
+
+                result = strConcat(result, "  <");
+                result = strConcat(result, name);
+                result = strConcat(result, ">");
+                if (reqStr == "1") {
+                    result = strConcat(result, " (required)");
+                }
+                result = strConcat(result, "\n        ");
+                result = strConcat(result, posDesc);
+                result = strConcat(result, "\n");
+                i = i + 1;
+            }
+        }
+
+        return result;
+    }
+
+    /// Extract a field from a pipe-separated string.
+    static String extractField(String s, Int fieldIndex) {
+        Int start = 0;
+        Int fieldCount = 0;
+        Int len = strLen(s);
+        Int i = 0;
+
+        while (i < len) {
+            String ch = strCharAt(s, i);
+            if (ch == "|") {
+                if (fieldCount == fieldIndex) {
+                    return strSubstring(s, start, i);
+                }
+                fieldCount = fieldCount + 1;
+                start = i + 1;
+            }
+            i = i + 1;
+        }
+
+        // Last field (no trailing |)
+        if (fieldCount == fieldIndex) {
+            return strSubstring(s, start, len);
+        }
+
+        return "";
+    }
+
+    @intrinsic("str.len")
+    static Int strLen(String s) { return 0; }
+
+    @intrinsic("str.char_at")
+    static String strCharAt(String s, Int index) { return ""; }
+
+    @intrinsic("str.substring")
+    static String strSubstring(String s, Int start, Int end) { return ""; }
+
+    @intrinsic("str.concat")
+    static String strConcat(String a, String b) { return ""; }
+}

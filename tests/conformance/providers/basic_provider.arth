@@ -1,0 +1,55 @@
+package conformance;
+
+// @spec: spec.md §11 - Provider declarations and field qualifiers
+// @expect: pass
+// @description: Validates provider field qualifiers (final, shared)
+
+// Provider with final fields (immutable after construction)
+provider ConfigProvider {
+    public final String host;
+    public final Int port;
+    public final Int maxConnections;
+}
+
+module ConfigProviderFns {
+    public ConfigProvider new(String host, Int port, Int maxConnections) {
+        return ConfigProvider {
+            host: host,
+            port: port,
+            maxConnections: maxConnections
+        };
+    }
+
+    public String getHost(ConfigProvider p) {
+        return p.host;
+    }
+
+    public Int getPort(ConfigProvider p) {
+        return p.port;
+    }
+}
+
+// Provider with shared fields (cross-thread accessible)
+provider CounterProvider {
+    public final String name;
+    public shared Int count;
+}
+
+module CounterProviderFns {
+    public CounterProvider new(String name) {
+        return CounterProvider { name: name, count: 0 };
+    }
+}
+
+module Main {
+    public static void main() {
+        // Create and use providers
+        ConfigProvider config = ConfigProviderFns.new("localhost", 8080, 100);
+        String host = ConfigProviderFns.getHost(config);
+        Int port = ConfigProviderFns.getPort(config);
+
+        CounterProvider counter = CounterProviderFns.new("requests");
+
+        println("basic_provider: pass");
+    }
+}

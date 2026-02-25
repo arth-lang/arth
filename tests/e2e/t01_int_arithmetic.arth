@@ -1,0 +1,31 @@
+package test;
+
+// Test: Basic integer arithmetic
+// Expected output:
+//   15
+//   5
+//   50
+//   2
+//   0
+
+module Main {
+    public static void main() {
+        Int a = 10;
+        Int b = 5;
+
+        // Addition
+        println(a + b);  // 15
+
+        // Subtraction
+        println(a - b);  // 5
+
+        // Multiplication
+        println(a * b);  // 50
+
+        // Division
+        println(a / b);  // 2
+
+        // Modulo
+        println(a % b);  // 0
+    }
+}

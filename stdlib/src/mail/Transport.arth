@@ -1,0 +1,289 @@
+package mail;
+
+/**
+ * Mail transport (sending) interface.
+ *
+ * A Transport represents a connection to an SMTP server for sending mail.
+ *
+ * Example usage:
+ * ```arth
+ * import mail.*;
+ * import mail.smtp.*;
+ *
+ * // Get a transport and send a message
+ * Session session = SessionBuilder.new()
+ *     .smtp("smtp.example.com", 587)
+ *     .startTls(true)
+ *     .auth("user@example.com", "password")
+ *     .build();
+ *
+ * Transport transport = await Smtp.connect(session);
+ * try {
+ *     await Transport.send(transport, message);
+ * } finally {
+ *     Transport.disconnect(transport);
+ * }
+ * ```
+ *
+ * @see mail.Session for configuration
+ * @see mail.smtp.Smtp for SMTP transport
+ */
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Transport State
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Transport connection state.
+ */
+public enum TransportState {
+    /// Not connected
+    DISCONNECTED,
+    /// Connected, not authenticated
+    CONNECTED,
+    /// Connected and authenticated
+    AUTHENTICATED,
+    /// Error state
+    ERROR
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Transport Structure
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Represents a connection to a mail transport (SMTP server).
+ */
+public struct Transport {
+    /// Opaque connection handle
+    public final int handle;
+    /// Session configuration
+    public final Session session;
+    /// Current connection state
+    public final TransportState state;
+    /// Server capabilities (EHLO response)
+    public final String[] capabilities;
+}
+
+module Transport {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Connection Management
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Connects to the SMTP server configured in the session.
+    ///
+    /// This establishes a connection and performs authentication if configured.
+    @intrinsic("mail.transport.connect")
+    public static async Transport connect(Session session)
+        throws (ConnectionError, AuthenticationError, TlsError, TimeoutError) {
+        // Intrinsic implementation - placeholder
+        return Transport {
+            handle: 0,
+            session: session,
+            state: TransportState.AUTHENTICATED,
+            capabilities: new String[0]
+        };
+    }
+
+    /// Disconnects from the SMTP server.
+    @intrinsic("mail.transport.disconnect")
+    public static void disconnect(Transport self) throws (ConnectionError) {
+        // Intrinsic implementation - placeholder
+    }
+
+    /// Returns true if connected.
+    public static bool isConnected(Transport self) {
+        return self.state == TransportState.CONNECTED ||
+               self.state == TransportState.AUTHENTICATED;
+    }
+
+    /// Returns true if authenticated.
+    public static bool isAuthenticated(Transport self) {
+        return self.state == TransportState.AUTHENTICATED;
+    }
+
+    /// Returns the current state.
+    public static TransportState getState(Transport self) {
+        return self.state;
+    }
+
+    /// Returns the session configuration.
+    public static Session getSession(Transport self) {
+        return self.session;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Sending
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Sends a message.
+    ///
+    /// The message must have From and at least one recipient (To, Cc, or Bcc).
+    @intrinsic("mail.transport.send")
+    public static async void send(Transport self, MimeMessage message)
+        throws (TransportError, TimeoutError) {
+        // Intrinsic implementation - placeholder
+    }
+
+    /// Sends a message to specific recipients (ignoring message headers).
+    ///
+    /// This is useful for sending to Bcc recipients or overriding recipients.
+    @intrinsic("mail.transport.send_to")
+    public static async void sendTo(Transport self, MimeMessage message, InternetAddress[] recipients)
+        throws (TransportError, TimeoutError) {
+        // Intrinsic implementation - placeholder
+    }
+
+    /// Sends multiple messages.
+    ///
+    /// Returns results for each message (success or failure).
+    @intrinsic("mail.transport.send_all")
+    public static async SendResult[] sendAll(Transport self, MimeMessage[] messages)
+        throws (TransportError, TimeoutError) {
+        // Intrinsic implementation - placeholder
+        return new SendResult[0];
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Server Capabilities
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns the server capabilities (from EHLO response).
+    public static String[] getCapabilities(Transport self) {
+        return self.capabilities;
+    }
+
+    /// Returns true if the server supports a capability.
+    public static bool hasCapability(Transport self, String capability) {
+        String upper = toUpperCase(capability);
+        int len = length(self.capabilities);
+        for (int i = 0; i < len; i = i + 1) {
+            if (startsWith(toUpperCase(self.capabilities[i]), upper)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// Returns true if the server supports STARTTLS.
+    public static bool supportsStartTls(Transport self) {
+        return hasCapability(self, "STARTTLS");
+    }
+
+    /// Returns true if the server supports 8BITMIME.
+    public static bool supports8BitMime(Transport self) {
+        return hasCapability(self, "8BITMIME");
+    }
+
+    /// Returns the maximum message size (0 if unlimited).
+    public static int getMaxMessageSize(Transport self) {
+        int len = length(self.capabilities);
+        for (int i = 0; i < len; i = i + 1) {
+            if (startsWith(toUpperCase(self.capabilities[i]), "SIZE")) {
+                // Parse "SIZE 12345678"
+                String cap = self.capabilities[i];
+                int spacePos = indexOf(cap, " ");
+                if (spacePos > 0) {
+                    String sizeStr = substring(cap, spacePos + 1, length(cap));
+                    return parseInt(sizeStr);
+                }
+            }
+        }
+        return 0;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Send Result
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Result of sending a message.
+ */
+public struct SendResult {
+    /// True if message was sent successfully
+    public final bool success;
+    /// The message that was sent
+    public final MimeMessage message;
+    /// Error message (if failed)
+    public final String error;
+    /// SMTP response code (if failed)
+    public final String responseCode;
+    /// Recipients that failed (if partial failure)
+    public final InternetAddress[] failedRecipients;
+}
+
+module SendResult {
+    /// Creates a success result.
+    public static SendResult success(MimeMessage message) {
+        return SendResult {
+            success: true,
+            message: message,
+            error: "",
+            responseCode: "",
+            failedRecipients: new InternetAddress[0]
+        };
+    }
+
+    /// Creates a failure result.
+    public static SendResult failure(MimeMessage message, String error, String responseCode) {
+        return SendResult {
+            success: false,
+            message: message,
+            error: error,
+            responseCode: responseCode,
+            failedRecipients: new InternetAddress[0]
+        };
+    }
+
+    /// Creates a partial failure result (some recipients failed).
+    public static SendResult partialFailure(MimeMessage message, InternetAddress[] failed) {
+        return SendResult {
+            success: false,
+            message: message,
+            error: "Some recipients rejected",
+            responseCode: "",
+            failedRecipients: failed
+        };
+    }
+
+    /// Returns true if the send was successful.
+    public static bool isSuccess(SendResult self) {
+        return self.success;
+    }
+
+    /// Returns the error message (empty if successful).
+    public static String getError(SendResult self) {
+        return self.error;
+    }
+
+    /// Returns failed recipients (empty if all succeeded).
+    public static InternetAddress[] getFailedRecipients(SendResult self) {
+        return self.failedRecipients;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helper Functions
+// ─────────────────────────────────────────────────────────────────────────────
+
+@intrinsic("string.to_upper_case")
+static String toUpperCase(String s) { return s; }
+
+@intrinsic("string.starts_with")
+static bool startsWith(String s, String prefix) { return false; }
+
+@intrinsic("string.index_of")
+static int indexOf(String s, String sub) { return -1; }
+
+@intrinsic("string.substring")
+static String substring(String s, int start, int end) { return ""; }
+
+@intrinsic("string.length")
+static int length(String s) { return 0; }
+
+@intrinsic("array.length")
+static int length(String[] arr) { return 0; }
+
+@intrinsic("string.parse_int")
+static int parseInt(String s) { return 0; }

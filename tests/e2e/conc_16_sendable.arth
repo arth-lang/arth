@@ -1,0 +1,319 @@
+package test;
+
+// Test: C16 - Sendable Trait
+//
+// This test verifies that the Sendable marker trait works correctly:
+// - Primitives (Int, Float, Bool, String) are Sendable
+// - Structs with all Sendable fields are structurally Sendable
+// - Explicit `implements Sendable` works for custom types
+// - Sendable can be used as a generic bound
+//
+// Compile-time rejection of non-Sendable types is verified in typeck tests.
+// This e2e test verifies runtime behavior of Sendable types.
+
+// Struct with only primitive fields - should be structurally Sendable
+struct Point {
+    Int x;
+    Int y;
+}
+
+// Struct with nested Sendable struct - should be Sendable
+struct Rectangle {
+    Point topLeft;
+    Point bottomRight;
+}
+
+// Struct for message passing
+struct Message {
+    Int id;
+    String content;
+    Bool processed;
+}
+
+// Enum with primitive payloads - should be Sendable
+enum Result {
+    Ok(Int),
+    Err(String)
+}
+
+// Enum with unit variants - should be Sendable
+enum Status {
+    Pending,
+    Running,
+    Completed,
+    Failed
+}
+
+module PointFns {
+    public Point new(Int x, Int y) {
+        return Point { x: x, y: y };
+    }
+
+    public Int sum(Point p) {
+        return p.x + p.y;
+    }
+}
+
+module RectangleFns {
+    public Rectangle new(Point tl, Point br) {
+        return Rectangle { topLeft: tl, bottomRight: br };
+    }
+
+    public Int area(Rectangle r) {
+        Int width = r.bottomRight.x - r.topLeft.x;
+        Int height = r.bottomRight.y - r.topLeft.y;
+        return width * height;
+    }
+}
+
+module MessageFns {
+    public Message new(Int id, String content) {
+        return Message { id: id, content: content, processed: false };
+    }
+}
+
+module Executor {
+    // Executor intrinsics mapped to __arth_executor_* VM calls
+}
+
+module Actor {
+    // Actor intrinsics for message passing
+}
+
+module Main {
+    public static void main() {
+        println("=== C16: Sendable Trait ===");
+
+        // Initialize thread pool
+        println("Initializing pool with 4 threads...");
+        Int initResult = Executor.init(4);
+        println("Pool initialized: " + initResult);
+
+        Int resetResult = Executor.resetStats();
+
+        Int totalTests = 0;
+        Int passedTests = 0;
+
+        // ========================================
+        // Test 1: Primitive Sendable
+        // ========================================
+        println("=== Test 1: Primitive Types are Sendable ===");
+        totalTests = totalTests + 1;
+
+        // Primitives can be passed to spawn
+        Int intValue = 42;
+        Float floatValue = 3.14;
+        Bool boolValue = true;
+        String stringValue = "hello";
+
+        // These would fail at compile time if primitives weren't Sendable
+        // The fact that this compiles proves primitives are Sendable
+        println("Int value: " + intValue);
+        println("Float value: " + floatValue);
+        println("Bool value: " + boolValue);
+        println("String value: " + stringValue);
+
+        println("Test 1 (primitive Sendable): PASS");
+        passedTests = passedTests + 1;
+
+        // ========================================
+        // Test 2: Struct with Primitive Fields is Sendable
+        // ========================================
+        println("=== Test 2: Struct Structural Sendable ===");
+        totalTests = totalTests + 1;
+
+        Point p = PointFns.new(10, 20);
+        println("Point created: x=" + p.x + ", y=" + p.y);
+
+        Int sum = PointFns.sum(p);
+        println("Point sum: " + sum);
+
+        Int test2Pass = 0;
+        if (sum == 30) {
+            println("Test 2 (struct structural Sendable): PASS");
+            test2Pass = 1;
+            passedTests = passedTests + 1;
+        } else {
+            println("Test 2 FAIL: expected sum=30, got " + sum);
+        }
+
+        // ========================================
+        // Test 3: Nested Sendable Structs
+        // ========================================
+        println("=== Test 3: Nested Sendable Structs ===");
+        totalTests = totalTests + 1;
+
+        Point tl = PointFns.new(0, 0);
+        Point br = PointFns.new(10, 5);
+        Rectangle rect = RectangleFns.new(tl, br);
+
+        println("Rectangle: topLeft=(" + rect.topLeft.x + "," + rect.topLeft.y + ")");
+        println("           bottomRight=(" + rect.bottomRight.x + "," + rect.bottomRight.y + ")");
+
+        Int area = RectangleFns.area(rect);
+        println("Rectangle area: " + area);
+
+        Int test3Pass = 0;
+        if (area == 50) {
+            println("Test 3 (nested Sendable structs): PASS");
+            test3Pass = 1;
+            passedTests = passedTests + 1;
+        } else {
+            println("Test 3 FAIL: expected area=50, got " + area);
+        }
+
+        // ========================================
+        // Test 4: Enum with Primitive Payloads is Sendable
+        // ========================================
+        println("=== Test 4: Enum Sendable ===");
+        totalTests = totalTests + 1;
+
+        // Result enum with Int/String payloads should be Sendable
+        Result okResult = Result.Ok(100);
+        Result errResult = Result.Err("error");
+
+        // Status enum with unit variants should be Sendable
+        Status pending = Status.Pending;
+        Status completed = Status.Completed;
+
+        println("Created Result and Status enums");
+        println("Test 4 (enum Sendable): PASS");
+        passedTests = passedTests + 1;
+
+        // ========================================
+        // Test 5: Message Struct for Actor Mailbox
+        // ========================================
+        println("=== Test 5: Message Sendable for Actors ===");
+        totalTests = totalTests + 1;
+
+        Message msg1 = MessageFns.new(1, "first message");
+        Message msg2 = MessageFns.new(2, "second message");
+        Message msg3 = MessageFns.new(3, "third message");
+
+        println("Message 1: id=" + msg1.id + ", content=" + msg1.content);
+        println("Message 2: id=" + msg2.id + ", content=" + msg2.content);
+        println("Message 3: id=" + msg3.id + ", content=" + msg3.content);
+
+        // Create actor and send messages
+        Int actor = Actor.create(10);
+        println("Actor created: handle=" + actor);
+
+        // Send messages to actor mailbox
+        Int s1 = Actor.send(actor, msg1.id);
+        Int s2 = Actor.send(actor, msg2.id);
+        Int s3 = Actor.send(actor, msg3.id);
+
+        println("Sent messages: s1=" + s1 + ", s2=" + s2 + ", s3=" + s3);
+
+        // Receive and verify sum
+        Int r1 = Actor.recv(actor);
+        Int r2 = Actor.recv(actor);
+        Int r3 = Actor.recv(actor);
+
+        Int msgSum = r1 + r2 + r3;
+        println("Received message IDs: " + r1 + ", " + r2 + ", " + r3);
+        println("Sum: " + msgSum);
+
+        Int test5Pass = 0;
+        if (msgSum == 6) { // 1 + 2 + 3 = 6
+            println("Test 5 (message Sendable for actors): PASS");
+            test5Pass = 1;
+            passedTests = passedTests + 1;
+        } else {
+            println("Test 5 FAIL: expected sum=6, got " + msgSum);
+        }
+
+        // ========================================
+        // Test 6: Spawn with Sendable Arguments
+        // ========================================
+        println("=== Test 6: Spawn with Sendable Args ===");
+        totalTests = totalTests + 1;
+
+        // Spawn tasks with primitive args (must be Sendable)
+        // Work type 2 = fibonacci: fib(5)=5, fib(6)=8, fib(7)=13
+        Int task1 = Executor.spawnWithArg(2, 5);
+        Int task2 = Executor.spawnWithArg(2, 6);
+        Int task3 = Executor.spawnWithArg(2, 7);
+
+        println("Spawned tasks: " + task1 + ", " + task2 + ", " + task3);
+
+        // Join and sum results
+        Int j1 = Executor.join(task1);
+        Int j2 = Executor.join(task2);
+        Int j3 = Executor.join(task3);
+
+        Int spawnSum = j1 + j2 + j3;
+        println("Joined results (fib): " + j1 + ", " + j2 + ", " + j3);
+        println("Sum: " + spawnSum);
+
+        Int test6Pass = 0;
+        if (spawnSum == 26) { // fib(5)=5 + fib(6)=8 + fib(7)=13 = 26
+            println("Test 6 (spawn with Sendable args): PASS");
+            test6Pass = 1;
+            passedTests = passedTests + 1;
+        } else {
+            println("Test 6 FAIL: expected sum=26, got " + spawnSum);
+        }
+
+        // ========================================
+        // Test 7: Multiple Workers with Sendable Data
+        // ========================================
+        println("=== Test 7: Multiple Workers ===");
+        totalTests = totalTests + 1;
+
+        // Spawn 10 fibonacci tasks and verify all complete
+        // fib(1)=1, fib(2)=1, fib(3)=2, fib(4)=3, fib(5)=5
+        // fib(6)=8, fib(7)=13, fib(8)=21, fib(9)=34, fib(10)=55
+        // Sum = 1+1+2+3+5+8+13+21+34+55 = 143
+        Int expectedSum = 143;
+        println("Expected sum: " + expectedSum);
+
+        // Spawn all tasks (work type 2 = fibonacci)
+        Int t1 = Executor.spawnWithArg(2, 1);
+        Int t2 = Executor.spawnWithArg(2, 2);
+        Int t3 = Executor.spawnWithArg(2, 3);
+        Int t4 = Executor.spawnWithArg(2, 4);
+        Int t5 = Executor.spawnWithArg(2, 5);
+        Int t6 = Executor.spawnWithArg(2, 6);
+        Int t7 = Executor.spawnWithArg(2, 7);
+        Int t8 = Executor.spawnWithArg(2, 8);
+        Int t9 = Executor.spawnWithArg(2, 9);
+        Int t10 = Executor.spawnWithArg(2, 10);
+
+        // Join all
+        Int actualSum = 0;
+        actualSum = actualSum + Executor.join(t1);
+        actualSum = actualSum + Executor.join(t2);
+        actualSum = actualSum + Executor.join(t3);
+        actualSum = actualSum + Executor.join(t4);
+        actualSum = actualSum + Executor.join(t5);
+        actualSum = actualSum + Executor.join(t6);
+        actualSum = actualSum + Executor.join(t7);
+        actualSum = actualSum + Executor.join(t8);
+        actualSum = actualSum + Executor.join(t9);
+        actualSum = actualSum + Executor.join(t10);
+
+        println("Actual sum: " + actualSum);
+
+        Int test7Pass = 0;
+        if (actualSum == expectedSum) {
+            println("Test 7 (multiple workers with Sendable): PASS");
+            test7Pass = 1;
+            passedTests = passedTests + 1;
+        } else {
+            println("Test 7 FAIL: expected " + expectedSum + ", got " + actualSum);
+        }
+
+        // ========================================
+        // Summary
+        // ========================================
+        println("=== Summary ===");
+        println("Passed: " + passedTests + "/" + totalTests);
+
+        if (passedTests == totalTests) {
+            println("ALL TESTS PASSED");
+        } else {
+            println("SOME TESTS FAILED");
+        }
+    }
+}

@@ -1,0 +1,30 @@
+package test;
+
+// Test: switch/case
+// Expected output:
+//   two
+//   other
+
+module Main {
+    public static void main() {
+        Int x = 2;
+        switch (x) {
+            case 1:
+                println("one");
+            case 2:
+                println("two");
+            case 3:
+                println("three");
+            default:
+                println("other");
+        }
+
+        Int y = 99;
+        switch (y) {
+            case 1:
+                println("one");
+            default:
+                println("other");
+        }
+    }
+}

@@ -1,0 +1,188 @@
+package crypto;
+
+/**
+ * Secure byte storage with automatic zeroing on drop.
+ *
+ * SecureBytes provides a secure container for sensitive data such as
+ * cryptographic keys, passwords, and other secrets. The memory is:
+ * - Locked in RAM (mlock'd) where supported to prevent swapping
+ * - Automatically zeroed when the value is dropped
+ * - Never exposed in logs or error messages
+ *
+ * SecureBytes should be used for any data that must not be leaked.
+ *
+ * Example usage:
+ * ```arth
+ * import crypto.*;
+ *
+ * module Example {
+ *     public void handleSecret() throws SecureMemoryError {
+ *         // Create secure bytes from raw data
+ *         SecureBytes secret = SecureBytes.fromBytes(rawKey);
+ *
+ *         // Use the secret...
+ *
+ *         // Explicitly zero and free (also happens automatically on drop)
+ *         SecureBytes.zeroAndFree(secret);
+ *     }
+ * }
+ * ```
+ *
+ * @see crypto.SecretKey for symmetric keys
+ * @see crypto.PrivateKey for asymmetric private keys
+ */
+
+/**
+ * A secure byte buffer that is zeroed on drop.
+ *
+ * The handle is managed by the runtime and automatically cleaned up.
+ * The memory is locked to prevent swapping where the platform supports it.
+ */
+public struct SecureBytes {
+    /// Internal handle to the secure memory region
+    final Int handle;
+    /// Length of the secure data in bytes
+    public final int length;
+}
+
+/**
+ * Module for SecureBytes providing secure memory operations.
+ *
+ * NOTE: This file is an INTRINSIC-BACKED STUB for IDE/tooling support.
+ * The function bodies are placeholders - actual implementation is provided
+ * by the compiler via intrinsic lowering to C FFI runtime functions.
+ */
+module SecureBytes {
+    // =========================================================================
+    // Allocation
+    // =========================================================================
+
+    /**
+     * Allocates a new secure byte buffer of the given size.
+     *
+     * The buffer is zero-initialized and locked in RAM.
+     *
+     * @param size The number of bytes to allocate
+     * @return A new SecureBytes instance
+     * @throws SecureMemoryError if allocation fails
+     */
+    @intrinsic("crypto.secure_alloc")
+    public static SecureBytes allocate(int size) throws SecureMemoryError {
+        // Intrinsic: allocates secure memory via C FFI
+        return SecureBytes {
+            handle: 0,
+            length: size
+        };
+    }
+
+    /**
+     * Creates SecureBytes from existing byte data.
+     *
+     * The data is copied into secure memory and the original data
+     * is NOT automatically zeroed - the caller should zero it if needed.
+     *
+     * @param data The data to copy into secure storage
+     * @return A new SecureBytes instance containing the data
+     * @throws SecureMemoryError if allocation fails
+     */
+    @intrinsic("crypto.secure_from_bytes")
+    public static SecureBytes fromBytes(bytes data) throws SecureMemoryError {
+        // Intrinsic: copies data to secure memory
+        return SecureBytes {
+            handle: 0,
+            length: data.length()
+        };
+    }
+
+    // =========================================================================
+    // Access
+    // =========================================================================
+
+    /**
+     * Returns the length of the secure buffer.
+     *
+     * @param self The secure bytes
+     * @return The length in bytes
+     */
+    public static int length(SecureBytes self) {
+        return self.length;
+    }
+
+    /**
+     * Copies the secure data to a regular byte array.
+     *
+     * WARNING: The returned bytes are NOT in secure memory.
+     * Zero them after use if they contain sensitive data.
+     *
+     * @param self The secure bytes to copy from
+     * @return A copy of the data (caller should zero after use)
+     */
+    @intrinsic("crypto.secure_to_bytes")
+    public static bytes toBytes(SecureBytes self) {
+        // Intrinsic: copies data from secure memory
+        return bytes.allocate(0);
+    }
+
+    /**
+     * Copies a portion of the secure data to a regular byte array.
+     *
+     * @param self The secure bytes to copy from
+     * @param offset The starting offset
+     * @param length The number of bytes to copy
+     * @return A copy of the data slice
+     * @throws BufferSizeError if offset + length exceeds the buffer size
+     */
+    @intrinsic("crypto.secure_slice")
+    public static bytes slice(SecureBytes self, int offset, int length) throws BufferSizeError {
+        // Intrinsic: copies slice from secure memory
+        return bytes.allocate(0);
+    }
+
+    // =========================================================================
+    // Comparison
+    // =========================================================================
+
+    /**
+     * Compares two SecureBytes for equality using constant-time comparison.
+     *
+     * @param a The first secure bytes
+     * @param b The second secure bytes
+     * @return true if the contents are equal
+     */
+    @intrinsic("crypto.secure_equals")
+    public static Bool equals(SecureBytes a, SecureBytes b) {
+        // Intrinsic: constant-time comparison
+        return false;
+    }
+
+    // =========================================================================
+    // Cleanup
+    // =========================================================================
+
+    /**
+     * Securely zeros and frees the memory.
+     *
+     * This is called automatically when the SecureBytes is dropped,
+     * but can be called explicitly for immediate cleanup.
+     *
+     * After calling this method, the SecureBytes should not be used.
+     *
+     * @param self The secure bytes to zero and free
+     */
+    @intrinsic("crypto.secure_free")
+    public static void zeroAndFree(SecureBytes self) {
+        // Intrinsic: zeros and frees secure memory
+    }
+
+    /**
+     * Zeros the content but keeps the allocation.
+     *
+     * Use this to reuse the buffer for new data.
+     *
+     * @param self The secure bytes to zero
+     */
+    @intrinsic("crypto.secure_zero")
+    public static void zero(SecureBytes self) {
+        // Intrinsic: zeros the secure memory content
+    }
+}

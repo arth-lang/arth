@@ -1,0 +1,115 @@
+package demo;
+
+module Main {
+    public void main() {
+        print("=== Testing List API Functions ===");
+
+        // Test reverse
+        print("--- Testing reverse() ---");
+        int list1 = List.new();
+        List.push(list1, 1);
+        List.push(list1, 2);
+        List.push(list1, 3);
+        List.push(list1, 4);
+        List.push(list1, 5);
+
+        print("Original: 1, 2, 3, 4, 5");
+        print("After reverse:");
+        List.reverse(list1);
+        print(List.get(list1, 0));  // Should print 5
+        print(List.get(list1, 1));  // Should print 4
+        print(List.get(list1, 2));  // Should print 3
+        print(List.get(list1, 3));  // Should print 2
+        print(List.get(list1, 4));  // Should print 1
+
+        // Test concat
+        print("--- Testing concat() ---");
+        int list2 = List.new();
+        List.push(list2, 10);
+        List.push(list2, 20);
+        List.push(list2, 30);
+
+        int list3 = List.new();
+        List.push(list3, 40);
+        List.push(list3, 50);
+
+        int list4 = List.concat(list2, list3);
+        print("Concatenated (10,20,30 + 40,50):");
+        int len4 = List.len(list4);
+        print(len4);  // Should print 5
+        print(List.get(list4, 0));  // Should print 10
+        print(List.get(list4, 2));  // Should print 30
+        print(List.get(list4, 3));  // Should print 40
+        print(List.get(list4, 4));  // Should print 50
+
+        // Test slice
+        print("--- Testing slice() ---");
+        int list5 = List.new();
+        List.push(list5, 0);
+        List.push(list5, 1);
+        List.push(list5, 2);
+        List.push(list5, 3);
+        List.push(list5, 4);
+        List.push(list5, 5);
+        List.push(list5, 6);
+        List.push(list5, 7);
+        List.push(list5, 8);
+        List.push(list5, 9);
+
+        int list6 = List.slice(list5, 2, 7);
+        print("Slice [2, 7) from 0..9:");
+        int len6 = List.len(list6);
+        print(len6);  // Should print 5
+        print(List.get(list6, 0));  // Should print 2
+        print(List.get(list6, 4));  // Should print 6
+
+        int list7 = List.slice(list5, 0, 3);
+        print("Slice [0, 3):");
+        int len7 = List.len(list7);
+        print(len7);  // Should print 3
+        print(List.get(list7, 0));  // Should print 0
+        print(List.get(list7, 2));  // Should print 2
+
+        // Test sort
+        print("--- Testing sort() ---");
+        int list9 = List.new();
+        List.push(list9, 64);
+        List.push(list9, 34);
+        List.push(list9, 25);
+        List.push(list9, 12);
+        List.push(list9, 22);
+        List.push(list9, 11);
+        List.push(list9, 90);
+
+        print("Before sort: 64, 34, 25, 12, 22, 11, 90");
+        List.sort(list9);
+        print("After sort:");
+        print(List.get(list9, 0));  // Should print 11
+        print(List.get(list9, 1));  // Should print 12
+        print(List.get(list9, 3));  // Should print 25
+        print(List.get(list9, 6));  // Should print 90
+
+        // Test unique
+        print("--- Testing unique() ---");
+        int list10 = List.new();
+        List.push(list10, 1);
+        List.push(list10, 2);
+        List.push(list10, 2);
+        List.push(list10, 3);
+        List.push(list10, 1);
+        List.push(list10, 4);
+        List.push(list10, 2);
+        List.push(list10, 5);
+        List.push(list10, 3);
+
+        print("Before unique: 1, 2, 2, 3, 1, 4, 2, 5, 3");
+        int lenBefore = List.len(list10);
+        print(lenBefore);  // Should print 9
+        List.unique(list10);
+        print("After unique:");
+        int lenAfter = List.len(list10);
+        print(lenAfter);  // Should print 5 (unique values: 1, 2, 3, 4, 5)
+
+        print("=== All tests completed! ===");
+    }
+}

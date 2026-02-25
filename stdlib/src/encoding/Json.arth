@@ -1,0 +1,100 @@
+package encoding;
+
+/**
+ * JSON encoding and decoding utilities.
+ *
+ * NOTE: This file is an INTRINSIC-BACKED STUB for IDE/tooling support.
+ * The function bodies are placeholders - actual implementation is provided
+ * by the compiler via intrinsic lowering to VM runtime functions.
+ *
+ * Example usage:
+ * ```
+ * import encoding.*;
+ *
+ * struct User {
+ *     public final String name;
+ *     public final Int age;
+ * }
+ *
+ * module Main {
+ *     public static void main() {
+ *         // Object to JSON string
+ *         User user = User { name: "Alice", age: 30 };
+ *         String json = Json.stringify(user);
+ *         // json = "{\"name\":\"Alice\",\"age\":30}"
+ *
+ *         // JSON string to dynamic value
+ *         Int parsed = Json.parse("{\"x\": 42}");
+ *
+ *         // Struct serialization with type info
+ *         String typed = Json.structToJson(user, "User");
+ *         User restored = Json.jsonToStruct(typed, "User");
+ *     }
+ * }
+ * ```
+ *
+ * @see src/compiler/intrinsics.rs for intrinsic registry
+ * @see crates/arth-vm/src/runtime.rs for VM implementation
+ */
+
+/// Error type for JSON parsing failures.
+public struct JsonError {
+    /// Error message describing what went wrong.
+    public final String message;
+}
+
+module Json {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Basic Serialization
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Converts a value to a JSON string.
+    ///
+    /// Supports primitives (Int, Float, Bool, String) and structs.
+    /// Arrays are serialized as JSON arrays, Maps as JSON objects.
+    ///
+    /// @param value The value to serialize
+    /// @return A JSON string representation
+    @intrinsic("json.stringify")
+    public static String stringify(Int value) { return ""; }
+
+    /// Parses a JSON string into a dynamic value.
+    ///
+    /// Returns an opaque handle that can be queried with Json helper functions.
+    /// For typed parsing, use jsonToStruct instead.
+    ///
+    /// @param json The JSON string to parse
+    /// @return An opaque handle to the parsed value
+    /// @throws JsonError if the JSON is malformed
+    @intrinsic("json.parse")
+    public static Int parse(String json) throws (JsonError) { return 0; }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Typed Serialization
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Converts a struct to a JSON string with type information.
+    ///
+    /// This function serializes a struct instance to JSON, using the provided
+    /// type name for any type-aware operations. The type name should match
+    /// the struct's declared name.
+    ///
+    /// @param value The struct instance (as opaque handle)
+    /// @param typeName The name of the struct type
+    /// @return A JSON string representation
+    @intrinsic("json.struct_to_json")
+    public static String structToJson(Int value, String typeName) { return ""; }
+
+    /// Parses a JSON string into a struct of the given type.
+    ///
+    /// This function deserializes JSON into a struct instance. The type name
+    /// must match a known struct type, and the JSON must contain all required
+    /// fields with compatible types.
+    ///
+    /// @param json The JSON string to parse
+    /// @param typeName The name of the target struct type
+    /// @return An opaque handle to the deserialized struct
+    /// @throws JsonError if parsing fails or types don't match
+    @intrinsic("json.json_to_struct")
+    public static Int jsonToStruct(String json, String typeName) throws (JsonError) { return 0; }
+}

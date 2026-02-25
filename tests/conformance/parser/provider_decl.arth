@@ -1,0 +1,37 @@
+package conformance;
+
+// @spec: spec.md §11 - Provider declarations with final/shared fields
+// @expect: pass
+// @description: Validates provider declaration parsing per spec §11
+
+// Simple provider with final field
+provider ConfigProvider {
+    public final Int maxConnections;
+    public final String host;
+}
+
+// Provider with shared fields for concurrent access
+provider CacheProvider {
+    public final Int capacity;
+    public shared Int hitCount;
+}
+
+// Provider with mixed fields
+provider AppProvider {
+    public final String name;
+    public final String version;
+    public shared Int requestCount;
+}
+
+module ConfigProviderFns {
+    public ConfigProvider new(Int maxConnections, String host) {
+        return ConfigProvider { maxConnections: maxConnections, host: host };
+    }
+}
+
+module Main {
+    public static void main() {
+        ConfigProvider config = ConfigProviderFns.new(100, "localhost");
+        println("provider_decl: pass");
+    }
+}

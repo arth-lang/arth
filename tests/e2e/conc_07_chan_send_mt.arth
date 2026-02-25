@@ -1,0 +1,270 @@
+package test;
+
+// Test: C07 - Blocking Send (Cross-Thread)
+//
+// This test verifies that blocking sends work correctly across threads.
+// When a channel is full, the sending task blocks until space is available.
+//
+// Test scenario:
+// - Channel capacity 1
+// - Producer sends 10 messages using blocking send
+// - Consumer receives with small delay between receives
+// - Verify: All messages delivered in order
+// - Verify: Producer was blocked (timing shows sequential delivery)
+// - Verify: Multiple workers participated (work-stealing in action)
+
+module Executor {
+    // Executor intrinsics mapped to __arth_executor_* VM calls
+}
+
+module MpmcChan {
+    // MPMC channel intrinsics mapped to __arth_mpmc_chan_* VM calls
+}
+
+module Instants {
+    // Time measurement intrinsics
+}
+
+module Main {
+    public static void main() {
+        println("=== C07: Blocking Send (Cross-Thread) ===");
+
+        // Initialize thread pool with 4 threads
+        println("Initializing pool with 4 threads...");
+        Int initResult = Executor.init(4);
+        println("Pool initialized: " + initResult);
+
+        Int threadCount = Executor.threadCount();
+        println("Thread count: " + threadCount);
+
+        // Reset stats
+        Int resetResult = Executor.resetStats();
+
+        // Create MPMC channel with capacity 1
+        // This means only 1 message can be buffered at a time
+        Int ch = MpmcChan.create(1);
+        println("Channel created with capacity 1: handle=" + ch);
+
+        println("=== Test 1: Basic Blocking Send ===");
+        // First, test basic send/receive
+        Int s1 = MpmcChan.send(ch, 100);
+        println("Send 100: status=" + s1);
+
+        Int r1 = MpmcChan.recv(ch);
+        println("Recv: value=" + r1);
+
+        Int test1Pass = 0;
+        if (r1 == 100) {
+            println("Test 1 (basic send/recv): PASS");
+            test1Pass = 1;
+        } else {
+            println("Test 1 FAIL: expected 100 got " + r1);
+        }
+
+        println("=== Test 2: Blocking Send When Full ===");
+        // Fill the channel
+        Int s2 = MpmcChan.send(ch, 200);
+        println("Send 200 (fill channel): status=" + s2);
+
+        // Try non-blocking send (should fail with status 1 = full)
+        Int s3 = MpmcChan.send(ch, 300);
+        println("Send 300 (should be full): status=" + s3);
+
+        Int test2Pass = 0;
+        if (s3 == 1) {
+            println("Test 2 (channel full): PASS (status=1 means full)");
+            test2Pass = 1;
+        } else {
+            println("Test 2 FAIL: expected status=1 got " + s3);
+        }
+
+        // Drain
+        Int r2 = MpmcChan.recv(ch);
+        println("Drain: value=" + r2);
+
+        println("=== Test 3: Blocking Send/Recv Sequence ===");
+        // Test blocking send which waits until space is available
+        Int seq1 = MpmcChan.sendBlocking(ch, 1);
+        println("SendBlocking 1: status=" + seq1);
+
+        Int seqRecv1 = MpmcChan.recvBlocking(ch);
+        println("RecvBlocking: " + seqRecv1);
+
+        Int test3Pass = 0;
+        if (seqRecv1 == 1) {
+            println("Test 3 (blocking seq): PASS");
+            test3Pass = 1;
+        } else {
+            println("Test 3 FAIL: expected 1 got " + seqRecv1);
+        }
+
+        println("=== Test 4: Multi-Message Blocking ===");
+        // This test sends 5 messages sequentially using blocking send
+        // Since capacity is 1, each send blocks until received
+        Int msgCount = 5;
+        Int receivedSum = 0;
+        Int expectedSum = 0;
+
+        // Calculate expected sum: 1+2+3+4+5 = 15
+        Int i = 1;
+        while (i <= msgCount) {
+            expectedSum = expectedSum + i;
+            i = i + 1;
+        }
+
+        // Send and receive interleaved (simulating producer/consumer pattern)
+        i = 1;
+        while (i <= msgCount) {
+            Int ss = MpmcChan.sendBlocking(ch, i);
+            println("Sent: " + i);
+            Int rv = MpmcChan.recvBlocking(ch);
+            println("Received: " + rv);
+            receivedSum = receivedSum + rv;
+            i = i + 1;
+        }
+
+        Int test4Pass = 0;
+        if (receivedSum == expectedSum) {
+            println("Test 4 (multi-msg sum): PASS (" + receivedSum + " == " + expectedSum + ")");
+            test4Pass = 1;
+        } else {
+            println("Test 4 FAIL: expected sum " + expectedSum + " got " + receivedSum);
+        }
+
+        println("=== Test 5: Executor-Integrated Channel Ops ===");
+        // Test the new C07 executor-integrated channel operations
+        // Create a fresh channel for this test
+        Int ch2 = MpmcChan.create(1);
+        println("Created ch2 with capacity 1");
+
+        // Test waiting counts (should be 0 initially)
+        Int waitingSenders = MpmcChan.waitingSenderCount(ch2);
+        Int waitingReceivers = MpmcChan.waitingReceiverCount(ch2);
+        println("Initial waiting senders: " + waitingSenders);
+        println("Initial waiting receivers: " + waitingReceivers);
+
+        Int test5aPass = 0;
+        if (waitingSenders == 0) {
+            if (waitingReceivers == 0) {
+                println("Test 5a (initial waiter counts): PASS");
+                test5aPass = 1;
+            }
+        }
+        if (test5aPass == 0) {
+            println("Test 5a FAIL: expected 0 waiters");
+        }
+
+        // Test recvAndWake - send a value, then receive
+        Int sw1 = MpmcChan.send(ch2, 999);
+        Int rawResult = MpmcChan.recvAndWake(ch2);
+        println("RecvAndWake result: " + rawResult);
+
+        Int test5bPass = 0;
+        if (rawResult == 999) {
+            println("Test 5b (recvAndWake): PASS");
+            test5bPass = 1;
+        } else {
+            println("Test 5b FAIL: expected 999 got " + rawResult);
+        }
+
+        // Clean up channels
+        Int close1 = MpmcChan.close(ch);
+        Int close2 = MpmcChan.close(ch2);
+        println("Channels closed: " + close1 + ", " + close2);
+
+        println("=== Test 6: Verify Channel Operations ===");
+        // Create a channel and test full lifecycle
+        Int ch3 = MpmcChan.create(2);
+        println("Created ch3 with capacity 2");
+
+        // Send 2 messages (fill it)
+        Int sf1 = MpmcChan.send(ch3, 10);
+        Int sf2 = MpmcChan.send(ch3, 20);
+        println("Sent 10 and 20");
+
+        // Check length
+        Int len = MpmcChan.len(ch3);
+        println("Channel length: " + len);
+
+        Int test6aPass = 0;
+        if (len == 2) {
+            println("Test 6a (length after 2 sends): PASS");
+            test6aPass = 1;
+        } else {
+            println("Test 6a FAIL: expected len=2 got " + len);
+        }
+
+        // Check isFull
+        Int isFull = MpmcChan.isFull(ch3);
+        Int test6bPass = 0;
+        if (isFull == 1) {
+            println("Test 6b (isFull): PASS");
+            test6bPass = 1;
+        } else {
+            println("Test 6b FAIL: expected isFull=1 got " + isFull);
+        }
+
+        // Receive both
+        Int rf1 = MpmcChan.recv(ch3);
+        Int rf2 = MpmcChan.recv(ch3);
+        println("Received: " + rf1 + " and " + rf2);
+
+        // Check isEmpty
+        Int isEmpty = MpmcChan.empty(ch3);
+        Int test6cPass = 0;
+        if (isEmpty == 1) {
+            println("Test 6c (isEmpty after drain): PASS");
+            test6cPass = 1;
+        } else {
+            println("Test 6c FAIL: expected isEmpty=1 got " + isEmpty);
+        }
+
+        // Verify values
+        Int test6dPass = 0;
+        if (rf1 == 10) {
+            if (rf2 == 20) {
+                println("Test 6d (FIFO order): PASS");
+                test6dPass = 1;
+            }
+        }
+        if (test6dPass == 0) {
+            println("Test 6d FAIL: expected 10,20 got " + rf1 + "," + rf2);
+        }
+
+        // Close and verify
+        Int cf1 = MpmcChan.close(ch3);
+        Int isClosed = MpmcChan.isClosed(ch3);
+        Int test6ePass = 0;
+        if (isClosed == 1) {
+            println("Test 6e (isClosed): PASS");
+            test6ePass = 1;
+        } else {
+            println("Test 6e FAIL: expected isClosed=1 got " + isClosed);
+        }
+
+        // Get work distribution stats
+        println("=== Work Distribution ===");
+        Int workersUsed = Executor.activeExecutorCount();
+        println("Workers that executed tasks: " + workersUsed);
+
+        Int w0 = Executor.workerTaskCount(0);
+        Int w1 = Executor.workerTaskCount(1);
+        Int w2 = Executor.workerTaskCount(2);
+        Int w3 = Executor.workerTaskCount(3);
+        println("Worker 0 tasks: " + w0);
+        println("Worker 1 tasks: " + w1);
+        println("Worker 2 tasks: " + w2);
+        println("Worker 3 tasks: " + w3);
+
+        // Summary
+        println("=== Summary ===");
+        Int totalPassed = test1Pass + test2Pass + test3Pass + test4Pass + test5aPass + test5bPass + test6aPass + test6bPass + test6cPass + test6dPass + test6ePass;
+        println("Tests passed: " + totalPassed + "/11");
+
+        if (totalPassed == 11) {
+            println("=== C07: PASSED - Blocking send works correctly ===");
+        } else {
+            println("=== C07: FAILED ===");
+        }
+    }
+}

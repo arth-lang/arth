@@ -1,0 +1,167 @@
+package db;
+
+/**
+ * Database Standard Library
+ *
+ * This module provides type-safe, memory-safe database access for Arth applications.
+ * It supports SQLite (embedded) and PostgreSQL (server) as first-class drivers.
+ *
+ * ## Features
+ *
+ * - Type-safe value handling with the ValueBox tagged union
+ * - Parameterized queries with Param for SQL injection prevention
+ * - Connection lifecycle management with Connection
+ * - Prepared statement support with Statement
+ * - Typed exceptions for all error paths
+ * - Connection pooling via providers (see db.Pool)
+ * - Transaction management with automatic rollback
+ *
+ * ## Quick Start
+ *
+ * ### SQLite
+ * ```arth
+ * import db.*;
+ * import db.sqlite.*;
+ *
+ * // Connect to SQLite database
+ * Connection conn = Sqlite.connect("file:./mydb.sqlite");
+ *
+ * // Execute a query
+ * Sqlite.execute(conn, "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT)");
+ *
+ * // Insert with parameters
+ * Sqlite.execute(conn, "INSERT INTO users (name) VALUES (?)", [Param.textParam(1, "Alice")]);
+ *
+ * // Query with results
+ * List<Row> rows = Sqlite.query(conn, "SELECT * FROM users");
+ * for (Row row : rows) {
+ *     int id = Row.getInt(row, 0);
+ *     String name = Row.getText(row, 1);
+ * }
+ *
+ * // Close connection
+ * Sqlite.disconnect(conn);
+ * ```
+ *
+ * ### PostgreSQL
+ * ```arth
+ * import db.*;
+ * import db.postgres.*;
+ *
+ * // Connect to PostgreSQL
+ * Connection conn = await Postgres.connect("postgres://user:pass@localhost/mydb");
+ *
+ * // Query with $1, $2 parameters
+ * List<Row> rows = await Postgres.query(conn, "SELECT * FROM users WHERE id = $1", [Param.intParam(1, 42)]);
+ *
+ * // Close connection
+ * Postgres.disconnect(conn);
+ * ```
+ *
+ * ## Module Structure
+ *
+ * - `db.Value` - SQL value types (ValueBox, ValueType)
+ * - `db.Param` - Query parameters (positional and named)
+ * - `db.Result` - Query results (Row, Column, QueryResult)
+ * - `db.Connection` - Connection lifecycle (Connection, ConnectionState, DriverType)
+ * - `db.Statement` - Prepared statements (Statement, StatementState)
+ * - `db.Error` - Exception hierarchy (DbError and subtypes)
+ * - `db.sqlite.Sqlite` - SQLite driver
+ * - `db.postgres.Postgres` - PostgreSQL driver
+ * - `db.Pool` - Connection pooling (Phase 5)
+ * - `db.Transaction` - Transaction helpers (Phase 6)
+ *
+ * @see db.sqlite.Sqlite for SQLite-specific operations
+ * @see db.postgres.Postgres for PostgreSQL-specific operations
+ */
+
+/**
+ * Driver interface defining the contract for database drivers.
+ *
+ * Each driver (SQLite, PostgreSQL) implements this interface through its
+ * module. The interface defines the core operations required for database
+ * access: connecting, disconnecting, querying, executing, and transaction
+ * management.
+ *
+ * Note: Due to Arth's module-based design, this interface serves as
+ * documentation and type contract. Actual implementations are in the
+ * driver-specific modules (Sqlite, Postgres).
+ */
+public interface Driver {
+    /// Opens a database connection.
+    /// @param connectionString The driver-specific connection string
+    /// @returns An open Connection
+    /// @throws (ConnectionError) if connection fails
+    Connection connect(String connectionString) throws (ConnectionError);
+
+    /// Closes a database connection.
+    /// @param conn The connection to close
+    /// @throws (ConnectionError) if disconnect fails
+    void disconnect(Connection conn) throws (ConnectionError);
+
+    /// Executes a query that returns results (SELECT).
+    /// @param conn The connection to use
+    /// @param sql The SQL query
+    /// @param params Query parameters
+    /// @returns Array of result rows
+    /// @throws (QueryError) if query execution fails
+    List<Row> query(Connection conn, String sql, List<Param> params) throws (QueryError);
+
+    /// Executes a statement that modifies data (INSERT/UPDATE/DELETE).
+    /// @param conn The connection to use
+    /// @param sql The SQL statement
+    /// @param params Statement parameters
+    /// @returns Number of affected rows
+    /// @throws (QueryError) if execution fails
+    int execute(Connection conn, String sql, List<Param> params) throws (QueryError);
+
+    /// Prepares a SQL statement for repeated execution.
+    /// @param conn The connection to use
+    /// @param sql The SQL to prepare
+    /// @returns A prepared Statement
+    /// @throws (PrepareError) if preparation fails
+    Statement prepare(Connection conn, String sql) throws (PrepareError);
+
+    /// Begins a transaction.
+    /// @param conn The connection to use
+    /// @throws (TransactionError) if begin fails
+    void begin(Connection conn) throws (TransactionError);
+
+    /// Commits the current transaction.
+    /// @param conn The connection to use
+    /// @throws (TransactionError) if commit fails
+    void commit(Connection conn) throws (TransactionError);
+
+    /// Rolls back the current transaction.
+    /// @param conn The connection to use
+    /// @throws (TransactionError) if rollback fails
+    void rollback(Connection conn) throws (TransactionError);
+}
+
+/**
+ * Async driver interface for non-blocking database operations.
+ *
+ * This interface extends the Driver concept for async operations,
+ * primarily used by PostgreSQL which supports true async I/O.
+ * SQLite operations are inherently synchronous but can be wrapped
+ * in Task.blocking() for async compatibility.
+ */
+public interface AsyncDriver {
+    /// Opens a database connection asynchronously.
+    async Connection connect(String connectionString) throws (ConnectionError);
+
+    /// Executes a query asynchronously.
+    async List<Row> query(Connection conn, String sql, List<Param> params) throws (QueryError);
+
+    /// Executes a statement asynchronously.
+    async int execute(Connection conn, String sql, List<Param> params) throws (QueryError);
+
+    /// Begins a transaction asynchronously.
+    async void begin(Connection conn) throws (TransactionError);
+
+    /// Commits a transaction asynchronously.
+    async void commit(Connection conn) throws (TransactionError);
+
+    /// Rolls back a transaction asynchronously.
+    async void rollback(Connection conn) throws (TransactionError);
+}

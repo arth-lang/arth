@@ -1,0 +1,149 @@
+package test;
+
+// Test: Await expression comprehensive tests
+// P17: await expression
+// Expected output:
+//   === Basic Await ===
+//   awaiting value: 42
+//   === Sequential Awaits ===
+//   first: 10
+//   second: 20
+//   sum: 30
+//   === Await in Expressions ===
+//   doubled: 84
+//   sum of awaits: 15
+//   === Await in Control Flow ===
+//   branch taken: positive
+//   loop result: 15
+//   === Await with Different Types ===
+//   string: hello async
+//   bool: true
+//   float: 3.14
+//   === Nested Async Calls ===
+//   inner computed: 100
+//   outer computed: 200
+//   === Await in Conditional Expression ===
+//   conditional: 99
+//   === All await tests passed ===
+
+module Main {
+    // Basic async function
+    public static async Int getValue() {
+        return 42;
+    }
+
+    // Async with different return values
+    public static async Int getFirst() {
+        return 10;
+    }
+
+    public static async Int getSecond() {
+        return 20;
+    }
+
+    // Async returning different types
+    public static async String getAsyncString() {
+        return "hello async";
+    }
+
+    public static async Bool getAsyncBool() {
+        return true;
+    }
+
+    public static async Float getAsyncFloat() {
+        return 3.14;
+    }
+
+    // Async with parameter
+    public static async Int doubleValue(Int x) {
+        return x * 2;
+    }
+
+    // Async that calls another async
+    public static async Int innerCompute() {
+        return 100;
+    }
+
+    public static async Int outerCompute() {
+        Int inner = await innerCompute();
+        return inner * 2;
+    }
+
+    // Async for loop accumulation
+    public static async Int getLoopValue(Int i) {
+        return i;
+    }
+
+    // Async returning conditional value
+    public static async Int getConditionalValue(Bool cond) {
+        if (cond) {
+            return 99;
+        }
+        return 1;
+    }
+
+    public static void main() {
+        // === Test 1: Basic Await ===
+        println("=== Basic Await ===");
+        Int val = await getValue();
+        println("awaiting value: " + val);
+
+        // === Test 2: Sequential Awaits ===
+        println("=== Sequential Awaits ===");
+        Int first = await getFirst();
+        println("first: " + first);
+        Int second = await getSecond();
+        println("second: " + second);
+        Int sum = first + second;
+        println("sum: " + sum);
+
+        // === Test 3: Await in Expressions ===
+        println("=== Await in Expressions ===");
+        Int doubled = await doubleValue(await getValue());
+        println("doubled: " + doubled);
+        Int sumOfAwaits = await getFirst() + await getLoopValue(5);
+        println("sum of awaits: " + sumOfAwaits);
+
+        // === Test 4: Await in Control Flow ===
+        println("=== Await in Control Flow ===");
+        Int checkVal = await getValue();
+        if (checkVal > 0) {
+            println("branch taken: positive");
+        } else {
+            println("branch taken: negative");
+        }
+
+        // Await in a loop
+        Int loopSum = 0;
+        Int i = 1;
+        while (i <= 5) {
+            Int loopVal = await getLoopValue(i);
+            loopSum = loopSum + loopVal;
+            i = i + 1;
+        }
+        println("loop result: " + loopSum);
+
+        // === Test 5: Await with Different Types ===
+        println("=== Await with Different Types ===");
+        String asyncStr = await getAsyncString();
+        println("string: " + asyncStr);
+        Bool asyncBool = await getAsyncBool();
+        println("bool: " + asyncBool);
+        Float asyncFloat = await getAsyncFloat();
+        println("float: " + asyncFloat);
+
+        // === Test 6: Nested Async Calls ===
+        println("=== Nested Async Calls ===");
+        Int innerResult = await innerCompute();
+        println("inner computed: " + innerResult);
+        Int outerResult = await outerCompute();
+        println("outer computed: " + outerResult);
+
+        // === Test 7: Await in Conditional Expression ===
+        println("=== Await in Conditional Expression ===");
+        Int condResult = await getConditionalValue(true);
+        println("conditional: " + condResult);
+
+        println("=== All await tests passed ===");
+    }
+}

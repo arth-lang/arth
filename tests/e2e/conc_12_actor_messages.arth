@@ -1,0 +1,440 @@
+package test;
+
+// Test: C12 - Actor Message Passing
+//
+// This test verifies that actor message passing works correctly:
+// - actor.send(msg) sends to mailbox
+// - actor.recv() receives from mailbox
+// - Messages are processed in FIFO order
+// - Multiple message patterns work correctly
+// - High-volume message passing preserves integrity
+//
+// Key property: Messages are processed in the order they were sent (FIFO)
+
+module Executor {
+    // Executor intrinsics mapped to __arth_executor_* VM calls
+}
+
+module Actor {
+    // Actor intrinsics mapped to __arth_actor_* VM calls
+}
+
+module Main {
+    public static void main() {
+        println("=== C12: Actor Message Passing ===");
+
+        // Initialize thread pool
+        println("Initializing pool with 4 threads...");
+        Int initResult = Executor.init(4);
+        println("Pool initialized: " + initResult);
+
+        Int resetResult = Executor.resetStats();
+
+        println("=== Test 1: Basic FIFO Order (1,2,3,4,5) ===");
+        // Create an actor
+        Int actor1 = Actor.create(10);
+        println("Created actor: " + actor1);
+
+        // Send messages 1, 2, 3, 4, 5
+        Actor.send(actor1, 1);
+        Actor.send(actor1, 2);
+        Actor.send(actor1, 3);
+        Actor.send(actor1, 4);
+        Actor.send(actor1, 5);
+        println("Sent messages: 1, 2, 3, 4, 5");
+
+        // Receive and verify order
+        Int r1 = Actor.recv(actor1);
+        Int r2 = Actor.recv(actor1);
+        Int r3 = Actor.recv(actor1);
+        Int r4 = Actor.recv(actor1);
+        Int r5 = Actor.recv(actor1);
+        println("Received: " + r1 + ", " + r2 + ", " + r3 + ", " + r4 + ", " + r5);
+
+        Int test1Pass = 0;
+        if (r1 == 1) {
+            if (r2 == 2) {
+                if (r3 == 3) {
+                    if (r4 == 4) {
+                        if (r5 == 5) {
+                            println("Test 1 (FIFO order): PASS");
+                            test1Pass = 1;
+                        }
+                    }
+                }
+            }
+        }
+        if (test1Pass == 0) {
+            println("Test 1 FAIL: order not preserved");
+        }
+
+        Actor.close(actor1);
+
+        println("=== Test 2: Large Sequence FIFO (1..100) ===");
+        Int actor2 = Actor.create(100);
+
+        // Send 1..100
+        Int i = 1;
+        while (i <= 100) {
+            Actor.send(actor2, i);
+            i = i + 1;
+        }
+        println("Sent messages 1 to 100");
+
+        // Receive and verify order
+        Int fifoPass = 1;
+        Int lastReceived = 0;
+        i = 1;
+        while (i <= 100) {
+            Int val = Actor.recv(actor2);
+            if (val != i) {
+                println("FIFO violation at position " + i + ": expected " + i + ", got " + val);
+                fifoPass = 0;
+            }
+            lastReceived = val;
+            i = i + 1;
+        }
+
+        Int test2Pass = 0;
+        if (fifoPass == 1) {
+            if (lastReceived == 100) {
+                println("Test 2 (large sequence FIFO): PASS");
+                test2Pass = 1;
+            }
+        }
+        if (test2Pass == 0) {
+            println("Test 2 FAIL: FIFO order violated");
+        }
+
+        Actor.close(actor2);
+
+        println("=== Test 3: Message Sum Verification ===");
+        Int actor3 = Actor.create(50);
+
+        // Send values and compute expected sum
+        Int expectedSum = 0;
+        i = 1;
+        while (i <= 50) {
+            Int val = i * 10;
+            Actor.send(actor3, val);
+            expectedSum = expectedSum + val;
+            i = i + 1;
+        }
+        println("Sent 50 messages, expected sum: " + expectedSum);
+
+        // Receive and compute actual sum
+        Int actualSum = 0;
+        i = 0;
+        while (i < 50) {
+            Int val = Actor.recv(actor3);
+            actualSum = actualSum + val;
+            i = i + 1;
+        }
+        println("Received sum: " + actualSum);
+
+        Int test3Pass = 0;
+        if (actualSum == expectedSum) {
+            println("Test 3 (sum verification): PASS");
+            test3Pass = 1;
+        } else {
+            println("Test 3 FAIL: sum mismatch");
+        }
+
+        Actor.close(actor3);
+
+        println("=== Test 4: Blocking Send/Recv Pattern ===");
+        Int actor4 = Actor.create(5);
+
+        // Interleaved blocking send/recv
+        Int blockSum = 0;
+        i = 1;
+        while (i <= 20) {
+            Actor.sendBlocking(actor4, i);
+            Int val = Actor.recvBlocking(actor4);
+            blockSum = blockSum + val;
+            i = i + 1;
+        }
+
+        // Expected: 1+2+3+...+20 = 210
+        Int expectedBlockSum = 210;
+        println("Blocking pattern sum: " + blockSum + " (expected " + expectedBlockSum + ")");
+
+        Int test4Pass = 0;
+        if (blockSum == expectedBlockSum) {
+            println("Test 4 (blocking pattern): PASS");
+            test4Pass = 1;
+        } else {
+            println("Test 4 FAIL: sum mismatch");
+        }
+
+        Actor.close(actor4);
+
+        println("=== Test 5: Batch Send Then Batch Recv ===");
+        Int actor5 = Actor.create(100);
+
+        // Send batch of 100 messages
+        Int batchExpected = 0;
+        i = 1;
+        while (i <= 100) {
+            Actor.send(actor5, i);
+            batchExpected = batchExpected + i;
+            i = i + 1;
+        }
+        println("Sent batch of 100 messages");
+
+        // Verify mailbox has 100 messages
+        Int len5 = Actor.mailboxLen(actor5);
+        println("Mailbox length: " + len5);
+
+        // Receive batch
+        Int batchActual = 0;
+        i = 0;
+        while (i < 100) {
+            Int val = Actor.recv(actor5);
+            batchActual = batchActual + val;
+            i = i + 1;
+        }
+        println("Batch sum: " + batchActual + " (expected " + batchExpected + ")");
+
+        Int test5Pass = 0;
+        if (len5 == 100) {
+            if (batchActual == batchExpected) {
+                println("Test 5 (batch send/recv): PASS");
+                test5Pass = 1;
+            }
+        }
+        if (test5Pass == 0) {
+            println("Test 5 FAIL");
+        }
+
+        Actor.close(actor5);
+
+        println("=== Test 6: Multiple Actors Independent ===");
+        Int actorA = Actor.create(10);
+        Int actorB = Actor.create(10);
+        Int actorC = Actor.create(10);
+
+        // Send different values to each
+        Actor.send(actorA, 100);
+        Actor.send(actorA, 101);
+        Actor.send(actorB, 200);
+        Actor.send(actorB, 201);
+        Actor.send(actorC, 300);
+        Actor.send(actorC, 301);
+
+        // Receive from each
+        Int a1 = Actor.recv(actorA);
+        Int a2 = Actor.recv(actorA);
+        Int b1 = Actor.recv(actorB);
+        Int b2 = Actor.recv(actorB);
+        Int c1 = Actor.recv(actorC);
+        Int c2 = Actor.recv(actorC);
+
+        println("Actor A: " + a1 + ", " + a2);
+        println("Actor B: " + b1 + ", " + b2);
+        println("Actor C: " + c1 + ", " + c2);
+
+        Int test6Pass = 0;
+        if (a1 == 100) {
+            if (a2 == 101) {
+                if (b1 == 200) {
+                    if (b2 == 201) {
+                        if (c1 == 300) {
+                            if (c2 == 301) {
+                                println("Test 6 (multiple actors): PASS");
+                                test6Pass = 1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (test6Pass == 0) {
+            println("Test 6 FAIL: actor messages mixed up");
+        }
+
+        Actor.close(actorA);
+        Actor.close(actorB);
+        Actor.close(actorC);
+
+        println("=== Test 7: Empty Recv Returns -2 ===");
+        Int actor7 = Actor.create(10);
+
+        // Try to receive from empty mailbox
+        Int emptyRecv = Actor.recv(actor7);
+        println("Recv from empty: " + emptyRecv);
+
+        Int test7Pass = 0;
+        if (emptyRecv == -2) {
+            println("Test 7 (empty recv): PASS");
+            test7Pass = 1;
+        } else {
+            println("Test 7 FAIL: expected -2 for empty");
+        }
+
+        Actor.close(actor7);
+
+        println("=== Test 8: Closed Actor Recv Returns -3 ===");
+        Int actor8 = Actor.create(10);
+        Actor.close(actor8);
+
+        Int closedRecv = Actor.recv(actor8);
+        println("Recv from closed: " + closedRecv);
+
+        Int test8Pass = 0;
+        if (closedRecv == -3) {
+            println("Test 8 (closed recv): PASS");
+            test8Pass = 1;
+        } else {
+            println("Test 8 FAIL: expected -3 for closed");
+        }
+
+        println("=== Test 9: Send After Stop Returns Error ===");
+        Int actor9 = Actor.create(10);
+        Actor.stop(actor9);
+
+        // Send to stopped actor should return error (2 = stopped)
+        Int stoppedSend = Actor.send(actor9, 999);
+        println("Send to stopped: " + stoppedSend);
+
+        Int test9Pass = 0;
+        if (stoppedSend == 2) {
+            println("Test 9 (send to stopped): PASS");
+            test9Pass = 1;
+        } else {
+            println("Test 9 FAIL: expected 2 for stopped");
+        }
+
+        println("=== Test 10: High Volume Stress Test ===");
+        Int actor10 = Actor.create(1000);
+        Int hvCount = 1000;
+        Int hvExpectedSum = 499500; // 0 + 1 + ... + 999 = 999*1000/2
+
+        // Send 1000 messages
+        i = 0;
+        while (i < hvCount) {
+            Actor.sendBlocking(actor10, i);
+            i = i + 1;
+        }
+        println("Sent " + hvCount + " messages");
+
+        // Verify message count
+        Int msgCount = Actor.messageCount(actor10);
+        println("Message count: " + msgCount);
+
+        // Receive and sum
+        Int hvSum = 0;
+        i = 0;
+        while (i < hvCount) {
+            Int val = Actor.recvBlocking(actor10);
+            hvSum = hvSum + val;
+            i = i + 1;
+        }
+        println("High volume sum: " + hvSum + " (expected " + hvExpectedSum + ")");
+
+        Int test10Pass = 0;
+        if (msgCount == hvCount) {
+            if (hvSum == hvExpectedSum) {
+                println("Test 10 (high volume): PASS");
+                test10Pass = 1;
+            }
+        }
+        if (test10Pass == 0) {
+            println("Test 10 FAIL");
+        }
+
+        Actor.close(actor10);
+
+        println("=== Test 11: Ping-Pong Pattern ===");
+        // Simulate ping-pong: send value, get it back incremented
+        Int pingActor = Actor.create(10);
+        Int pongSum = 0;
+
+        i = 0;
+        while (i < 10) {
+            Actor.sendBlocking(pingActor, i);
+            Int pong = Actor.recvBlocking(pingActor);
+            pongSum = pongSum + pong;
+            i = i + 1;
+        }
+
+        // Expected: 0+1+2+...+9 = 45
+        Int expectedPongSum = 45;
+        println("Ping-pong sum: " + pongSum + " (expected " + expectedPongSum + ")");
+
+        Int test11Pass = 0;
+        if (pongSum == expectedPongSum) {
+            println("Test 11 (ping-pong): PASS");
+            test11Pass = 1;
+        } else {
+            println("Test 11 FAIL");
+        }
+
+        Actor.close(pingActor);
+
+        println("=== Test 12: Message Order Under Backpressure ===");
+        // Small capacity to force backpressure
+        Int bpActor = Actor.create(3);
+
+        // Send 10 messages with interleaved recv
+        // First fill the buffer (1, 2, 3), then for each new send, drain first
+        Int bpOrder = 1;
+        Int drainedSum = 0;
+        Int expectedDrainSum = 1 + 2 + 3 + 4 + 5 + 6 + 7; // Messages 1-7 get drained during loop
+
+        i = 1;
+        while (i <= 10) {
+            if (i > 3) {
+                // Drain one BEFORE sending to make room
+                Int drained = Actor.recvBlocking(bpActor);
+                Int expectedDrain = i - 3;
+                if (drained != expectedDrain) {
+                    println("FIFO violation: expected " + expectedDrain + ", got " + drained);
+                    bpOrder = 0;
+                }
+                drainedSum = drainedSum + drained;
+            }
+            Actor.sendBlocking(bpActor, i);
+            i = i + 1;
+        }
+
+        // Drain remaining 3 (should be 8, 9, 10)
+        Int bp1 = Actor.recvBlocking(bpActor);
+        Int bp2 = Actor.recvBlocking(bpActor);
+        Int bp3 = Actor.recvBlocking(bpActor);
+        println("Last 3 received: " + bp1 + ", " + bp2 + ", " + bp3);
+        println("Drained sum during loop: " + drainedSum + " (expected " + expectedDrainSum + ")");
+
+        Int test12Pass = 0;
+        if (bpOrder == 1) {
+            if (drainedSum == expectedDrainSum) {
+                if (bp1 == 8) {
+                    if (bp2 == 9) {
+                        if (bp3 == 10) {
+                            println("Test 12 (backpressure order): PASS");
+                            test12Pass = 1;
+                        }
+                    }
+                }
+            }
+        }
+        if (test12Pass == 0) {
+            println("Test 12 FAIL: order not preserved under backpressure");
+        }
+
+        Actor.close(bpActor);
+
+        // Summary
+        println("=== Summary ===");
+        Int totalPassed = test1Pass + test2Pass + test3Pass + test4Pass + test5Pass +
+                          test6Pass + test7Pass + test8Pass + test9Pass + test10Pass +
+                          test11Pass + test12Pass;
+        println("Tests passed: " + totalPassed + "/12");
+
+        if (totalPassed == 12) {
+            println("=== C12: PASSED - Actor message passing works correctly ===");
+        } else {
+            println("=== C12: FAILED ===");
+        }
+    }
+}

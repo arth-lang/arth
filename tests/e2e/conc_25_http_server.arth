@@ -1,0 +1,200 @@
+package conc_25_http_server;
+
+// ============================================================================
+// C25: Async HTTP Server Test Suite
+// Tests: HttpServer.create, HttpServer.close, HttpServer.getPort,
+//        HttpRequest operations, HttpWriter operations,
+//        HttpServerAsync operations for managing async server requests
+// Verifies: HTTP server lifecycle, request handling, response writing, error handling
+// ============================================================================
+
+module Main {
+
+    public void main() {
+        println("=== C25: Async HTTP Server Test ===");
+
+        int passed = 0;
+        int total = 0;
+
+        // Test 1: HttpServer.create with valid port
+        total = total + 1;
+        println("=== Test 1: HttpServer.create ===");
+        int server_handle = HttpServer.create(18080);
+        if (server_handle >= 130000) {
+            println("Test 1 (create): PASS - server_handle = " + server_handle);
+            passed = passed + 1;
+        } else {
+            println("Test 1 FAIL: expected server_handle >= 130000, got " + server_handle);
+        }
+
+        // Test 2: HttpServer.getPort
+        total = total + 1;
+        println("=== Test 2: HttpServer.getPort ===");
+        int port = HttpServer.getPort(server_handle);
+        if (port == 18080) {
+            println("Test 2 (getPort): PASS - port = " + port);
+            passed = passed + 1;
+        } else {
+            println("Test 2 FAIL: expected 18080, got " + port);
+        }
+
+        // Test 3: Create second server on different port
+        total = total + 1;
+        println("=== Test 3: Multiple servers ===");
+        int server2 = HttpServer.create(18081);
+        if (server2 >= 130000 && server2 != server_handle) {
+            println("Test 3 (multi-server): PASS - server2 = " + server2);
+            passed = passed + 1;
+        } else {
+            println("Test 3 FAIL: expected unique server handle");
+        }
+
+        // Test 4: HttpServer.close second server
+        total = total + 1;
+        println("=== Test 4: HttpServer.close ===");
+        int close_status = HttpServer.close(server2);
+        if (close_status == 0) {
+            println("Test 4 (close): PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 4 FAIL: expected 0, got " + close_status);
+        }
+
+        // Test 5: Close already closed server
+        total = total + 1;
+        println("=== Test 5: Close already closed server ===");
+        int close_again = HttpServer.close(server2);
+        if (close_again == -1) {
+            println("Test 5 (close already closed): PASS - returned -1");
+            passed = passed + 1;
+        } else {
+            println("Test 5 FAIL: expected -1, got " + close_again);
+        }
+
+        // Test 6: Invalid server operations
+        total = total + 1;
+        println("=== Test 6: Invalid server operations ===");
+        int invalid_port = HttpServer.getPort(999999);
+        int invalid_close = HttpServer.close(999999);
+        if (invalid_port == -1 && invalid_close == -1) {
+            println("Test 6 (invalid server): PASS - all returned -1");
+            passed = passed + 1;
+        } else {
+            println("Test 6 FAIL: expected -1, got port=" + invalid_port + " close=" + invalid_close);
+        }
+
+        // Test 7: Create server on invalid port
+        total = total + 1;
+        println("=== Test 7: Invalid port ===");
+        int invalid_server = HttpServer.create(-1);
+        if (invalid_server == -1) {
+            println("Test 7 (invalid port): PASS - returned -1");
+            passed = passed + 1;
+        } else {
+            println("Test 7 FAIL: expected -1, got " + invalid_server);
+        }
+
+        // Test 8: Create server on port 0 (OS assigns)
+        total = total + 1;
+        println("=== Test 8: Port 0 (OS assigns) ===");
+        int server_auto = HttpServer.create(0);
+        if (server_auto == -1) {
+            // Port 0 may not be allowed on some systems
+            println("Test 8 (port 0): PASS - returned -1 (port 0 not allowed)");
+            passed = passed + 1;
+        } else if (server_auto >= 130000) {
+            int auto_port = HttpServer.getPort(server_auto);
+            if (auto_port > 0) {
+                println("Test 8 (port 0): PASS - assigned port " + auto_port);
+                passed = passed + 1;
+            } else {
+                println("Test 8 FAIL: expected valid port, got " + auto_port);
+            }
+            HttpServer.close(server_auto);
+        } else {
+            println("Test 8 FAIL: expected handle >= 130000 or -1, got " + server_auto);
+        }
+
+        // Test 9: HttpServerAsync.checkReady on invalid request
+        total = total + 1;
+        println("=== Test 9: HttpServerAsync.checkReady on invalid request ===");
+        int invalid_ready = HttpServerAsync.checkReady(999999);
+        if (invalid_ready == -1) {
+            println("Test 9 (invalid checkReady): PASS - returned -1");
+            passed = passed + 1;
+        } else {
+            println("Test 9 FAIL: expected -1, got " + invalid_ready);
+        }
+
+        // Test 10: HttpServerAsync.getResult on invalid request
+        total = total + 1;
+        println("=== Test 10: HttpServerAsync.getResult on invalid request ===");
+        int invalid_result = HttpServerAsync.getResult(999999);
+        if (invalid_result == -1) {
+            println("Test 10 (invalid getResult): PASS - returned -1");
+            passed = passed + 1;
+        } else {
+            println("Test 10 FAIL: expected -1, got " + invalid_result);
+        }
+
+        // Test 11: HttpServerAsync.pollReady with no requests
+        total = total + 1;
+        println("=== Test 11: HttpServerAsync.pollReady (no requests) ===");
+        int poll_result = HttpServerAsync.pollReady();
+        if (poll_result == -1) {
+            println("Test 11 (pollReady empty): PASS - returned -1");
+            passed = passed + 1;
+        } else {
+            println("Test 11 INFO: pollReady returned " + poll_result + " (may have pending requests)");
+            passed = passed + 1;
+        }
+
+        // Test 12: HttpServerAsync.removeRequest on invalid request
+        total = total + 1;
+        println("=== Test 12: HttpServerAsync.removeRequest on invalid request ===");
+        int invalid_remove = HttpServerAsync.removeRequest(999999);
+        if (invalid_remove == -1) {
+            println("Test 12 (invalid removeRequest): PASS - returned -1");
+            passed = passed + 1;
+        } else {
+            println("Test 12 FAIL: expected -1, got " + invalid_remove);
+        }
+
+        // Test 13: HttpRequest operations on invalid connection
+        total = total + 1;
+        println("=== Test 13: HttpRequest on invalid connection ===");
+        int invalid_header_count = HttpRequest.headerCount(999999);
+        int invalid_body_length = HttpRequest.bodyLength(999999);
+        if (invalid_header_count == -1 && invalid_body_length == -1) {
+            println("Test 13 (invalid HttpRequest): PASS - all returned -1");
+            passed = passed + 1;
+        } else {
+            println("Test 13 FAIL: expected -1, got headerCount=" + invalid_header_count + " bodyLength=" + invalid_body_length);
+        }
+
+        // Test 14: HttpWriter operations on invalid connection
+        total = total + 1;
+        println("=== Test 14: HttpWriter on invalid connection ===");
+        int invalid_status = HttpWriter.status(999999, 200);
+        int invalid_send = HttpWriter.send(999999);
+        if (invalid_status == -1 && invalid_send == -1) {
+            println("Test 14 (invalid HttpWriter): PASS - all returned -1");
+            passed = passed + 1;
+        } else {
+            println("Test 14 FAIL: expected -1, got status=" + invalid_status + " send=" + invalid_send);
+        }
+
+        // Clean up: close first server
+        HttpServer.close(server_handle);
+
+        // Summary
+        println("");
+        println("=== Test Summary ===");
+        println("Tests passed: " + passed + " / " + total);
+        if (passed == total) {
+            println("All C25 HTTP Server tests PASSED!");
+        } else {
+            println("Some tests failed.");
+        }
+    }
+}

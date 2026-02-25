@@ -1,0 +1,157 @@
+package net.sse;
+
+import concurrent.*;
+
+/**
+ * Server-Sent Events (SSE) server surface for Arth programs.
+ *
+ * NOTE: This file is an INTRINSIC-BACKED STUB for IDE/tooling support.
+ * The function bodies are placeholders - actual implementation is provided
+ * by the compiler via intrinsic lowering to VM runtime functions.
+ *
+ * SSE provides unidirectional server-to-client streaming over HTTP.
+ * Unlike WebSocket, SSE only allows server-to-client messages, making
+ * it ideal for:
+ * - Real-time notifications
+ * - Live data feeds (stocks, metrics, logs)
+ * - Progress updates
+ *
+ * Example usage:
+ * ```
+ * import net.sse.*;
+ * import concurrent.*;
+ *
+ * module MetricsServer {
+ *     public static void main() {
+ *         Int server = Sse.serve(8080, "/metrics");
+ *         while (true) {
+ *             Emitter em = Sse.accept(server);
+ *             Task.spawn(() -> { streamMetrics(em); });
+ *         }
+ *     }
+ *
+ *     public static void streamMetrics(Emitter em) {
+ *         while (EmitterFns.isOpen(em)) {
+ *             String data = getMetrics();
+ *             EmitterFns.sendData(em, data);
+ *             Task.sleep(1000);  // Send every second
+ *         }
+ *     }
+ * }
+ * ```
+ *
+ * @see src/compiler/intrinsics.rs for intrinsic registry
+ * @see crates/arth-vm/src/runtime.rs for VM implementation
+ */
+
+/// A single SSE event.
+///
+/// Fields correspond to the standard SSE wire format:
+/// - event: event type (defaults to "message" if empty)
+/// - data: the payload (required)
+/// - id: optional event ID for client reconnection
+public struct Event {
+    /// Event type (e.g., "message"); empty for default.
+    public final String event;
+    /// Event payload (UTF-8 text).
+    public final String data;
+    /// Optional event ID for reconnection.
+    public final String id;
+}
+
+/// Server-side emitter for a single SSE stream.
+///
+/// Represents a connection to a single client. Each client
+/// that connects gets its own Emitter handle.
+public struct Emitter {
+    /// Opaque runtime handle; conceptually a Sender<Event>.
+    public final Int handle;
+}
+
+/**
+ * SSE server entrypoints.
+ *
+ * These functions manage SSE server lifecycle:
+ * - serve() starts an SSE endpoint on a port/path
+ * - accept() blocks waiting for the next client connection
+ */
+module Sse {
+    /// Starts an SSE server on the given port and path.
+    ///
+    /// The server responds to GET requests on the specified path
+    /// with the appropriate SSE headers (Content-Type: text/event-stream).
+    ///
+    /// @param port The port to listen on
+    /// @param path The URL path for SSE connections (e.g., "/events")
+    /// @return A server handle for use with accept()
+    @intrinsic("sse.serve")
+    public static Int serve(Int port, String path) {
+        return 0;
+    }
+
+    /// Accepts the next SSE client connection.
+    ///
+    /// Blocks until a client connects. Returns an Emitter handle
+    /// that can be used to send events to that client.
+    ///
+    /// @param server The server handle from serve()
+    /// @return An Emitter handle for the new connection
+    @intrinsic("sse.accept")
+    public static Emitter accept(Int server) {
+        return Emitter { handle: 0 };
+    }
+}
+
+/**
+ * Helper operations on Emitter handles.
+ *
+ * These operations enable server-to-client streaming:
+ * - send: send a full Event with type, data, and ID
+ * - sendData: convenience for data-only events
+ * - close: terminate the SSE stream
+ * - isOpen: check if the client is still connected
+ */
+module EmitterFns {
+    /// Sends a single SSE event to the client.
+    ///
+    /// @param self The Emitter handle
+    /// @param eventType The event type (use "" for default "message")
+    /// @param data The event payload
+    /// @param id The event ID (use "" to omit)
+    @intrinsic("sse.send")
+    public static void send(Emitter self, String eventType, String data, String id) {
+    }
+
+    /// Convenience helper for sending a data-only event.
+    ///
+    /// Equivalent to send(self, "", data, "") - sends a default
+    /// "message" event with just the data payload.
+    ///
+    /// @param self The Emitter handle
+    /// @param data The event payload
+    public static void sendData(Emitter self, String data) {
+        EmitterFns.send(self, "", data, "");
+    }
+
+    /// Closes the SSE stream.
+    ///
+    /// Terminates the connection to the client. The client
+    /// will receive an end-of-stream and may attempt to reconnect.
+    ///
+    /// @param self The Emitter handle
+    @intrinsic("sse.close")
+    public static void close(Emitter self) {
+    }
+
+    /// Checks if the client is still connected.
+    ///
+    /// Returns false if the client has disconnected or the
+    /// connection has been closed.
+    ///
+    /// @param self The Emitter handle
+    /// @return true if connected, false otherwise
+    @intrinsic("sse.is_open")
+    public static Bool isOpen(Emitter self) {
+        return false;
+    }
+}

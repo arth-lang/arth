@@ -1,0 +1,48 @@
+package test.immutability;
+
+// Test struct with final (immutable) and mutable fields
+// Note: Final fields will be initialized via constructors (not yet implemented)
+// For now, this demonstrates that final fields cannot be reassigned in methods
+struct Config {
+    public final String appName;     // Immutable - cannot be assigned in methods
+    public final int version;        // Immutable - cannot be assigned in methods
+    public String environment;       // Mutable - can be changed
+}
+
+struct MutableConfig {
+    public String appName;           // All fields are mutable
+    public int version;
+    public String environment;
+}
+
+module ConfigOps {
+    public void testMutable() {
+        MutableConfig cfg;
+
+        // Should work: all fields are mutable
+        cfg.appName = "MyApp";
+        cfg.version = 1;
+        cfg.environment = "dev";
+
+        // Should work: changing mutable fields
+        cfg.appName = "NewApp";
+        cfg.version = 2;
+        cfg.environment = "prod";
+    }
+
+    public void testImmutable() {
+        Config cfg;
+
+        // Should work: reading final fields
+        String name = cfg.appName;
+        int ver = cfg.version;
+
+        // Should work: changing mutable field
+        cfg.environment = "dev";
+        cfg.environment = "prod";
+
+        // WOULD FAIL if uncommented: cannot assign to final fields
+        // cfg.appName = "MyApp";  // Error: cannot assign to final field
+        // cfg.version = 1;        // Error: cannot assign to final field
+    }
+}

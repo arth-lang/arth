@@ -1,0 +1,62 @@
+package test;
+
+// Test: String concatenation producing actual String values
+// This tests that string concatenation works outside of println
+// Expected output:
+//   literal concat: HelloWorld
+//   var concat: FooBar
+//   mixed concat: PrefixValue
+//   triple concat: ABC
+//   assign and use: Hello World!
+//   nested: XYZ
+//   from function: ResultSuffix
+//   empty concat: Hello
+
+module Main {
+    public static String getResult() {
+        return "Result";
+    }
+
+    public static void main() {
+        // Test 1: Literal string concatenation
+        String s1 = "Hello" + "World";
+        println("literal concat: " + s1);
+
+        // Test 2: Variable concatenation
+        String a = "Foo";
+        String b = "Bar";
+        String s2 = a + b;
+        println("var concat: " + s2);
+
+        // Test 3: Mixed literal and variable
+        String prefix = "Prefix";
+        String s3 = prefix + "Value";
+        println("mixed concat: " + s3);
+
+        // Test 4: Multiple concatenations
+        String s4 = "A" + "B" + "C";
+        println("triple concat: " + s4);
+
+        // Test 5: Assign concatenated result and use in another concatenation
+        String greeting = "Hello" + " " + "World";
+        String s5 = greeting + "!";
+        println("assign and use: " + s5);
+
+        // Test 6: Nested variable concatenation
+        String x = "X";
+        String y = "Y";
+        String z = "Z";
+        String s6 = x + (y + z);
+        println("nested: " + s6);
+
+        // Test 7: Function result concatenation
+        String result = getResult();
+        String s7 = result + "Suffix";
+        println("from function: " + s7);
+
+        // Test 8: Concatenation with empty string
+        String empty = "";
+        String s8 = empty + "Hello";
+        println("empty concat: " + s8);
+    }
+}

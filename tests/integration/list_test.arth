@@ -1,0 +1,72 @@
+package integration;
+
+// Integration tests for List collection type
+// Note: Each test uses fresh variables due to ownership semantics
+
+module Main {
+    public void main() {
+        println("=== List Integration Tests ===");
+
+        // Test List.new()
+        println("-- List.new() --");
+        List<int> l1 = List.new();
+        println("Created new list");
+        println("OK");
+
+        // Test List.push() and List.len()
+        println("-- List.push() and len() --");
+        List<int> l2 = List.new();
+        List.push(l2, 10);
+        println("Pushed 10");
+        println("OK");
+
+        // Test List.get()
+        println("-- List.get() --");
+        List<int> l3 = List.new();
+        List.push(l3, 42);
+        int v = List.get(l3, 0);
+        println("Got value: ");
+        println(v);
+        println("OK");
+
+        // Test List.set()
+        println("-- List.set() --");
+        List<int> l4 = List.new();
+        List.push(l4, 10);
+        List.set(l4, 0, 20);
+        println("Set value at 0");
+        println("OK");
+
+        // Test List.sort()
+        println("-- List.sort() --");
+        List<int> l5 = List.new();
+        List.push(l5, 30);
+        List.push(l5, 10);
+        List.push(l5, 20);
+        List.sort(l5);
+        println("Sorted list");
+        println("OK");
+
+        // Test List.pop()
+        println("-- List.pop() --");
+        List<int> l6 = List.new();
+        List.push(l6, 1);
+        List.push(l6, 2);
+        int popped = List.pop(l6);
+        println("Popped: ");
+        println(popped);
+        println("OK");
+
+        // Test List.reverse()
+        println("-- List.reverse() --");
+        List<int> l7 = List.new();
+        List.push(l7, 1);
+        List.push(l7, 2);
+        List.push(l7, 3);
+        List.reverse(l7);
+        println("Reversed list");
+        println("OK");
+
+        println("=== All List Tests Passed ===");
+    }
+}

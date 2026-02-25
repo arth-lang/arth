@@ -1,0 +1,31 @@
+package test.visibility;
+
+// Test struct with various field visibility modifiers
+struct Account {
+    public String username;       // Accessible from anywhere
+    internal int balance;         // Accessible within same top-level package
+    private String password;      // Accessible only within this package
+    String email;                 // Default = private
+}
+
+module AccountOps {
+    public void test() {
+        Account acc;
+
+        // Should work: public field
+        acc.username = "alice";
+        String name = acc.username;
+
+        // Should work: internal field (same package)
+        acc.balance = 1000;
+        int bal = acc.balance;
+
+        // Should work: private field (same package)
+        acc.password = "secret";
+        String pwd = acc.password;
+
+        // Should work: default field (same package)
+        acc.email = "alice@example.com";
+        String em = acc.email;
+    }
+}

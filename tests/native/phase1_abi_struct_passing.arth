@@ -1,0 +1,73 @@
+package test.native;
+
+public struct Point {
+    public Int x;
+    public Int y;
+}
+
+public struct Pair {
+    public Int first;
+    public Int second;
+}
+
+public struct Triple {
+    public Int a;
+    public Int b;
+    public Int c;
+}
+
+public struct Quad {
+    public Int w;
+    public Int x;
+    public Int y;
+    public Int z;
+}
+
+module Ops {
+    public Int addPoints(Point a, Point b) {
+        return a.x + b.x + a.y + b.y;
+    }
+
+    public Int pairDiff(Pair p) {
+        return p.first - p.second;
+    }
+
+    public Int tripleSum(Triple t) {
+        return t.a + t.b + t.c;
+    }
+
+    public Int quadSum(Quad q) {
+        return q.w + q.x + q.y + q.z;
+    }
+}
+
+module Main {
+    public static void main() {
+        // Part 1: Two structs passed across call boundary
+        Point p1 = Point { x: 10, y: 20 };
+        Point p2 = Point { x: 3, y: 7 };
+        Int sum = Ops.addPoints(p1, p2);
+        Bool structOk = (sum == 40);
+
+        // Part 2: Pair struct — tests two-field struct argument
+        Pair pr = Pair { first: 50, second: 8 };
+        Int diff = Ops.pairDiff(pr);
+        Bool pairOk = (diff == 42);
+
+        // Part 3: Three-field struct — tests register spill behavior
+        Triple t = Triple { a: 100, b: 200, c: 300 };
+        Int tResult = Ops.tripleSum(t);
+        Bool tripleOk = (tResult == 600);
+
+        // Part 4: Four-field struct — tests larger struct ABI
+        Quad q = Quad { w: 1, x: 2, y: 3, z: 4 };
+        Int qResult = Ops.quadSum(q);
+        Bool quadOk = (qResult == 10);
+
+        if (structOk && pairOk && tripleOk && quadOk) {
+            println("PHASE1_ABI_STRUCT_OK");
+        } else {
+            println("PHASE1_ABI_STRUCT_BAD");
+        }
+    }
+}

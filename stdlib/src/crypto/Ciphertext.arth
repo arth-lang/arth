@@ -1,0 +1,188 @@
+package crypto;
+
+/**
+ * AEAD ciphertext with embedded authentication tag.
+ *
+ * Ciphertext represents the output of authenticated encryption (AEAD).
+ * It contains:
+ * - The encrypted data
+ * - The authentication tag (appended)
+ * - The algorithm used
+ *
+ * The tag provides integrity and authenticity - any modification to the
+ * ciphertext will cause decryption to fail.
+ *
+ * Example usage:
+ * ```arth
+ * import crypto.*;
+ *
+ * module Example {
+ *     public void encryptDecrypt() throws (RandomError, DecryptionError) {
+ *         SecretKey key = SecretKey.generate(AeadAlgorithm.AES_256_GCM);
+ *         Nonce nonce = Nonce.random(AeadAlgorithm.AES_256_GCM);
+ *
+ *         bytes plaintext = "Hello, World!".toBytes();
+ *         bytes aad = bytes.empty(); // Associated data (optional)
+ *
+ *         // Encrypt
+ *         Ciphertext ct = Aead.encrypt(key, nonce, plaintext, aad);
+ *
+ *         // Decrypt
+ *         bytes decrypted = Aead.decrypt(key, nonce, ct, aad);
+ *     }
+ * }
+ * ```
+ *
+ * @see crypto.Aead for encryption/decryption
+ */
+
+/**
+ * AEAD ciphertext with embedded authentication tag.
+ *
+ * Format: [ciphertext bytes][16-byte authentication tag]
+ */
+public struct Ciphertext {
+    /// The AEAD algorithm used
+    public final AeadAlgorithm algorithm;
+    /// The ciphertext with appended tag
+    public final bytes data;
+}
+
+/**
+ * Module for Ciphertext operations.
+ */
+module Ciphertext {
+    // =========================================================================
+    // Construction
+    // =========================================================================
+
+    /**
+     * Creates a Ciphertext from raw bytes (ciphertext + tag).
+     *
+     * @param algorithm The AEAD algorithm
+     * @param data The raw ciphertext with appended tag
+     * @return A new Ciphertext
+     * @throws BufferSizeError if the data is too short to contain a tag
+     */
+    public static Ciphertext fromBytes(AeadAlgorithm algorithm, bytes data) throws BufferSizeError {
+        int tagSize = AeadAlgorithm.tagSize(algorithm);
+        if (data.length() < tagSize) {
+            throw BufferSizeError.withSizes(
+                "Ciphertext too short for " + AeadAlgorithm.name(algorithm),
+                tagSize,
+                data.length()
+            );
+        }
+        return Ciphertext {
+            algorithm: algorithm,
+            data: data
+        };
+    }
+
+    /**
+     * Creates a Ciphertext from separate ciphertext and tag.
+     *
+     * @param algorithm The AEAD algorithm
+     * @param ciphertext The encrypted data (without tag)
+     * @param tag The authentication tag
+     * @return A new Ciphertext with combined data
+     * @throws InvalidKeyError if the tag size is wrong
+     */
+    @intrinsic("crypto.ciphertext_from_parts")
+    public static Ciphertext fromParts(AeadAlgorithm algorithm, bytes ciphertext, bytes tag)
+        throws InvalidKeyError {
+        int expectedTagSize = AeadAlgorithm.tagSize(algorithm);
+        if (tag.length() != expectedTagSize) {
+            throw InvalidKeyError.withSize(
+                "Tag size mismatch for " + AeadAlgorithm.name(algorithm),
+                expectedTagSize,
+                tag.length()
+            );
+        }
+        // Intrinsic: concatenates ciphertext and tag
+        return Ciphertext {
+            algorithm: algorithm,
+            data: bytes.allocate(0)
+        };
+    }
+
+    // =========================================================================
+    // Access
+    // =========================================================================
+
+    /**
+     * Returns the raw ciphertext bytes (with tag appended).
+     *
+     * @param self The ciphertext
+     * @return The raw bytes (ciphertext + tag)
+     */
+    public static bytes toBytes(Ciphertext self) {
+        return self.data;
+    }
+
+    /**
+     * Returns the ciphertext portion (without tag).
+     *
+     * @param self The ciphertext
+     * @return The encrypted data without the tag
+     */
+    public static bytes ciphertextOnly(Ciphertext self) {
+        int tagSize = AeadAlgorithm.tagSize(self.algorithm);
+        int ctLen = self.data.length() - tagSize;
+        if (ctLen <= 0) {
+            return bytes.empty();
+        }
+        return self.data.slice(0, ctLen);
+    }
+
+    /**
+     * Returns the authentication tag.
+     *
+     * @param self The ciphertext
+     * @return The authentication tag
+     */
+    public static bytes tag(Ciphertext self) {
+        int tagSize = AeadAlgorithm.tagSize(self.algorithm);
+        int ctLen = self.data.length() - tagSize;
+        if (ctLen < 0) {
+            return self.data;
+        }
+        return self.data.slice(ctLen, tagSize);
+    }
+
+    // =========================================================================
+    // Properties
+    // =========================================================================
+
+    /**
+     * Returns the algorithm.
+     *
+     * @param self The ciphertext
+     * @return The AEAD algorithm
+     */
+    public static AeadAlgorithm algorithm(Ciphertext self) {
+        return self.algorithm;
+    }
+
+    /**
+     * Returns the total size (ciphertext + tag).
+     *
+     * @param self The ciphertext
+     * @return The total size in bytes
+     */
+    public static int size(Ciphertext self) {
+        return self.data.length();
+    }
+
+    /**
+     * Returns the plaintext size (ciphertext size without tag).
+     *
+     * @param self The ciphertext
+     * @return The plaintext size in bytes
+     */
+    public static int plaintextSize(Ciphertext self) {
+        int tagSize = AeadAlgorithm.tagSize(self.algorithm);
+        int ctLen = self.data.length() - tagSize;
+        return ctLen > 0 ? ctLen : 0;
+    }
+}

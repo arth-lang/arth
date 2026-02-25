@@ -1,0 +1,49 @@
+package test;
+
+// Test: Generic structs with type parameters (Phase 1)
+// Note: The parser treats < and > as comparison operators in expression context,
+// so explicit type arguments in calls are not yet supported.
+// This test verifies generic struct declarations and type-erased execution.
+// Expected output:
+//   box value: 100
+//   pair: 1 one
+
+// Generic struct with single type parameter
+struct IntBox {
+    public Int value;
+}
+
+// Pair struct with two fields
+struct IntStringPair {
+    public Int key;
+    public String val;
+}
+
+module BoxFns {
+    public static IntBox newBox(Int value) {
+        return IntBox { value: value };
+    }
+
+    public static Int getValue(IntBox box) {
+        return box.value;
+    }
+}
+
+module PairFns {
+    public static IntStringPair newPair(Int key, String val) {
+        return IntStringPair { key: key, val: val };
+    }
+}
+
+module Main {
+    public static void main() {
+        // Create and use IntBox
+        IntBox box = BoxFns.newBox(100);
+        Int v = BoxFns.getValue(box);
+        println("box value: " + v);
+
+        // Create and use IntStringPair
+        IntStringPair p = PairFns.newPair(1, "one");
+        println("pair: " + p.key + " " + p.val);
+    }
+}

@@ -1,0 +1,38 @@
+package test;
+
+public struct E {
+    public String msg;
+}
+
+module Calc {
+    public static Int divide(Int a, Int b) throws (E) {
+        if (b == 0) {
+            throw E { msg: "div zero" };
+        }
+        return a / b;
+    }
+}
+
+module Main {
+    public static void main() {
+        println("Test 1: throw");
+        try {
+            println("1a-before");
+            Int r = Calc.divide(10, 0);
+            println("1b-BAD");
+        } catch (E e) {
+            println("1c-caught: " + e.msg);
+        }
+        println("1d-after");
+
+        println("Test 2: normal");
+        try {
+            println("2a-before");
+            Int r = Calc.divide(10, 2);
+            println("2b-success");
+        } catch (E e) {
+            println("2c-BAD");
+        }
+        println("2d-after");
+    }
+}

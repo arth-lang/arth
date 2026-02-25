@@ -1,0 +1,283 @@
+package mail;
+
+/**
+ * High-level mail API.
+ *
+ * This module provides a simplified interface for common mail operations:
+ * - Sending mail via SMTP
+ * - Reading mail via IMAP/POP3
+ *
+ * For more control, use Transport and Store directly.
+ *
+ * Example usage:
+ * ```arth
+ * import mail.*;
+ *
+ * // Send a simple email
+ * Session session = SessionBuilder.new()
+ *     .smtp("smtp.example.com", 587)
+ *     .startTls(true)
+ *     .auth("user@example.com", "password")
+ *     .build();
+ *
+ * MimeMessage msg = MessageBuilder.new()
+ *     .from(InternetAddress.of("user@example.com"))
+ *     .to(InternetAddress.of("recipient@example.com"))
+ *     .subject("Hello!")
+ *     .text("This is a test email.")
+ *     .build();
+ *
+ * await Mail.send(session, msg);
+ * ```
+ *
+ * @see mail.Session for configuration
+ * @see mail.Transport for low-level sending
+ * @see mail.Store for low-level receiving
+ */
+
+// ─────────────────────────────────────────────────────────────────────────────
+// High-Level Send API
+// ─────────────────────────────────────────────────────────────────────────────
+
+module Mail {
+    /// Sends a message using the session configuration.
+    ///
+    /// This is a convenience method that:
+    /// 1. Connects to the SMTP server
+    /// 2. Authenticates if credentials are configured
+    /// 3. Sends the message
+    /// 4. Disconnects
+    ///
+    /// For sending multiple messages, use Transport directly for better performance.
+    @intrinsic("mail.send")
+    public static async void send(Session session, MimeMessage message)
+        throws (ConnectionError, AuthenticationError, TransportError, TlsError, TimeoutError) {
+        Transport transport = await Transport.connect(session);
+        try {
+            await Transport.send(transport, message);
+        } finally {
+            Transport.disconnect(transport);
+        }
+    }
+
+    /// Sends multiple messages using the session configuration.
+    ///
+    /// Returns results for each message.
+    @intrinsic("mail.send_all")
+    public static async SendResult[] sendAll(Session session, MimeMessage[] messages)
+        throws (ConnectionError, AuthenticationError, TlsError, TimeoutError) {
+        Transport transport = await Transport.connect(session);
+        try {
+            return await Transport.sendAll(transport, messages);
+        } finally {
+            Transport.disconnect(transport);
+        }
+    }
+
+    /// Sends a simple text email.
+    ///
+    /// This is the simplest way to send an email.
+    public static async void sendText(
+        Session session,
+        String from,
+        String to,
+        String subject,
+        String body
+    ) throws (ConnectionError, AuthenticationError, TransportError, TlsError, TimeoutError, AddressError, MessageError) {
+        InternetAddress fromAddr = InternetAddress.parse(from);
+        InternetAddress toAddr = InternetAddress.parse(to);
+
+        MimeMessage msg = MessageBuilder.new()
+            .then(MessageBuilder.from(fromAddr))
+            .then(MessageBuilder.to(toAddr))
+            .then(MessageBuilder.subject(subject))
+            .then(MessageBuilder.text(body))
+            .then(MessageBuilder.build());
+
+        await send(session, msg);
+    }
+
+    /// Sends an HTML email with plain text fallback.
+    public static async void sendHtml(
+        Session session,
+        String from,
+        String to,
+        String subject,
+        String htmlBody,
+        String textBody
+    ) throws (ConnectionError, AuthenticationError, TransportError, TlsError, TimeoutError, AddressError, MessageError) {
+        InternetAddress fromAddr = InternetAddress.parse(from);
+        InternetAddress toAddr = InternetAddress.parse(to);
+
+        MimeMessage msg = MessageBuilder.new()
+            .then(MessageBuilder.from(fromAddr))
+            .then(MessageBuilder.to(toAddr))
+            .then(MessageBuilder.subject(subject))
+            .then(MessageBuilder.text(textBody))
+            .then(MessageBuilder.html(htmlBody))
+            .then(MessageBuilder.build());
+
+        await send(session, msg);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // High-Level Receive API
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Gets a transport for the session.
+    ///
+    /// Remember to call Transport.disconnect() when done.
+    public static async Transport getTransport(Session session)
+        throws (ConnectionError, AuthenticationError, TlsError, TimeoutError) {
+        return await Transport.connect(session);
+    }
+
+    /// Gets a store for the session.
+    ///
+    /// Remember to call Store.disconnect() when done.
+    public static async Store getStore(Session session)
+        throws (ConnectionError, AuthenticationError, TlsError, TimeoutError) {
+        return await Store.connect(session);
+    }
+
+    /// Counts unread messages in the inbox.
+    public static async int countUnread(Session session)
+        throws (ConnectionError, AuthenticationError, TlsError, FolderError, TimeoutError) {
+        Store store = await Store.connect(session);
+        try {
+            Folder inbox = Store.getInbox(store);
+            inbox = await Folder.open(inbox, FolderMode.READ_ONLY);
+            try {
+                return Folder.getUnreadCount(inbox);
+            } finally {
+                Folder.close(inbox, false);
+            }
+        } finally {
+            Store.disconnect(store);
+        }
+    }
+
+    /// Gets the most recent messages from the inbox.
+    ///
+    /// @param count Maximum number of messages to return
+    public static async MimeMessage[] getRecentMessages(Session session, int count)
+        throws (ConnectionError, AuthenticationError, TlsError, FolderError, TimeoutError) {
+        Store store = await Store.connect(session);
+        try {
+            Folder inbox = Store.getInbox(store);
+            inbox = await Folder.open(inbox, FolderMode.READ_ONLY);
+            try {
+                int total = Folder.getMessageCount(inbox);
+                int start = total - count + 1;
+                if (start < 1) {
+                    start = 1;
+                }
+                return await Folder.getMessagesRange(inbox, start, total);
+            } finally {
+                Folder.close(inbox, false);
+            }
+        } finally {
+            Store.disconnect(store);
+        }
+    }
+
+    /// Searches for messages in the inbox.
+    public static async MimeMessage[] searchInbox(Session session, SearchTerm term)
+        throws (ConnectionError, AuthenticationError, TlsError, FolderError, TimeoutError) {
+        Store store = await Store.connect(session);
+        try {
+            Folder inbox = Store.getInbox(store);
+            inbox = await Folder.open(inbox, FolderMode.READ_ONLY);
+            try {
+                return await Folder.search(inbox, term);
+            } finally {
+                Folder.close(inbox, false);
+            }
+        } finally {
+            Store.disconnect(store);
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Mail Provider
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Provider for mail session management.
+ *
+ * Use this for long-lived applications that need to send/receive mail
+ * frequently. The provider manages connection pooling and reconnection.
+ *
+ * Example:
+ * ```arth
+ * provider MailProvider {
+ *     public final Session smtpSession;
+ *     public final Session imapSession;
+ *     public shared Transport transport;
+ *     public shared Store store;
+ * }
+ * ```
+ */
+public struct MailConfig {
+    /// SMTP session configuration
+    public final Session smtpSession;
+    /// IMAP/POP3 session configuration
+    public final Session storeSession;
+    /// Auto-reconnect on connection loss
+    public final bool autoReconnect;
+    /// Keep-alive interval in milliseconds (0 = disabled)
+    public final int keepAliveMs;
+}
+
+module MailConfig {
+    /// Creates a configuration for SMTP only.
+    public static MailConfig smtp(Session session) {
+        return MailConfig {
+            smtpSession: session,
+            storeSession: session, // Not used
+            autoReconnect: true,
+            keepAliveMs: 0
+        };
+    }
+
+    /// Creates a configuration for IMAP/POP3 only.
+    public static MailConfig store(Session session) {
+        return MailConfig {
+            smtpSession: session, // Not used
+            storeSession: session,
+            autoReconnect: true,
+            keepAliveMs: 0
+        };
+    }
+
+    /// Creates a configuration for both SMTP and IMAP/POP3.
+    public static MailConfig full(Session smtp, Session store) {
+        return MailConfig {
+            smtpSession: smtp,
+            storeSession: store,
+            autoReconnect: true,
+            keepAliveMs: 0
+        };
+    }
+
+    /// Returns a new config with auto-reconnect setting.
+    public static MailConfig withAutoReconnect(MailConfig self, bool enabled) {
+        return MailConfig {
+            smtpSession: self.smtpSession,
+            storeSession: self.storeSession,
+            autoReconnect: enabled,
+            keepAliveMs: self.keepAliveMs
+        };
+    }
+
+    /// Returns a new config with keep-alive setting.
+    public static MailConfig withKeepAlive(MailConfig self, int intervalMs) {
+        return MailConfig {
+            smtpSession: self.smtpSession,
+            storeSession: self.storeSession,
+            autoReconnect: self.autoReconnect,
+            keepAliveMs: intervalMs
+        };
+    }
+}

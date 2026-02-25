@@ -1,0 +1,138 @@
+package demo;
+
+// Demonstrates ownership patterns and move semantics per spec §8
+
+// Resource that requires cleanup
+public struct FileHandle {
+    public final String path;
+    public Int fd;
+}
+
+// Builder pattern with ownership transfer
+public struct RequestBuilder {
+    public String method;
+    public String url;
+    public String body;
+}
+
+// Module with ownership-aware functions
+module FileHandleFns {
+    public FileHandle open(String path) {
+        return FileHandle { path: path, fd: 0 };
+    }
+
+    // Takes ownership - FileHandle is consumed
+    public void close(FileHandle f) {
+        // Cleanup logic here
+        // After this call, f is no longer accessible to caller
+    }
+
+    // Borrows for reading - FileHandle remains valid
+    public String read(FileHandle f) {
+        return "contents";
+    }
+
+    // Exclusive borrow for mutation
+    public void write(FileHandle f, String data) {
+        borrowMut(f);
+        f.fd = 1;  // Can mutate
+        release(f);
+    }
+}
+
+// Builder pattern demonstrates ownership transfer through chaining
+module RequestBuilderFns {
+    public RequestBuilder new() {
+        return RequestBuilder { method: "GET", url: "", body: "" };
+    }
+
+    // Each method takes ownership and returns a new builder
+    public RequestBuilder method(RequestBuilder b, String m) {
+        return RequestBuilder { method: m, url: b.url, body: b.body };
+    }
+
+    public RequestBuilder url(RequestBuilder b, String u) {
+        return RequestBuilder { method: b.method, url: u, body: b.body };
+    }
+
+    public RequestBuilder body(RequestBuilder b, String content) {
+        return RequestBuilder { method: b.method, url: b.url, body: content };
+    }
+
+    // Final method consumes builder to produce request
+    public String build(RequestBuilder b) {
+        return b.method + " " + b.url;
+    }
+}
+
+// RAII pattern - cleanup at scope end
+module RaiiDemo {
+    public void scopedResource() {
+        // Resource created
+        FileHandle f = FileHandleFns.open("/tmp/test.txt");
+
+        // Use resource
+        String content = FileHandleFns.read(f);
+
+        // Resource automatically cleaned up at scope end
+        // (deinit would be called if defined)
+    }
+
+    public void transferOwnership() {
+        FileHandle f = FileHandleFns.open("/tmp/data.txt");
+
+        // Transfer ownership to another function
+        FileHandleFns.close(f);
+
+        // f is now invalid - any use would be a compile error
+        // String s = FileHandleFns.read(f);  // ERROR: use after move
+    }
+
+    public void builderChain() {
+        // Builder pattern with ownership chain
+        String request = RequestBuilderFns.new()
+            .then(RequestBuilderFns.method("POST"))
+            .then(RequestBuilderFns.url("http://api.example.com/users"))
+            .then(RequestBuilderFns.body("{\"name\":\"Alice\"}"))
+            .then(RequestBuilderFns.build);
+
+        // Each step takes and returns ownership
+    }
+}
+
+// Conditional ownership
+module ConditionalOwnership {
+    public void conditionalMove() {
+        FileHandle f = FileHandleFns.open("/tmp/cond.txt");
+
+        Bool shouldClose = true;
+
+        if (shouldClose) {
+            FileHandleFns.close(f);
+            // f is moved on this path
+        }
+
+        // After the if, f is conditionally moved
+        // Accessing f here would be an error because it might be moved
+    }
+
+    public void loopOwnership() {
+        // Creating resources in a loop
+        for (Int i = 0; i < 3; i = i + 1) {
+            FileHandle f = FileHandleFns.open("/tmp/loop.txt");
+            String content = FileHandleFns.read(f);
+            // Each iteration creates and destroys its own resource
+        }
+    }
+}
+
+module Main {
+    public static void main() {
+        RaiiDemo.scopedResource();
+        RaiiDemo.transferOwnership();
+        RaiiDemo.builderChain();
+        ConditionalOwnership.conditionalMove();
+        ConditionalOwnership.loopOwnership();
+        println("OwnershipPatterns demo complete");
+    }
+}

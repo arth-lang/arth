@@ -1,0 +1,502 @@
+package mail;
+
+/**
+ * MIME message part types and manipulation.
+ *
+ * This module provides types for working with MIME message parts according to
+ * RFC 2045-2049 (MIME specifications).
+ *
+ * A message can be:
+ * - Simple: Single part (text/plain, text/html, etc.)
+ * - Multipart: Contains multiple parts (multipart/mixed, multipart/alternative, etc.)
+ *
+ * Multipart types:
+ * - multipart/mixed: Parts are independent (e.g., message with attachments)
+ * - multipart/alternative: Parts are alternative representations (e.g., plain text + HTML)
+ * - multipart/related: Parts are related (e.g., HTML with inline images)
+ * - multipart/digest: Collection of messages
+ *
+ * Example usage:
+ * ```arth
+ * import mail.*;
+ *
+ * // Check if a part is multipart
+ * if (Part.isMultipart(content)) {
+ *     Multipart mp = Part.getMultipart(content);
+ *     int count = Multipart.getCount(mp);
+ *
+ *     for (int i = 0; i < count; i = i + 1) {
+ *         Part part = Multipart.getPart(mp, i);
+ *         ContentType ct = Part.getContentType(part);
+ *         // Process each part...
+ *     }
+ * }
+ * ```
+ *
+ * @see mail.MimeMessage for using parts in messages
+ * @see mail.Attachment for working with attachments
+ */
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Part Interface
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Interface for MIME message parts.
+ *
+ * A Part represents a single section of a MIME message, which can be:
+ * - Text content (text/plain, text/html)
+ * - Binary content (application/*, image/*, etc.)
+ * - Multipart container (multipart/*)
+ * - Nested message (message/rfc822)
+ */
+public interface Part {
+    /// Returns the content type of this part.
+    ContentType getContentType();
+
+    /// Returns the content disposition (inline, attachment).
+    String getDisposition();
+
+    /// Returns the content as a string (for text parts).
+    String getText();
+
+    /// Returns the content as bytes.
+    bytes getBytes();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MIME Part Structure
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Represents a single MIME part.
+ *
+ * A MimePart contains:
+ * - Headers specific to this part (Content-Type, Content-Transfer-Encoding, etc.)
+ * - Content (text, binary data, or nested multipart)
+ */
+public struct MimePart {
+    /// Part headers
+    public final Headers headers;
+    /// Content type
+    public final ContentType contentType;
+    /// Content disposition (may be empty)
+    public final String disposition;
+    /// Content ID (for multipart/related, may be empty)
+    public final String contentId;
+    /// Filename (for attachments, may be empty)
+    public final String filename;
+    /// Content transfer encoding (7bit, 8bit, binary, quoted-printable, base64)
+    public final String transferEncoding;
+    /// Raw content bytes (decoded from transfer encoding)
+    public final bytes content;
+    /// For multipart types, the child parts
+    public final int multipartHandle;
+}
+
+module MimePart implements Part {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Factory Methods
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Creates a text/plain part.
+    public static MimePart text(String text) {
+        return MimePart {
+            headers: Headers.empty(),
+            contentType: ContentType.TEXT_PLAIN(),
+            disposition: "inline",
+            contentId: "",
+            filename: "",
+            transferEncoding: "7bit",
+            content: stringToBytes(text),
+            multipartHandle: 0
+        };
+    }
+
+    /// Creates a text/plain part with charset.
+    public static MimePart textWithCharset(String text, String charset) {
+        return MimePart {
+            headers: Headers.empty(),
+            contentType: ContentType.withParam("text", "plain", "charset", charset),
+            disposition: "inline",
+            contentId: "",
+            filename: "",
+            transferEncoding: "8bit",
+            content: stringToBytes(text),
+            multipartHandle: 0
+        };
+    }
+
+    /// Creates a text/html part.
+    public static MimePart html(String html) {
+        return MimePart {
+            headers: Headers.empty(),
+            contentType: ContentType.withParam("text", "html", "charset", "utf-8"),
+            disposition: "inline",
+            contentId: "",
+            filename: "",
+            transferEncoding: "8bit",
+            content: stringToBytes(html),
+            multipartHandle: 0
+        };
+    }
+
+    /// Creates a binary part with content type.
+    public static MimePart binary(bytes data, ContentType contentType) {
+        return MimePart {
+            headers: Headers.empty(),
+            contentType: contentType,
+            disposition: "attachment",
+            contentId: "",
+            filename: "",
+            transferEncoding: "base64",
+            content: data,
+            multipartHandle: 0
+        };
+    }
+
+    /// Creates a binary part from bytes with filename.
+    public static MimePart attachment(bytes data, String filename, ContentType contentType) {
+        return MimePart {
+            headers: Headers.empty(),
+            contentType: contentType,
+            disposition: "attachment",
+            contentId: "",
+            filename: filename,
+            transferEncoding: "base64",
+            content: data,
+            multipartHandle: 0
+        };
+    }
+
+    /// Creates an inline part with content ID (for multipart/related).
+    public static MimePart inline(bytes data, String contentId, ContentType contentType) {
+        return MimePart {
+            headers: Headers.empty(),
+            contentType: contentType,
+            disposition: "inline",
+            contentId: contentId,
+            filename: "",
+            transferEncoding: "base64",
+            content: data,
+            multipartHandle: 0
+        };
+    }
+
+    /// Parses a MIME part from raw bytes.
+    @intrinsic("mail.part.parse")
+    public static MimePart parse(bytes raw) throws (MessageError) {
+        // Intrinsic implementation - placeholder
+        return MimePart.text("");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Part Interface Implementation
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public ContentType getContentType(MimePart self) {
+        return self.contentType;
+    }
+
+    public String getDisposition(MimePart self) {
+        return self.disposition;
+    }
+
+    public String getText(MimePart self) {
+        return bytesToString(self.content);
+    }
+
+    public bytes getBytes(MimePart self) {
+        return self.content;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Accessors
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns the part headers.
+    public static Headers getHeaders(MimePart self) {
+        return self.headers;
+    }
+
+    /// Returns the Content-ID (without angle brackets).
+    public static String getContentId(MimePart self) {
+        return self.contentId;
+    }
+
+    /// Returns the filename (for attachments).
+    public static String getFilename(MimePart self) {
+        return self.filename;
+    }
+
+    /// Returns the content transfer encoding.
+    public static String getTransferEncoding(MimePart self) {
+        return self.transferEncoding;
+    }
+
+    /// Returns the size of the content in bytes.
+    public static int getSize(MimePart self) {
+        return bytesLength(self.content);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Type Checking
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns true if this part is text/* content.
+    public static bool isText(MimePart self) {
+        return ContentType.isText(self.contentType);
+    }
+
+    /// Returns true if this part is a multipart container.
+    public static bool isMultipart(MimePart self) {
+        return ContentType.isMultipart(self.contentType);
+    }
+
+    /// Returns true if this part is an attachment.
+    public static bool isAttachment(MimePart self) {
+        return self.disposition == "attachment";
+    }
+
+    /// Returns true if this part is inline.
+    public static bool isInline(MimePart self) {
+        return self.disposition == "inline";
+    }
+
+    /// Returns true if this part has a content ID (for multipart/related).
+    public static bool hasContentId(MimePart self) {
+        return self.contentId != "";
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Multipart Access
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns the Multipart container if this is a multipart part.
+    ///
+    /// @throws MessageError if this is not a multipart part
+    public static Multipart getMultipart(MimePart self) throws (MessageError) {
+        if (!isMultipart(self)) {
+            throw MessageError.new("Part is not multipart");
+        }
+        // Return multipart from handle
+        return Multipart {
+            contentType: self.contentType,
+            partsHandle: self.multipartHandle,
+            preamble: "",
+            epilogue: ""
+        };
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Encoding
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns the part encoded for transmission.
+    @intrinsic("mail.part.encode")
+    public static bytes encode(MimePart self) {
+        // Intrinsic implementation - placeholder
+        return self.content;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Multipart Container
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Represents a multipart MIME container.
+ *
+ * A Multipart contains multiple MimePart children separated by a boundary string.
+ */
+public struct Multipart {
+    /// Content type (multipart/mixed, multipart/alternative, etc.)
+    public final ContentType contentType;
+    /// Handle to the list of child parts
+    public final int partsHandle;
+    /// Optional preamble (text before first boundary)
+    public final String preamble;
+    /// Optional epilogue (text after last boundary)
+    public final String epilogue;
+}
+
+module Multipart {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Factory Methods
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Creates an empty multipart/mixed container.
+    public static Multipart mixed() {
+        return Multipart {
+            contentType: ContentType.MULTIPART_MIXED(),
+            partsHandle: 0,
+            preamble: "",
+            epilogue: ""
+        };
+    }
+
+    /// Creates an empty multipart/alternative container.
+    public static Multipart alternative() {
+        return Multipart {
+            contentType: ContentType.MULTIPART_ALTERNATIVE(),
+            partsHandle: 0,
+            preamble: "",
+            epilogue: ""
+        };
+    }
+
+    /// Creates an empty multipart/related container.
+    public static Multipart related() {
+        return Multipart {
+            contentType: ContentType.MULTIPART_RELATED(),
+            partsHandle: 0,
+            preamble: "",
+            epilogue: ""
+        };
+    }
+
+    /// Creates a multipart with the specified subtype.
+    public static Multipart of(String subtype) {
+        return Multipart {
+            contentType: ContentType.of("multipart", subtype),
+            partsHandle: 0,
+            preamble: "",
+            epilogue: ""
+        };
+    }
+
+    /// Parses a multipart from raw bytes with the given boundary.
+    @intrinsic("mail.multipart.parse")
+    public static Multipart parse(bytes raw, String boundary) throws (MessageError) {
+        // Intrinsic implementation - placeholder
+        return Multipart.mixed();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Accessors
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns the content type.
+    public static ContentType getContentType(Multipart self) {
+        return self.contentType;
+    }
+
+    /// Returns the boundary string.
+    public static String getBoundary(Multipart self) {
+        return ContentType.getBoundary(self.contentType);
+    }
+
+    /// Returns the number of parts.
+    @intrinsic("mail.multipart.count")
+    public static int getCount(Multipart self) {
+        // Intrinsic implementation - placeholder
+        return 0;
+    }
+
+    /// Returns the part at the given index.
+    @intrinsic("mail.multipart.get")
+    public static MimePart getPart(Multipart self, int index) {
+        // Intrinsic implementation - placeholder
+        return MimePart.text("");
+    }
+
+    /// Returns all parts.
+    @intrinsic("mail.multipart.get_all")
+    public static MimePart[] getParts(Multipart self) {
+        // Intrinsic implementation - placeholder
+        MimePart[] result;
+        return result;
+    }
+
+    /// Returns the preamble (text before first boundary).
+    public static String getPreamble(Multipart self) {
+        return self.preamble;
+    }
+
+    /// Returns the epilogue (text after last boundary).
+    public static String getEpilogue(Multipart self) {
+        return self.epilogue;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Modification
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns a new Multipart with a part added.
+    @intrinsic("mail.multipart.add")
+    public static Multipart addPart(Multipart self, MimePart part) {
+        // Intrinsic implementation - placeholder
+        return self;
+    }
+
+    /// Returns a new Multipart with a text part added.
+    public static Multipart addText(Multipart self, String text) {
+        return addPart(self, MimePart.text(text));
+    }
+
+    /// Returns a new Multipart with an HTML part added.
+    public static Multipart addHtml(Multipart self, String html) {
+        return addPart(self, MimePart.html(html));
+    }
+
+    /// Returns a new Multipart with a part removed.
+    @intrinsic("mail.multipart.remove")
+    public static Multipart removePart(Multipart self, int index) {
+        // Intrinsic implementation - placeholder
+        return self;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Type Checking
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns true if this is multipart/mixed.
+    public static bool isMixed(Multipart self) {
+        return ContentType.getSubtype(self.contentType) == "mixed";
+    }
+
+    /// Returns true if this is multipart/alternative.
+    public static bool isAlternative(Multipart self) {
+        return ContentType.getSubtype(self.contentType) == "alternative";
+    }
+
+    /// Returns true if this is multipart/related.
+    public static bool isRelated(Multipart self) {
+        return ContentType.getSubtype(self.contentType) == "related";
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Encoding
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Encodes the multipart as bytes for transmission.
+    @intrinsic("mail.multipart.encode")
+    public static bytes encode(Multipart self) {
+        // Intrinsic implementation - placeholder
+        bytes result;
+        return result;
+    }
+
+    /// Generates a unique boundary string.
+    @intrinsic("mail.multipart.generate_boundary")
+    public static String generateBoundary() {
+        // Intrinsic implementation - placeholder
+        return "----=_Part_" + randomHex(16);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helper Functions
+// ─────────────────────────────────────────────────────────────────────────────
+
+@intrinsic("string.to_bytes")
+static bytes stringToBytes(String s) { bytes b; return b; }
+
+@intrinsic("bytes.to_string")
+static String bytesToString(bytes b) { return ""; }
+
+@intrinsic("bytes.length")
+static int bytesLength(bytes b) { return 0; }
+
+@intrinsic("random.hex")
+static String randomHex(int length) { return ""; }

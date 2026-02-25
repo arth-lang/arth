@@ -1,0 +1,55 @@
+package test;
+
+/**
+ * Control flow parity test.
+ * Tests that if/else, while, for work identically in VM and native modes.
+ */
+module Main {
+    public static void main() {
+        // If/else
+        Int x = 5;
+        if (x > 3) {
+            println("x > 3: true");
+        } else {
+            println("x > 3: false");
+        }
+
+        if (x < 3) {
+            println("x < 3: true");
+        } else {
+            println("x < 3: false");
+        }
+
+        // While loop
+        Int i = 0;
+        while (i < 5) {
+            println("while i: " + i);
+            i = i + 1;
+        }
+
+        // For loop (desugared to while)
+        for (Int j = 0; j < 3; j = j + 1) {
+            println("for j: " + j);
+        }
+
+        // Nested if
+        Int val = 10;
+        if (val > 5) {
+            if (val > 8) {
+                println("nested: val > 8");
+            } else {
+                println("nested: val > 5 but <= 8");
+            }
+        }
+
+        // Boolean logic
+        Bool t = true;
+        Bool f = false;
+        println("and tt: " + (t && t));
+        println("and tf: " + (t && f));
+        println("or tf: " + (t || f));
+        println("or ff: " + (f || f));
+        println("not t: " + (!t));
+        println("not f: " + (!f));
+    }
+}

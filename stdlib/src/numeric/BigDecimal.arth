@@ -1,0 +1,230 @@
+package numeric;
+
+/**
+ * Arbitrary-precision decimal numbers.
+ *
+ * NOTE: This file is an INTRINSIC-BACKED STUB for IDE/tooling support.
+ * The function bodies are placeholders - actual implementation is provided
+ * by the compiler via intrinsic lowering to VM runtime functions.
+ *
+ * BigDecimal provides arbitrary-precision signed decimal numbers, suitable
+ * for financial and monetary calculations where floating-point rounding
+ * errors are unacceptable.
+ *
+ * Example usage:
+ * ```
+ * import numeric.*;
+ *
+ * module Main {
+ *     public static void main() {
+ *         BigDecimal price = BigDecimal.new("19.99");
+ *         BigDecimal tax = BigDecimal.new("0.08");
+ *         BigDecimal total = BigDecimal.mul(price, BigDecimal.add(BigDecimal.fromInt(1), tax));
+ *         // total = 21.5892
+ *
+ *         BigDecimal rounded = BigDecimal.round(total, 2, 0);  // Round to 2 decimal places
+ *         String display = BigDecimal.toString(rounded);  // "21.59"
+ *     }
+ * }
+ * ```
+ *
+ * @see src/compiler/intrinsics.rs for intrinsic registry
+ * @see crates/arth-vm/src/runtime.rs for VM implementation
+ */
+
+/// Represents an arbitrary-precision decimal number.
+/// Used for financial calculations requiring exact decimal arithmetic.
+public struct BigDecimal {
+    /// Internal handle to the decimal value
+    public final Int handle;
+}
+
+/// Rounding modes for BigDecimal operations.
+public enum RoundingMode {
+    /// Round towards positive infinity
+    CEILING,
+    /// Round towards negative infinity
+    FLOOR,
+    /// Round towards zero (truncate)
+    DOWN,
+    /// Round away from zero
+    UP,
+    /// Round towards nearest neighbor, ties round up
+    HALF_UP,
+    /// Round towards nearest neighbor, ties round down
+    HALF_DOWN,
+    /// Round towards nearest neighbor, ties round to even
+    HALF_EVEN
+}
+
+module BigDecimal {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Construction
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Creates a BigDecimal from a string representation.
+    ///
+    /// @param value The string representation (e.g., "123.456")
+    /// @return A new BigDecimal
+    @intrinsic("bigdecimal.new")
+    public static BigDecimal new(String value) { return BigDecimal { handle: 0 }; }
+
+    /// Creates a BigDecimal from an integer.
+    ///
+    /// @param value The integer value
+    /// @return A new BigDecimal representing the integer
+    @intrinsic("bigdecimal.from_int")
+    public static BigDecimal fromInt(Int value) { return BigDecimal { handle: 0 }; }
+
+    /// Creates a BigDecimal from a floating-point number.
+    ///
+    /// Note: May introduce representation errors inherent in floats.
+    /// For exact values, prefer new(String).
+    ///
+    /// @param value The float value
+    /// @return A new BigDecimal
+    @intrinsic("bigdecimal.from_float")
+    public static BigDecimal fromFloat(Float value) { return BigDecimal { handle: 0 }; }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Arithmetic Operations
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Adds two BigDecimal values.
+    ///
+    /// @param a First operand
+    /// @param b Second operand
+    /// @return a + b
+    @intrinsic("bigdecimal.add")
+    public static BigDecimal add(BigDecimal a, BigDecimal b) { return BigDecimal { handle: 0 }; }
+
+    /// Subtracts two BigDecimal values.
+    ///
+    /// @param a First operand
+    /// @param b Second operand
+    /// @return a - b
+    @intrinsic("bigdecimal.sub")
+    public static BigDecimal sub(BigDecimal a, BigDecimal b) { return BigDecimal { handle: 0 }; }
+
+    /// Multiplies two BigDecimal values.
+    ///
+    /// @param a First operand
+    /// @param b Second operand
+    /// @return a * b
+    @intrinsic("bigdecimal.mul")
+    public static BigDecimal mul(BigDecimal a, BigDecimal b) { return BigDecimal { handle: 0 }; }
+
+    /// Divides two BigDecimal values with specified scale.
+    ///
+    /// @param a Dividend
+    /// @param b Divisor
+    /// @param scale Number of decimal places in result
+    /// @return a / b rounded to scale decimal places
+    @intrinsic("bigdecimal.div")
+    public static BigDecimal div(BigDecimal a, BigDecimal b, Int scale) { return BigDecimal { handle: 0 }; }
+
+    /// Computes the remainder of division.
+    ///
+    /// @param a Dividend
+    /// @param b Divisor
+    /// @return a % b
+    @intrinsic("bigdecimal.rem")
+    public static BigDecimal rem(BigDecimal a, BigDecimal b) { return BigDecimal { handle: 0 }; }
+
+    /// Raises a BigDecimal to an integer power.
+    ///
+    /// @param base The base value
+    /// @param exp The exponent (must be non-negative)
+    /// @return base^exp
+    @intrinsic("bigdecimal.pow")
+    public static BigDecimal pow(BigDecimal base, Int exp) { return BigDecimal { handle: 0 }; }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Unary Operations
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns the absolute value.
+    ///
+    /// @param self The BigDecimal value
+    /// @return |self|
+    public static BigDecimal abs(BigDecimal self) {
+        BigDecimal zero = BigDecimal.fromInt(0);
+        if (BigDecimal.compare(self, zero) < 0) {
+            return BigDecimal.negate(self);
+        }
+        return self;
+    }
+
+    /// Returns the negation.
+    ///
+    /// @param self The BigDecimal value
+    /// @return -self
+    @intrinsic("bigdecimal.negate")
+    public static BigDecimal negate(BigDecimal self) { return BigDecimal { handle: 0 }; }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Comparison
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Compares two BigDecimal values.
+    ///
+    /// @param a First value
+    /// @param b Second value
+    /// @return -1 if a < b, 0 if a == b, 1 if a > b
+    @intrinsic("bigdecimal.compare")
+    public static Int compare(BigDecimal a, BigDecimal b) { return 0; }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Conversion
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Converts to string representation.
+    ///
+    /// @param self The BigDecimal value
+    /// @return String representation (e.g., "123.456")
+    @intrinsic("bigdecimal.to_string")
+    public static String toString(BigDecimal self) { return ""; }
+
+    /// Converts to integer (truncates decimal part).
+    ///
+    /// @param self The BigDecimal value
+    /// @return Integer part of the value
+    @intrinsic("bigdecimal.to_int")
+    public static Int toInt(BigDecimal self) { return 0; }
+
+    /// Converts to floating-point (may lose precision).
+    ///
+    /// @param self The BigDecimal value
+    /// @return Float approximation
+    @intrinsic("bigdecimal.to_float")
+    public static Float toFloat(BigDecimal self) { return 0.0; }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Scale Operations
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns the scale (number of decimal places).
+    ///
+    /// @param self The BigDecimal value
+    /// @return Number of digits after decimal point
+    @intrinsic("bigdecimal.scale")
+    public static Int scale(BigDecimal self) { return 0; }
+
+    /// Returns a new BigDecimal with the specified scale.
+    ///
+    /// @param self The BigDecimal value
+    /// @param newScale The target scale
+    /// @param roundingMode How to round if precision is lost (0=HALF_UP)
+    /// @return A new BigDecimal with the specified scale
+    @intrinsic("bigdecimal.set_scale")
+    public static BigDecimal setScale(BigDecimal self, Int newScale, Int roundingMode) { return BigDecimal { handle: 0 }; }
+
+    /// Rounds to specified decimal places with rounding mode.
+    ///
+    /// @param self The BigDecimal value
+    /// @param decimalPlaces Number of decimal places to keep
+    /// @param roundingMode How to round (0=HALF_UP, 1=DOWN, 2=UP, etc.)
+    /// @return Rounded BigDecimal
+    @intrinsic("bigdecimal.round")
+    public static BigDecimal round(BigDecimal self, Int decimalPlaces, Int roundingMode) { return BigDecimal { handle: 0 }; }
+}

@@ -1,0 +1,196 @@
+package db;
+
+/**
+ * Database connection lifecycle management.
+ *
+ * This module defines the Connection type which represents an open database
+ * connection, along with types for connection state and driver identification.
+ *
+ * @see db.sqlite.Sqlite for SQLite driver
+ * @see db.postgres.Postgres for PostgreSQL driver
+ * @see db.Pool for connection pooling
+ */
+
+/**
+ * Enumeration of supported database drivers.
+ *
+ * Variants:
+ * - SQLITE: SQLite embedded database
+ * - POSTGRES: PostgreSQL server database
+ */
+public enum DriverType {
+    SQLITE,
+    POSTGRES
+}
+
+/**
+ * Module providing utilities for DriverType enumeration.
+ */
+module DriverType {
+    /// Returns the ordinal value (0=SQLITE, 1=POSTGRES).
+    public static int ordinal(DriverType t) {
+        match t {
+            DriverType.SQLITE => { return 0; }
+            DriverType.POSTGRES => { return 1; }
+        }
+    }
+}
+
+/**
+ * Connection state enumeration.
+ *
+ * Variants:
+ * - OPEN: Connection is open and ready for queries
+ * - IN_TRANSACTION: Connection is in a transaction
+ * - CLOSED: Connection is closed
+ * - ERROR: Connection encountered an error
+ */
+public enum ConnectionState {
+    OPEN,
+    IN_TRANSACTION,
+    CLOSED,
+    ERROR
+}
+
+/**
+ * Module providing utilities for ConnectionState enumeration.
+ */
+module ConnectionState {
+    /// Returns the ordinal value (0=OPEN, 1=IN_TRANSACTION, 2=CLOSED, 3=ERROR).
+    public static int ordinal(ConnectionState s) {
+        match s {
+            ConnectionState.OPEN => { return 0; }
+            ConnectionState.IN_TRANSACTION => { return 1; }
+            ConnectionState.CLOSED => { return 2; }
+            ConnectionState.ERROR => { return 3; }
+        }
+    }
+}
+
+/**
+ * Represents an open database connection.
+ *
+ * Connection is a handle to a database connection managed by a specific driver.
+ * The handle field is an opaque driver-specific identifier.
+ */
+public struct Connection {
+    /// Opaque connection handle (driver-specific)
+    public final int handle;
+    /// The driver type that created this connection
+    public final DriverType driverType;
+    /// Current state of the connection
+    public final ConnectionState state;
+    /// The connection string used to open this connection
+    public final String connectionString;
+}
+
+/**
+ * Module providing factory functions and utilities for Connection instances.
+ */
+module Connection {
+    /// Creates a new Connection with the given parameters.
+    public static Connection new(int handle, DriverType driverType, String connectionString) {
+        return Connection {
+            handle: handle,
+            driverType: driverType,
+            state: ConnectionState.OPEN,
+            connectionString: connectionString
+        };
+    }
+
+    /// Creates a Connection in a specific state.
+    public static Connection withState(int handle, DriverType driverType, ConnectionState state, String connectionString) {
+        return Connection {
+            handle: handle,
+            driverType: driverType,
+            state: state,
+            connectionString: connectionString
+        };
+    }
+
+    /// Returns true if the connection is open.
+    public static bool isOpen(Connection c) {
+        int ord = ConnectionState.ordinal(c.state);
+        return ord == 0 || ord == 1;
+    }
+
+    /// Returns true if the connection is in a transaction.
+    public static bool isInTransaction(Connection c) {
+        return ConnectionState.ordinal(c.state) == 1;
+    }
+
+    /// Returns true if the connection is closed.
+    public static bool isClosed(Connection c) {
+        return ConnectionState.ordinal(c.state) == 2;
+    }
+
+    /// Returns the driver type for this connection.
+    public static DriverType getDriverType(Connection c) {
+        return c.driverType;
+    }
+
+    /// Returns the connection string used to open this connection.
+    public static String getConnectionString(Connection c) {
+        return c.connectionString;
+    }
+
+    /// Returns the opaque connection handle.
+    public static int getHandle(Connection c) {
+        return c.handle;
+    }
+
+    /// Returns the current connection state.
+    public static ConnectionState getState(Connection c) {
+        return c.state;
+    }
+
+    /// Returns a new Connection with updated state.
+    public static Connection setState(Connection c, ConnectionState newState) {
+        return Connection {
+            handle: c.handle,
+            driverType: c.driverType,
+            state: newState,
+            connectionString: c.connectionString
+        };
+    }
+
+    /// Closes the connection. The actual close is performed by the driver.
+    public static Connection markClosed(Connection c) {
+        return Connection {
+            handle: c.handle,
+            driverType: c.driverType,
+            state: ConnectionState.CLOSED,
+            connectionString: c.connectionString
+        };
+    }
+
+    /// Marks the connection as in an error state.
+    public static Connection markError(Connection c) {
+        return Connection {
+            handle: c.handle,
+            driverType: c.driverType,
+            state: ConnectionState.ERROR,
+            connectionString: c.connectionString
+        };
+    }
+
+    /// Marks the connection as in a transaction.
+    public static Connection markInTransaction(Connection c) {
+        return Connection {
+            handle: c.handle,
+            driverType: c.driverType,
+            state: ConnectionState.IN_TRANSACTION,
+            connectionString: c.connectionString
+        };
+    }
+
+    /// Marks the connection as open (no active transaction).
+    public static Connection markOpen(Connection c) {
+        return Connection {
+            handle: c.handle,
+            driverType: c.driverType,
+            state: ConnectionState.OPEN,
+            connectionString: c.connectionString
+        };
+    }
+}

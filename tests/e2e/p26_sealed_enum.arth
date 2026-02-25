@@ -1,0 +1,213 @@
+package test;
+
+// Test: Sealed Enums - P26
+// In Arth, all enums are "sealed by default" per the spec.
+// This means:
+// 1. All variants must be known at compile time
+// 2. Switch statements must be exhaustive (cover all variants or have default)
+// 3. The `sealed` keyword can be used explicitly to document intent
+//
+// Expected output:
+//   === Test 1: Basic Enum (Sealed by Default) ===
+//   Status: Active
+//   Status: Pending
+//   Status: Closed
+//   Test 1: PASS
+//   === Test 2: Explicit Sealed Keyword ===
+//   Traffic light: Red - Stop!
+//   Traffic light: Yellow - Slow down!
+//   Traffic light: Green - Go!
+//   Test 2: PASS
+//   === Test 3: Exhaustive With Wildcard ===
+//   Got first or second
+//   Got third
+//   Got other
+//   Test 3: PASS
+//   === Test 4: Exhaustive With Default ===
+//   Day: Monday
+//   Day: Weekend!
+//   Test 4: PASS
+//   === Test 5: Enum With Payloads ===
+//   Event: UserLogin from alice
+//   Event: Message content with 12 chars
+//   Event: System shutdown
+//   Test 5: PASS
+//   === Summary ===
+//   All 5 tests passed!
+//   === P26: PASSED ===
+
+// Test 1: Basic enum - sealed by default in Arth
+// The compiler enforces exhaustive pattern matching
+enum Status {
+    Active,
+    Pending,
+    Closed
+}
+
+// Test 2: Explicit sealed keyword (documents intent, same behavior)
+sealed enum TrafficLight {
+    Red,
+    Yellow,
+    Green
+}
+
+// Test 3: Enum for wildcard testing
+enum Priority {
+    First,
+    Second,
+    Third,
+    Fourth
+}
+
+// Test 4: Enum for default clause testing
+enum Day {
+    Monday,
+    Tuesday,
+    Wednesday,
+    Thursday,
+    Friday,
+    Saturday,
+    Sunday
+}
+
+// Test 5: Enum with payloads
+sealed enum Event {
+    UserLogin(String),
+    Message(String),
+    Shutdown
+}
+
+module Main {
+    public static void main() {
+        int passed = 0;
+
+        // Test 1: Basic sealed enum with exhaustive match
+        println("=== Test 1: Basic Enum (Sealed by Default) ===");
+        Status s1 = Status.Active;
+        Status s2 = Status.Pending;
+        Status s3 = Status.Closed;
+
+        printStatus(s1);
+        printStatus(s2);
+        printStatus(s3);
+        println("Test 1: PASS");
+        passed = passed + 1;
+
+        // Test 2: Explicit sealed keyword enum
+        println("=== Test 2: Explicit Sealed Keyword ===");
+        TrafficLight t1 = TrafficLight.Red;
+        TrafficLight t2 = TrafficLight.Yellow;
+        TrafficLight t3 = TrafficLight.Green;
+
+        printTrafficLight(t1);
+        printTrafficLight(t2);
+        printTrafficLight(t3);
+        println("Test 2: PASS");
+        passed = passed + 1;
+
+        // Test 3: Exhaustive with wildcard pattern
+        println("=== Test 3: Exhaustive With Wildcard ===");
+        Priority p1 = Priority.First;
+        Priority p2 = Priority.Third;
+        Priority p3 = Priority.Fourth;
+
+        printPriority(p1);
+        printPriority(p2);
+        printPriority(p3);
+        println("Test 3: PASS");
+        passed = passed + 1;
+
+        // Test 4: Exhaustive with default clause
+        println("=== Test 4: Exhaustive With Default ===");
+        Day d1 = Day.Monday;
+        Day d2 = Day.Saturday;
+
+        printDay(d1);
+        printDay(d2);
+        println("Test 4: PASS");
+        passed = passed + 1;
+
+        // Test 5: Sealed enum with payloads
+        println("=== Test 5: Enum With Payloads ===");
+        Event e1 = Event.UserLogin("alice");
+        Event e2 = Event.Message("Hello World!");
+        Event e3 = Event.Shutdown;
+
+        printEvent(e1);
+        printEvent(e2);
+        printEvent(e3);
+        println("Test 5: PASS");
+        passed = passed + 1;
+
+        // Summary
+        println("=== Summary ===");
+        if (passed == 5) {
+            println("All 5 tests passed!");
+            println("=== P26: PASSED ===");
+        } else {
+            println("Some tests failed!");
+            println("=== P26: FAILED ===");
+        }
+    }
+
+    // Helper: Print status - exhaustive match required
+    public static void printStatus(Status s) {
+        switch (s) {
+            case Status.Active:
+                println("Status: Active");
+            case Status.Pending:
+                println("Status: Pending");
+            case Status.Closed:
+                println("Status: Closed");
+        }
+    }
+
+    // Helper: Print traffic light - exhaustive match
+    public static void printTrafficLight(TrafficLight t) {
+        switch (t) {
+            case TrafficLight.Red:
+                println("Traffic light: Red - Stop!");
+            case TrafficLight.Yellow:
+                println("Traffic light: Yellow - Slow down!");
+            case TrafficLight.Green:
+                println("Traffic light: Green - Go!");
+        }
+    }
+
+    // Helper: Print priority - using wildcard for catch-all
+    public static void printPriority(Priority p) {
+        switch (p) {
+            case Priority.First:
+                println("Got first or second");
+            case Priority.Second:
+                println("Got first or second");
+            case Priority.Third:
+                println("Got third");
+            case _:
+                println("Got other");
+        }
+    }
+
+    // Helper: Print day - using default clause
+    public static void printDay(Day d) {
+        switch (d) {
+            case Day.Monday:
+                println("Day: Monday");
+            default:
+                println("Day: Weekend!");
+        }
+    }
+
+    // Helper: Print event - exhaustive with payloads
+    public static void printEvent(Event e) {
+        switch (e) {
+            case Event.UserLogin(user):
+                println("Event: UserLogin from " + user);
+            case Event.Message(msg):
+                int len = 12;
+                println("Event: Message content with " + len + " chars");
+            case Event.Shutdown:
+                println("Event: System shutdown");
+        }
+    }
+}

@@ -1,0 +1,232 @@
+package db.sqlite;
+
+import db.*;
+
+/**
+ * SQLite database driver.
+ *
+ * This module provides SQLite3 database connectivity through FFI bindings
+ * to the native sqlite3 library. SQLite is an embedded database that stores
+ * data in a local file.
+ *
+ * ## Connection Strings
+ *
+ * | Format | Example |
+ * |--------|---------|
+ * | File path | `file:/path/to/db.sqlite` |
+ * | In-memory | `file::memory:` |
+ * | Read-only | `file:/path/to/db.sqlite?mode=ro` |
+ * | Create if missing | `file:/path/to/db.sqlite?mode=rwc` |
+ *
+ * ## Example Usage
+ *
+ * ```arth
+ * import db.*;
+ * import db.sqlite.*;
+ *
+ * // Connect to database
+ * Connection conn = Sqlite.connect("file:./mydb.sqlite");
+ *
+ * // Create table
+ * Sqlite.execute(conn, "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, name TEXT)");
+ *
+ * // Insert data
+ * int affected = Sqlite.execute(conn, "INSERT INTO users (name) VALUES (?)", [Param.textParam(1, "Alice")]);
+ *
+ * // Query data
+ * Row[] rows = Sqlite.query(conn, "SELECT * FROM users WHERE name = ?", [Param.textParam(1, "Alice")]);
+ *
+ * // Transaction
+ * Sqlite.begin(conn);
+ * try {
+ *     Sqlite.execute(conn, "UPDATE users SET name = ? WHERE id = ?", [Param.textParam(1, "Bob"), Param.intParam(2, 1)]);
+ *     Sqlite.commit(conn);
+ * } catch (QueryError e) {
+ *     Sqlite.rollback(conn);
+ *     throw e;
+ * }
+ *
+ * // Close connection
+ * Sqlite.disconnect(conn);
+ * ```
+ *
+ * ## Implementation Status
+ *
+ * This module is a placeholder for Phase 2 implementation. The FFI bindings
+ * and VM host functions are not yet implemented.
+ *
+ * @see db.Connection for connection lifecycle
+ * @see db.Statement for prepared statements
+ * @see docs/stdlib-database.md Phase 2 for implementation plan
+ */
+
+/**
+ * SQLite driver module.
+ *
+ * All operations are synchronous. For async compatibility, wrap calls
+ * in Task.blocking().
+ */
+module Sqlite {
+    /// Opens a SQLite database connection.
+    ///
+    /// @param connectionString SQLite connection string (file:path or file::memory:)
+    /// @returns An open Connection with driverType = SQLITE
+    /// @throws (ConnectionError) if the database cannot be opened
+    @intrinsic("sqlite.connect")
+    public static Connection connect(String connectionString) throws (ConnectionError) {
+        // Intrinsic: opens SQLite database
+        return Connection {
+            handle: 0,
+            driverType: DriverType.SQLITE,
+            state: ConnectionState.OPEN,
+            connectionString: connectionString
+        };
+    }
+
+    /// Closes a SQLite database connection.
+    ///
+    /// @param conn The connection to close
+    /// @throws (ConnectionError) if the connection cannot be closed
+    @intrinsic("sqlite.disconnect")
+    public static void disconnect(Connection conn) throws (ConnectionError) {
+        // Intrinsic: closes SQLite database
+    }
+
+    /// Executes a query that returns results.
+    ///
+    /// @param conn The connection to use
+    /// @param sql The SQL SELECT query
+    /// @param params Query parameters (use ? placeholders)
+    /// @returns Array of result rows
+    /// @throws (QueryError) if query execution fails
+    @intrinsic("sqlite.query")
+    public static List<Row> query(Connection conn, String sql, List<Param> params) throws (QueryError) {
+        // Intrinsic: executes SELECT query
+        return [];
+    }
+
+    /// Executes a query with no parameters.
+    public static List<Row> queryNoParams(Connection conn, String sql) throws (QueryError) {
+        return Sqlite.query(conn, sql, []);
+    }
+
+    /// Executes a statement that modifies data.
+    ///
+    /// @param conn The connection to use
+    /// @param sql The SQL INSERT/UPDATE/DELETE statement
+    /// @param params Statement parameters (use ? placeholders)
+    /// @returns Number of affected rows
+    /// @throws (QueryError) if execution fails
+    @intrinsic("sqlite.execute")
+    public static int execute(Connection conn, String sql, List<Param> params) throws (QueryError) {
+        // Intrinsic: executes modification statement
+        return 0;
+    }
+
+    /// Executes a statement with no parameters.
+    public static int executeNoParams(Connection conn, String sql) throws (QueryError) {
+        return Sqlite.execute(conn, sql, []);
+    }
+
+    /// Prepares a SQL statement for repeated execution.
+    ///
+    /// @param conn The connection to use
+    /// @param sql The SQL to prepare (use ? for placeholders)
+    /// @returns A prepared Statement
+    /// @throws (PrepareError) if preparation fails
+    @intrinsic("sqlite.prepare")
+    public static Statement prepare(Connection conn, String sql) throws (PrepareError) {
+        // Intrinsic: prepares statement
+        return Statement {
+            handle: 0,
+            connectionHandle: conn.handle,
+            sql: sql,
+            paramCount: 0,
+            state: StatementState.PREPARED
+        };
+    }
+
+    /// Begins a transaction.
+    ///
+    /// @param conn The connection to use
+    /// @throws (TransactionError) if already in a transaction or begin fails
+    @intrinsic("sqlite.begin")
+    public static void begin(Connection conn) throws (TransactionError) {
+        // Intrinsic: BEGIN TRANSACTION
+    }
+
+    /// Commits the current transaction.
+    ///
+    /// @param conn The connection to use
+    /// @throws (TransactionError) if not in a transaction or commit fails
+    @intrinsic("sqlite.commit")
+    public static void commit(Connection conn) throws (TransactionError) {
+        // Intrinsic: COMMIT
+    }
+
+    /// Rolls back the current transaction.
+    ///
+    /// @param conn The connection to use
+    /// @throws (TransactionError) if not in a transaction or rollback fails
+    @intrinsic("sqlite.rollback")
+    public static void rollback(Connection conn) throws (TransactionError) {
+        // Intrinsic: ROLLBACK
+    }
+
+    /// Creates a savepoint for nested transaction support.
+    ///
+    /// @param conn The connection to use
+    /// @param name The savepoint name
+    /// @throws (TransactionError) if savepoint creation fails
+    @intrinsic("sqlite.savepoint")
+    public static void savepoint(Connection conn, String name) throws (TransactionError) {
+        // Intrinsic: SAVEPOINT name
+    }
+
+    /// Releases a savepoint.
+    ///
+    /// @param conn The connection to use
+    /// @param name The savepoint name
+    /// @throws (TransactionError) if release fails
+    @intrinsic("sqlite.release_savepoint")
+    public static void releaseSavepoint(Connection conn, String name) throws (TransactionError) {
+        // Intrinsic: RELEASE SAVEPOINT name
+    }
+
+    /// Rolls back to a savepoint.
+    ///
+    /// @param conn The connection to use
+    /// @param name The savepoint name
+    /// @throws (TransactionError) if rollback fails
+    @intrinsic("sqlite.rollback_to_savepoint")
+    public static void rollbackToSavepoint(Connection conn, String name) throws (TransactionError) {
+        // Intrinsic: ROLLBACK TO SAVEPOINT name
+    }
+
+    /// Returns the last inserted row ID.
+    ///
+    /// @param conn The connection to use
+    /// @returns The rowid of the last INSERT
+    @intrinsic("sqlite.last_insert_rowid")
+    public static int64 lastInsertRowid(Connection conn) {
+        // Intrinsic: sqlite3_last_insert_rowid
+        return 0;
+    }
+
+    /// Returns the number of rows changed by the last statement.
+    ///
+    /// @param conn The connection to use
+    /// @returns Number of changed rows
+    @intrinsic("sqlite.changes")
+    public static int changes(Connection conn) {
+        // Intrinsic: sqlite3_changes
+        return 0;
+    }
+
+    /// Returns the SQLite version string.
+    @intrinsic("sqlite.version")
+    public static String version() {
+        // Intrinsic: sqlite3_libversion
+        return "";
+    }
+}

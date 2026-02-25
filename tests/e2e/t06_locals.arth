@@ -1,0 +1,20 @@
+package test;
+
+// Test: Local variables and reassignment
+// Expected output:
+//   10
+//   20
+//   25
+
+module Main {
+    public static void main() {
+        Int x = 10;
+        println(x);  // 10
+
+        x = 20;
+        println(x);  // 20
+
+        Int y = x + 5;
+        println(y);  // 25
+    }
+}

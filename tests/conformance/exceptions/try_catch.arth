@@ -1,0 +1,80 @@
+package conformance;
+
+// @spec: spec.md §7 - Try/catch/finally exception handling
+// @expect: pass
+// @description: Validates exception handling per spec §7
+
+public struct ParseError {
+    public String message;
+}
+
+public struct ValidationError {
+    public String message;
+}
+
+module Parser {
+    public Int parse(String s, Bool shouldFail) throws (ParseError) {
+        if (shouldFail) {
+            throw ParseError { message: "parse failed" };
+        }
+        return 42;
+    }
+}
+
+module Validator {
+    public Int validate(Int value) throws (ValidationError) {
+        if (value < 0) {
+            throw ValidationError { message: "negative value" };
+        }
+        return value;
+    }
+}
+
+module Main {
+    public static void main() {
+        // Basic try/catch
+        try {
+            Int result = Parser.parse("test", true);
+        } catch (ParseError e) {
+            String msg = e.message;
+        }
+
+        // Try/catch with success path
+        try {
+            Int result = Parser.parse("42", false);
+            // No exception thrown
+        } catch (ParseError e) {
+            // Not reached
+        }
+
+        // Multiple catch blocks
+        Int value = 0;
+        try {
+            value = Parser.parse("test", false);
+            value = Validator.validate(value);
+        } catch (ParseError e) {
+            value = -1;
+        } catch (ValidationError e) {
+            value = -2;
+        }
+
+        // Try/catch/finally
+        try {
+            Int result = Parser.parse("x", false);
+        } catch (ParseError e) {
+            // Handle error
+        } finally {
+            // Always executed
+            Int cleanup = 1;
+        }
+
+        // Finally without catch
+        try {
+            Int result = 42;
+        } finally {
+            Int cleanup = 1;
+        }
+
+        println("try_catch: pass");
+    }
+}

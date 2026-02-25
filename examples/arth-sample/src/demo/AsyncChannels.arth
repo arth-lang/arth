@@ -1,0 +1,42 @@
+package demo.async;
+
+import concurrent.*;
+import log.*;
+
+enum Message {
+  Num(int),
+  Quit
+}
+
+module AsyncChannels {
+  public async void run() {
+    Logger log = Logger.get("demo.async");
+    Channel<Message> ch = Channels.create(Message.class);
+    Sender<Message> tx = ch.sender();
+    Receiver<Message> rx = ch.receiver();
+
+    Task.spawn(fn() { producer(tx); });
+    await consumer(rx, log);
+  }
+
+  public void producer(Sender<Message> tx) {
+    for (int i = 0; i < 5; i++) {
+      tx.send(Message.Num(i));
+    }
+    tx.send(Message.Quit);
+    tx.close();
+  }
+
+  public async void consumer(Receiver<Message> rx, Logger log) {
+    while (true) {
+      Optional<Message> m = await rx.recv();
+      if (m.isEmpty()) break;
+      switch (m.get()) {
+        case Message.Num(n): log.info("num", "got", Fields.of("n", n));
+        case Message.Quit: break;
+        default: break;
+      }
+      if (m.get() == Message.Quit) break;
+    }
+  }
+}

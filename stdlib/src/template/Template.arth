@@ -1,0 +1,224 @@
+// =============================================================================
+// Template Module - Attribute-Based HTML Templating Engine
+// =============================================================================
+//
+// Provides a compile + render templating engine using HTML data-* attributes.
+// Similar to Alpine.js/Vue.js syntax for declarative data binding.
+//
+// Supported Directives:
+//   - data-bind="expr"       : Bind element text content to expression
+//   - data-bind-{attr}="expr": Bind attribute value to expression
+//   - data-if="expr"         : Conditional rendering
+//   - data-for="item in list": Loop over collection
+//   - data-include="name"    : Include a registered partial template
+//
+// Expression Syntax:
+//   - Variable access: name, user.name, items[0]
+//   - Negation: !isHidden
+//
+// NOTE: This file is an INTRINSIC-BACKED STUB for IDE/tooling support.
+// The function bodies are placeholders - actual implementation is provided
+// by the compiler via intrinsic lowering to VM runtime functions.
+//
+// Usage:
+//   import template.*;
+//
+//   module Main {
+//       public static void main() throws (TemplateError) {
+//           String html = """
+//               <html>
+//               <body>
+//                   <h1 data-bind="title">Title</h1>
+//                   <ul>
+//                       <li data-for="item in items" data-bind="item">Item</li>
+//                   </ul>
+//                   <div data-if="showFooter">Footer</div>
+//               </body>
+//               </html>
+//           """;
+//
+//           Int tpl = Template.compile(html);
+//           Int ctx = Map.new();
+//           Map.put(ctx, "title", "Hello World");
+//           String result = Template.render(tpl, ctx);
+//           Template.free(tpl);
+//       }
+//   }
+//
+// @see src/compiler/intrinsics.rs for intrinsic registry
+// @see crates/arth-vm/src/runtime/template.inc.rs for VM implementation
+
+package template;
+
+// =============================================================================
+// Error Type
+// =============================================================================
+
+/// Error type for template operations.
+public struct TemplateError {
+    /// Error message describing the issue
+    public final String message;
+    /// Line number where error occurred (1-indexed, 0 if unknown)
+    public final Int line;
+}
+
+// =============================================================================
+// Template Module - Compile and Render API
+// =============================================================================
+
+/// HTML templating engine with data-* attribute syntax.
+///
+/// Templates use HTML data attributes for declarative data binding:
+/// - `data-bind="expr"` - Replace element content with expression value
+/// - `data-bind-{attr}="expr"` - Set attribute to expression value
+/// - `data-if="expr"` - Conditionally render element
+/// - `data-for="var in collection"` - Repeat element for each item
+/// - `data-include="name"` - Insert a registered partial template
+///
+/// Example:
+/// ```html
+/// <div data-if="isLoggedIn">
+///     <span data-bind="user.name">Name</span>
+///     <ul>
+///         <li data-for="item in items" data-bind="item.title">Item</li>
+///     </ul>
+/// </div>
+/// ```
+export module Template {
+
+    // -------------------------------------------------------------------------
+    // Compilation
+    // -------------------------------------------------------------------------
+
+    /// Compile an HTML template string.
+    ///
+    /// Parses the HTML and extracts data-* directives for efficient rendering.
+    /// The compiled template can be rendered multiple times with different contexts.
+    ///
+    /// @param html The HTML template string with data-* attributes
+    /// @return A template handle for use with render()
+    /// @throws TemplateError if the template contains syntax errors
+    @intrinsic("template.compile")
+    public static Int compile(String html) throws (TemplateError) {
+        return 0;
+    }
+
+    /// Compile a template from a file path.
+    ///
+    /// Reads the file and compiles its contents as a template.
+    ///
+    /// @param path The file path to read
+    /// @return A template handle for use with render()
+    /// @throws TemplateError if reading fails or template has errors
+    @intrinsic("template.compile_file")
+    public static Int compileFile(String path) throws (TemplateError) {
+        return 0;
+    }
+
+    // -------------------------------------------------------------------------
+    // Rendering
+    // -------------------------------------------------------------------------
+
+    /// Render a compiled template with context data.
+    ///
+    /// Evaluates all directives using the provided context map and returns
+    /// the rendered HTML string.
+    ///
+    /// Context is a Map handle where:
+    /// - Keys are variable names (String)
+    /// - Values can be: String, Int, Bool, List handle, Map handle
+    ///
+    /// Example:
+    /// ```arth
+    /// Int ctx = Map.new();
+    /// Map.put(ctx, "title", "Hello");
+    /// Map.put(ctx, "showFooter", true);
+    /// String result = Template.render(tpl, ctx);
+    /// ```
+    ///
+    /// @param handle The compiled template handle
+    /// @param contextMap A Map handle containing template variables
+    /// @return The rendered HTML string
+    @intrinsic("template.render")
+    public static String render(Int handle, Int contextMap) {
+        return "";
+    }
+
+    // -------------------------------------------------------------------------
+    // Partials
+    // -------------------------------------------------------------------------
+
+    /// Register a compiled template as a named partial.
+    ///
+    /// Registered partials can be included in other templates using
+    /// the `data-include="name"` directive.
+    ///
+    /// Example:
+    /// ```arth
+    /// Int header = Template.compile("<nav>...</nav>");
+    /// Template.registerPartial("header", header);
+    /// // Now other templates can use: <div data-include="header"></div>
+    /// ```
+    ///
+    /// @param name The partial name for use in data-include
+    /// @param handle The compiled template handle
+    @intrinsic("template.register_partial")
+    public static void registerPartial(String name, Int handle) {
+    }
+
+    /// Get a registered partial by name.
+    ///
+    /// @param name The partial name
+    /// @return The template handle, or 0 if not found
+    @intrinsic("template.get_partial")
+    public static Int getPartial(String name) {
+        return 0;
+    }
+
+    /// Unregister a partial by name.
+    ///
+    /// @param name The partial name to unregister
+    @intrinsic("template.unregister_partial")
+    public static void unregisterPartial(String name) {
+    }
+
+    // -------------------------------------------------------------------------
+    // Memory Management
+    // -------------------------------------------------------------------------
+
+    /// Free a compiled template handle.
+    ///
+    /// Releases memory associated with the compiled template.
+    /// After calling this, the handle is invalid and should not be used.
+    ///
+    /// @param handle The template handle to free
+    @intrinsic("template.free")
+    public static void free(Int handle) {
+    }
+
+    // -------------------------------------------------------------------------
+    // Utility Functions
+    // -------------------------------------------------------------------------
+
+    /// Escape HTML special characters in a string.
+    ///
+    /// Converts: & → &amp; < → &lt; > → &gt; " → &quot; ' → &#x27;
+    ///
+    /// @param text The string to escape
+    /// @return The escaped string safe for HTML content
+    @intrinsic("template.escape_html")
+    public static String escapeHtml(String text) {
+        return "";
+    }
+
+    /// Unescape HTML entities in a string.
+    ///
+    /// Reverses escapeHtml() conversion.
+    ///
+    /// @param text The string with HTML entities
+    /// @return The unescaped string
+    @intrinsic("template.unescape_html")
+    public static String unescapeHtml(String text) {
+        return "";
+    }
+}

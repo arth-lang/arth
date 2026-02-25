@@ -1,0 +1,149 @@
+package test;
+
+// P12: Typed throws propagation
+// Tests that uncaught exceptions from called functions must be declared in caller's throws clause
+// Expected output:
+//   Test 1: Caught internally
+//   Test 2: Propagation works
+//   Test 3: Multi-type propagation works
+//   Test 4: Partial catch works
+//   Test 5: Chained propagation works
+//   All throws propagation tests passed!
+
+// Exception types
+public struct DbError {
+    public String message;
+}
+
+public struct NetworkError {
+    public String message;
+}
+
+public struct ValidationError {
+    public String message;
+}
+
+// Low-level function that throws
+module Db {
+    public String connect(Bool succeed) throws (DbError) {
+        if (!succeed) {
+            throw DbError { message: "db connection failed" };
+        }
+        return "connected";
+    }
+}
+
+// Low-level network function that throws different error
+module Network {
+    public String request(Bool succeed) throws (NetworkError) {
+        if (!succeed) {
+            throw NetworkError { message: "network error" };
+        }
+        return "success";
+    }
+}
+
+// Test 1: Function that catches internally (no propagation needed)
+module Service1 {
+    public String safeConnect() {
+        try {
+            return Db.connect(false);
+        } catch (DbError e) {
+            return "caught";
+        }
+    }
+}
+
+// Test 2: Function that propagates DbError - must declare throws
+module Service2 {
+    public String riskyConnect(Bool succeed) throws (DbError) {
+        return Db.connect(succeed);
+    }
+}
+
+// Test 3: Function that calls multiple throwing functions - propagates both
+module Service3 {
+    public String fetchData(Bool dbOk, Bool netOk) throws (DbError, NetworkError) {
+        String conn = Db.connect(dbOk);
+        String resp = Network.request(netOk);
+        return conn + " " + resp;
+    }
+}
+
+// Test 4: Partial catch - catches one, propagates another
+module Service4 {
+    public String partialHandle(Bool dbOk, Bool netOk) throws (NetworkError) {
+        String conn = "default";
+        try {
+            conn = Db.connect(dbOk);
+        } catch (DbError e) {
+            conn = "db-fallback";
+        }
+        String resp = Network.request(netOk);
+        return conn + " " + resp;
+    }
+}
+
+// Test 5: Chained propagation - A calls B calls C, each propagating
+module LowLevel {
+    public Int compute(Bool succeed) throws (ValidationError) {
+        if (!succeed) {
+            throw ValidationError { message: "validation failed" };
+        }
+        return 42;
+    }
+}
+
+module MidLevel {
+    public Int process(Bool succeed) throws (ValidationError) {
+        return LowLevel.compute(succeed);
+    }
+}
+
+module HighLevel {
+    public Int execute(Bool succeed) throws (ValidationError) {
+        return MidLevel.process(succeed);
+    }
+}
+
+module Main {
+    public static void main() {
+        // Test 1: Internal catch - no propagation
+        String r1 = Service1.safeConnect();
+        println("Test 1: Caught internally");
+
+        // Test 2: Propagation - caller catches
+        try {
+            String r2 = Service2.riskyConnect(false);
+        } catch (DbError e) {
+            println("Test 2: Propagation works");
+        }
+
+        // Test 3: Multi-type propagation - no throws when successful
+        try {
+            String r3 = Service3.fetchData(true, true);
+            println("Test 3: Multi-type propagation works");
+        } catch (DbError e) {
+            println("FAIL: DbError");
+        } catch (NetworkError e) {
+            println("FAIL: NetworkError");
+        }
+
+        // Test 4: Partial catch with propagation
+        try {
+            String r4 = Service4.partialHandle(false, true);
+            println("Test 4: Partial catch works");
+        } catch (NetworkError e) {
+            println("FAIL: NetworkError");
+        }
+
+        // Test 5: Chained propagation
+        try {
+            Int r5 = HighLevel.execute(false);
+        } catch (ValidationError e) {
+            println("Test 5: Chained propagation works");
+        }
+
+        println("All throws propagation tests passed!");
+    }
+}

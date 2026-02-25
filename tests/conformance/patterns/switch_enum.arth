@@ -1,0 +1,26 @@
+package conformance;
+
+// @spec: spec.md §13 - Pattern matching on enums
+// @expect: pass
+// @description: Validates switch on enum values
+
+public enum Direction {
+    North,
+    South,
+    East,
+    West
+}
+
+module Main {
+    public static void main() {
+        // Switch can match on many constructs
+        Int x = 1;
+        switch (x) {
+            case 0: { }
+            case 1: { }
+            default: { }
+        }
+
+        println("switch_enum: pass");
+    }
+}

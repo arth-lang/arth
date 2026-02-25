@@ -1,0 +1,36 @@
+package conformance;
+
+// @spec: spec.md §13 - Pattern matching on booleans
+// @expect: pass
+// @description: Validates exhaustive switch on boolean values
+
+module Main {
+    public static void main() {
+        Bool enabled = true;
+        String state = "";
+
+        // Exhaustive switch on bool (both cases covered)
+        switch (enabled) {
+            case true: {
+                state = "on";
+            }
+            case false: {
+                state = "off";
+            }
+        }
+
+        // Bool switch in logic
+        Bool active = false;
+        Int value = 0;
+        switch (active) {
+            case true: {
+                value = 100;
+            }
+            case false: {
+                value = 0;
+            }
+        }
+
+        println("switch_bool: pass");
+    }
+}

@@ -1,0 +1,145 @@
+package log;
+
+/// A log event containing all information needed for output.
+public struct LogEvent {
+    /// The log level of this event.
+    public final LogLevel level;
+    /// The logger name that produced this event.
+    public final String loggerName;
+    /// A short event identifier (e.g., "auth.timeout", "http.request").
+    public final String event;
+    /// A human-readable message describing the event.
+    public final String message;
+    /// Structured key-value fields attached to this event.
+    public final Fields fields;
+    /// Timestamp in milliseconds since epoch (UTC).
+    public final long timestamp;
+}
+
+module LogEvent {
+    /// Creates a new log event with the current timestamp.
+    public static LogEvent create(
+        LogLevel level,
+        String loggerName,
+        String event,
+        String message,
+        Fields fields
+    ) {
+        return LogEvent {
+            level: level,
+            loggerName: loggerName,
+            event: event,
+            message: message,
+            fields: fields,
+            timestamp: 0 // TODO: get current time when time module is ready
+        };
+    }
+}
+
+/// Interface for log output destinations.
+/// Implementations can write to console, files, network, etc.
+public interface LogSink {
+    /// Writes a log event to this sink.
+    /// Implementations should format and output the event appropriately.
+    void write(LogEvent event);
+
+    /// Flushes any buffered log events.
+    void flush();
+}
+
+/// Default text-based log sink that writes to stdout.
+public struct TextSink {
+    /// Minimum level to log. Events below this level are ignored.
+    public final LogLevel minLevel;
+    /// Whether to include timestamps in output.
+    public final bool showTimestamp;
+}
+
+module TextSink implements LogSink for TextSink {
+    /// Creates a new TextSink with INFO as the minimum level.
+    public static TextSink create() {
+        return TextSink { minLevel: LogLevel.INFO, showTimestamp: false };
+    }
+
+    /// Creates a new TextSink with the specified minimum level.
+    public static TextSink withLevel(LogLevel level) {
+        return TextSink { minLevel: level, showTimestamp: false };
+    }
+
+    /// Creates a new TextSink with the specified minimum level and timestamp setting.
+    public static TextSink withOptions(LogLevel level, bool showTimestamp) {
+        return TextSink { minLevel: level, showTimestamp: showTimestamp };
+    }
+
+    /// Writes a log event to stdout if the level is >= minLevel.
+    public void write(TextSink self, LogEvent event) {
+        if !LogLevel.isEnabled(event.level, self.minLevel) {
+            return;
+        }
+        // Format: LEVEL event: message [fields]
+        String line = LogLevel.name(event.level);
+        if event.event != "" {
+            line = line + " " + event.event;
+        }
+        if event.message != "" {
+            line = line + ": " + event.message;
+        }
+        String fieldsStr = Fields.toString(event.fields);
+        if fieldsStr != "" {
+            line = line + " " + fieldsStr;
+        }
+        println(line);
+    }
+
+    /// Flushes stdout (no-op for unbuffered output).
+    public void flush(TextSink self) {
+        // stdout is typically unbuffered, no action needed
+    }
+}
+
+/// JSON-formatted log sink that writes structured JSON to stdout.
+public struct JsonSink {
+    /// Minimum level to log.
+    public final LogLevel minLevel;
+}
+
+module JsonSink implements LogSink for JsonSink {
+    /// Creates a new JsonSink with INFO as the minimum level.
+    public static JsonSink create() {
+        return JsonSink { minLevel: LogLevel.INFO };
+    }
+
+    /// Creates a new JsonSink with the specified minimum level.
+    public static JsonSink withLevel(LogLevel level) {
+        return JsonSink { minLevel: level };
+    }
+
+    /// Writes a log event as JSON to stdout if the level is >= minLevel.
+    public void write(JsonSink self, LogEvent event) {
+        if !LogLevel.isEnabled(event.level, self.minLevel) {
+            return;
+        }
+        // Output simplified JSON format
+        String json = "{\"level\":\"" + LogLevel.name(event.level) + "\"";
+        if event.loggerName != "" {
+            json = json + ",\"logger\":\"" + event.loggerName + "\"";
+        }
+        if event.event != "" {
+            json = json + ",\"event\":\"" + event.event + "\"";
+        }
+        if event.message != "" {
+            json = json + ",\"message\":\"" + event.message + "\"";
+        }
+        String fieldsStr = Fields.toJson(event.fields);
+        if fieldsStr != "" {
+            json = json + ",\"fields\":" + fieldsStr;
+        }
+        json = json + "}";
+        println(json);
+    }
+
+    /// Flushes stdout (no-op for unbuffered output).
+    public void flush(JsonSink self) {
+        // stdout is typically unbuffered, no action needed
+    }
+}

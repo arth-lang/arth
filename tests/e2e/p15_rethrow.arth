@@ -1,0 +1,150 @@
+package test;
+
+// P15: Exception rethrow
+// Tests: catch and rethrow same exception, catch and throw different,
+//        rethrow preserving value, multiple rethrows in chain
+//
+// Known limitations (to be addressed in future):
+// - throw in catch with finally doesn't run finally before propagating
+// - deep cross-function rethrow chains have some edge cases
+
+public struct ErrorA {
+    public String message;
+}
+
+public struct ErrorB {
+    public String message;
+}
+
+public struct WrappedError {
+    public String cause;
+}
+
+module Thrower {
+    public static Int throwA(Bool shouldThrow) throws (ErrorA) {
+        if (shouldThrow) {
+            throw ErrorA { message: "original-a" };
+        }
+        return 1;
+    }
+
+    public static Int throwB(Bool shouldThrow) throws (ErrorB) {
+        if (shouldThrow) {
+            throw ErrorB { message: "original-b" };
+        }
+        return 2;
+    }
+}
+
+// Test 1: Catch and rethrow the same exception
+module Rethrow1 {
+    public static Int process() throws (ErrorA) {
+        try {
+            Int r = Thrower.throwA(true);
+            return r;
+        } catch (ErrorA e) {
+            println("caught-will-rethrow: " + e.message);
+            throw e;
+        }
+    }
+}
+
+// Test 2: Catch and throw a different exception (wrapping)
+module Rethrow2 {
+    public static Int process() throws (WrappedError) {
+        try {
+            Int r = Thrower.throwA(true);
+            return r;
+        } catch (ErrorA e) {
+            println("wrapping: " + e.message);
+            throw WrappedError { cause: "wrapped(" + e.message + ")" };
+        }
+    }
+}
+
+// Test 3: Partial catch then rethrow (outer catches what inner doesn't)
+module Rethrow3 {
+    public static Int process() throws (ErrorA) {
+        try {
+            try {
+                Int r = Thrower.throwA(true);
+                return r;
+            } catch (ErrorB e) {
+                println("BAD-wrong-type");
+                return -1;
+            }
+        } catch (ErrorA e) {
+            println("outer-caught-rethrow");
+            throw e;
+        }
+    }
+}
+
+module Main {
+    public static void main() {
+        // Test 1: Simple rethrow
+        println("Test 1: Simple rethrow");
+        try {
+            Int r = Rethrow1.process();
+            println("BAD-1");
+        } catch (ErrorA e) {
+            println("final-catch: " + e.message);
+        }
+        println("after-1");
+
+        // Test 2: Wrap and throw different exception
+        println("Test 2: Wrap exception");
+        try {
+            Int r = Rethrow2.process();
+            println("BAD-2");
+        } catch (WrappedError e) {
+            println("caught-wrapped: " + e.cause);
+        }
+        println("after-2");
+
+        // Test 3: Partial catch rethrow
+        println("Test 3: Partial catch rethrow");
+        try {
+            Int r = Rethrow3.process();
+            println("BAD-3");
+        } catch (ErrorA e) {
+            println("final-catch-3: " + e.message);
+        }
+        println("after-3");
+
+        // Test 4: Rethrow preserves exception value
+        println("Test 4: Rethrow preserves value");
+        try {
+            try {
+                throw ErrorA { message: "specific-message-123" };
+            } catch (ErrorA e) {
+                println("first-catch: " + e.message);
+                throw e;
+            }
+        } catch (ErrorA e) {
+            println("second-catch: " + e.message);
+        }
+        println("after-4");
+
+        // Test 5: Multiple rethrows in chain
+        println("Test 5: Multiple rethrows");
+        try {
+            try {
+                try {
+                    throw ErrorA { message: "multi" };
+                } catch (ErrorA e) {
+                    println("catch-1");
+                    throw e;
+                }
+            } catch (ErrorA e) {
+                println("catch-2");
+                throw e;
+            }
+        } catch (ErrorA e) {
+            println("catch-3: " + e.message);
+        }
+        println("after-5");
+
+        println("All rethrow tests passed!");
+    }
+}

@@ -1,0 +1,337 @@
+package db;
+
+/**
+ * Result types for database queries.
+ *
+ * This module defines the types used to represent query results:
+ * - Column: Metadata about a result column (name, type, index)
+ * - Row: A single result row with column values
+ *
+ * These types are returned by query execution and provide type-safe
+ * access to result data.
+ *
+ * @see db.Connection for executing queries
+ * @see db.ValueBox for the value types returned in rows
+ */
+
+/**
+ * Column metadata describing a result column.
+ *
+ * A Column provides information about a single column in a query result:
+ * - name: The column name (or alias if specified in query)
+ * - typeName: The database type name (e.g., "INTEGER", "TEXT", "VARCHAR")
+ * - index: The 0-based column index in the result set
+ */
+public struct Column {
+    /// The column name or alias
+    public final String name;
+    /// The database type name (driver-specific)
+    public final String typeName;
+    /// The 0-based index of this column in the result set
+    public final int index;
+}
+
+/**
+ * Module providing factory functions and utilities for Column instances.
+ */
+module Column {
+    /// Creates a new Column with the given metadata.
+    public static Column new(String name, String typeName, int index) {
+        return Column {
+            name: name,
+            typeName: typeName,
+            index: index
+        };
+    }
+
+    /// Returns the column name.
+    public static String getName(Column self) {
+        return self.name;
+    }
+
+    /// Returns the database type name.
+    public static String getTypeName(Column self) {
+        return self.typeName;
+    }
+
+    /// Returns the 0-based column index.
+    public static int getIndex(Column self) {
+        return self.index;
+    }
+}
+
+/**
+ * A single row from a query result.
+ *
+ * Row provides access to column values by index or name. Values are
+ * stored as ValueBox instances and can be extracted using typed accessors.
+ *
+ * Example usage:
+ * ```arth
+ * // Access by index
+ * int id = Row.getInt(row, 0);
+ * String name = Row.getText(row, 1);
+ *
+ * // Access by name
+ * int id = Row.getIntByName(row, "id");
+ * String name = Row.getTextByName(row, "name");
+ * ```
+ *
+ * Note: Row uses internal handles for column and value arrays. The actual
+ * array storage is managed by the database driver.
+ */
+public struct Row {
+    /// Handle to the column metadata array
+    public final int columnsHandle;
+    /// Handle to the values array
+    public final int valuesHandle;
+    /// Number of columns in this row
+    public final int columnCount;
+}
+
+/**
+ * Module providing accessors for Row instances.
+ *
+ * Provides two styles of value access:
+ * 1. By index (0-based): getInt, getText, getBlob, etc.
+ * 2. By name: getIntByName, getTextByName, getBlobByName, etc.
+ *
+ * Each accessor returns the value in the appropriate Arth type. If the
+ * value is NULL or type conversion fails, a default value is returned.
+ * Use isNull() to check for NULL before accessing.
+ */
+module Row {
+    /// Creates a new Row with the given handles and column count.
+    public static Row new(int columnsHandle, int valuesHandle, int columnCount) {
+        return Row {
+            columnsHandle: columnsHandle,
+            valuesHandle: valuesHandle,
+            columnCount: columnCount
+        };
+    }
+
+    /// Returns the number of columns in this row.
+    public static int getColumnCount(Row self) {
+        return self.columnCount;
+    }
+
+    // Index-based accessors (intrinsics - implemented by VM)
+
+    /// Returns the value at the given column index as a ValueBox.
+    @intrinsic("db.row_get_value")
+    public static ValueBox getValue(Row self, int index) {
+        return ValueBoxFns.null();
+    }
+
+    /// Returns the column metadata at the given index.
+    @intrinsic("db.row_get_column")
+    public static Column getColumn(Row self, int index) {
+        return Column { name: "", typeName: "", index: 0 };
+    }
+
+    /// Returns true if the value at the given index is NULL.
+    @intrinsic("db.row_is_null")
+    public static bool isNull(Row self, int index) {
+        return true;
+    }
+
+    /// Returns the integer value at the given column index.
+    @intrinsic("db.row_get_int")
+    public static int getInt(Row self, int index) {
+        return 0;
+    }
+
+    /// Returns the 64-bit integer value at the given column index.
+    @intrinsic("db.row_get_int64")
+    public static int64 getInt64(Row self, int index) {
+        return 0;
+    }
+
+    /// Returns the float value at the given column index.
+    @intrinsic("db.row_get_float")
+    public static float getFloat(Row self, int index) {
+        return 0.0;
+    }
+
+    /// Returns the double value at the given column index.
+    @intrinsic("db.row_get_double")
+    public static double getDouble(Row self, int index) {
+        return 0.0;
+    }
+
+    /// Returns the boolean value at the given column index.
+    @intrinsic("db.row_get_bool")
+    public static bool getBool(Row self, int index) {
+        return false;
+    }
+
+    /// Returns the text value at the given column index.
+    @intrinsic("db.row_get_text")
+    public static String getText(Row self, int index) {
+        return "";
+    }
+
+    /// Returns the blob value at the given column index.
+    @intrinsic("db.row_get_blob")
+    public static bytes getBlob(Row self, int index) {
+        return [];
+    }
+
+    // Name-based accessors (find column index by name, then delegate)
+
+    /// Finds the column index for the given column name. Returns -1 if not found.
+    @intrinsic("db.row_find_column")
+    public static int findColumn(Row self, String name) {
+        return -1;
+    }
+
+    /// Returns true if the value for the named column is NULL.
+    public static bool isNullByName(Row self, String name) {
+        int index = Row.findColumn(self, name);
+        if (index < 0) {
+            return true;
+        }
+        return Row.isNull(self, index);
+    }
+
+    /// Returns the integer value for the named column.
+    public static int getIntByName(Row self, String name) {
+        int index = Row.findColumn(self, name);
+        if (index < 0) {
+            return 0;
+        }
+        return Row.getInt(self, index);
+    }
+
+    /// Returns the 64-bit integer value for the named column.
+    public static int64 getInt64ByName(Row self, String name) {
+        int index = Row.findColumn(self, name);
+        if (index < 0) {
+            return 0;
+        }
+        return Row.getInt64(self, index);
+    }
+
+    /// Returns the float value for the named column.
+    public static float getFloatByName(Row self, String name) {
+        int index = Row.findColumn(self, name);
+        if (index < 0) {
+            return 0.0;
+        }
+        return Row.getFloat(self, index);
+    }
+
+    /// Returns the double value for the named column.
+    public static double getDoubleByName(Row self, String name) {
+        int index = Row.findColumn(self, name);
+        if (index < 0) {
+            return 0.0;
+        }
+        return Row.getDouble(self, index);
+    }
+
+    /// Returns the boolean value for the named column.
+    public static bool getBoolByName(Row self, String name) {
+        int index = Row.findColumn(self, name);
+        if (index < 0) {
+            return false;
+        }
+        return Row.getBool(self, index);
+    }
+
+    /// Returns the text value for the named column.
+    public static String getTextByName(Row self, String name) {
+        int index = Row.findColumn(self, name);
+        if (index < 0) {
+            return "";
+        }
+        return Row.getText(self, index);
+    }
+
+    /// Returns the blob value for the named column.
+    public static bytes getBlobByName(Row self, String name) {
+        int index = Row.findColumn(self, name);
+        if (index < 0) {
+            return [];
+        }
+        return Row.getBlob(self, index);
+    }
+
+    /// Returns the value for the named column as a ValueBox.
+    public static ValueBox getValueByName(Row self, String name) {
+        int index = Row.findColumn(self, name);
+        if (index < 0) {
+            return ValueBoxFns.null();
+        }
+        return Row.getValue(self, index);
+    }
+}
+
+/**
+ * Result set from a query containing multiple rows.
+ *
+ * QueryResult provides iteration over query results and metadata about
+ * the result set (column count, row count if known).
+ *
+ * Note: Some drivers may not know the total row count until all rows
+ * are fetched. Use hasNext()/next() for streaming access.
+ */
+public struct QueryResult {
+    /// Handle to the result set (driver-specific)
+    public final int handle;
+    /// Number of columns in the result set
+    public final int columnCount;
+    /// Number of rows (-1 if unknown/streaming)
+    public final int rowCount;
+    /// Whether the result set has been consumed
+    public final bool consumed;
+}
+
+/**
+ * Module providing accessors and iteration for QueryResult instances.
+ */
+module QueryResult {
+    /// Creates a new QueryResult with the given handle and metadata.
+    public static QueryResult new(int handle, int columnCount, int rowCount) {
+        return QueryResult {
+            handle: handle,
+            columnCount: columnCount,
+            rowCount: rowCount,
+            consumed: false
+        };
+    }
+
+    /// Returns the number of columns in the result set.
+    public static int getColumnCount(QueryResult self) {
+        return self.columnCount;
+    }
+
+    /// Returns the number of rows, or -1 if unknown.
+    public static int getRowCount(QueryResult self) {
+        return self.rowCount;
+    }
+
+    /// Returns true if there are more rows to fetch.
+    @intrinsic("db.result_has_next")
+    public static bool hasNext(QueryResult self) {
+        return false;
+    }
+
+    /// Fetches the next row. Returns a Row with columnCount=0 if no more rows.
+    @intrinsic("db.result_next")
+    public static Row next(QueryResult self) {
+        return Row { columnsHandle: 0, valuesHandle: 0, columnCount: 0 };
+    }
+
+    /// Returns the column metadata for the result set.
+    @intrinsic("db.result_columns")
+    public static int getColumns(QueryResult self) {
+        return 0;
+    }
+
+    /// Closes the result set and releases resources.
+    @intrinsic("db.result_close")
+    public static void close(QueryResult self) {
+        // Intrinsic: closes result set
+    }
+}

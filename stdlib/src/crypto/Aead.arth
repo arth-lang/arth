@@ -1,0 +1,308 @@
+package crypto;
+
+/**
+ * Authenticated Encryption with Associated Data (AEAD).
+ *
+ * AEAD provides both confidentiality and integrity/authenticity for
+ * encrypted data. This module supports three industry-standard algorithms:
+ *
+ * - **AES-128-GCM**: 128-bit key, NIST-approved, widely deployed
+ * - **AES-256-GCM**: 256-bit key, NIST-approved, highest security level
+ * - **ChaCha20-Poly1305**: 256-bit key, modern design, excellent performance
+ *
+ * Security properties:
+ * - **Confidentiality**: The plaintext is encrypted and unreadable
+ * - **Integrity**: Any modification to ciphertext is detected
+ * - **Authenticity**: The ciphertext was created by someone with the key
+ * - **Associated Data**: Additional data can be authenticated without encryption
+ *
+ * CRITICAL: Never reuse a nonce with the same key! Each encryption must use
+ * a unique nonce. Use `Aead.generateNonce()` for random nonces.
+ *
+ * Example usage:
+ * ```arth
+ * import crypto.*;
+ *
+ * module Example {
+ *     public void encryptData() throws (DecryptionError, RandomError) {
+ *         // Generate a random key
+ *         bytes key = Aead.generateKey(AeadAlgorithm.AES_256_GCM);
+ *
+ *         // Generate a random nonce (NEVER reuse!)
+ *         bytes nonce = Aead.generateNonce(AeadAlgorithm.AES_256_GCM);
+ *
+ *         // Encrypt with optional AAD
+ *         bytes plaintext = "Secret message".toBytes();
+ *         bytes aad = "metadata".toBytes();  // Authenticated but not encrypted
+ *         bytes ciphertext = Aead.encrypt(AeadAlgorithm.AES_256_GCM, key, nonce, plaintext, aad);
+ *
+ *         // Decrypt (uses same key, nonce, and AAD)
+ *         bytes decrypted = Aead.decrypt(AeadAlgorithm.AES_256_GCM, key, nonce, ciphertext, aad);
+ *     }
+ * }
+ * ```
+ *
+ * @see crypto.AeadAlgorithm for available algorithms
+ * @see crypto.DecryptionError for decryption failures
+ * @see crypto.Random for nonce generation
+ */
+
+/**
+ * AEAD algorithm identifiers.
+ */
+public enum AeadAlgorithm {
+    /// AES-128-GCM: 128-bit key, 96-bit nonce, 128-bit tag
+    AES_128_GCM,
+
+    /// AES-256-GCM: 256-bit key, 96-bit nonce, 128-bit tag
+    AES_256_GCM,
+
+    /// ChaCha20-Poly1305: 256-bit key, 96-bit nonce, 128-bit tag
+    CHACHA20_POLY1305
+}
+
+/**
+ * Module providing algorithm information for AEAD.
+ */
+module AeadAlgorithm {
+    /**
+     * Returns the key size in bytes for this algorithm.
+     *
+     * @param algorithm The AEAD algorithm
+     * @return Key size in bytes (16 for AES-128, 32 for AES-256/ChaCha20)
+     */
+    public static int keySize(AeadAlgorithm algorithm) {
+        match (algorithm) {
+            AeadAlgorithm.AES_128_GCM => return 16;
+            AeadAlgorithm.AES_256_GCM => return 32;
+            AeadAlgorithm.CHACHA20_POLY1305 => return 32;
+        }
+    }
+
+    /**
+     * Returns the nonce size in bytes for this algorithm.
+     *
+     * All supported algorithms use 96-bit (12 byte) nonces.
+     *
+     * @param algorithm The AEAD algorithm
+     * @return Nonce size in bytes (always 12)
+     */
+    public static int nonceSize(AeadAlgorithm algorithm) {
+        return 12; // All algorithms use 96-bit nonces
+    }
+
+    /**
+     * Returns the authentication tag size in bytes.
+     *
+     * All supported algorithms use 128-bit (16 byte) tags.
+     *
+     * @param algorithm The AEAD algorithm
+     * @return Tag size in bytes (always 16)
+     */
+    public static int tagSize(AeadAlgorithm algorithm) {
+        return 16; // All algorithms use 128-bit tags
+    }
+
+    /**
+     * Returns the name of the algorithm as a string.
+     *
+     * @param algorithm The AEAD algorithm
+     * @return Algorithm name (e.g., "AES-256-GCM")
+     */
+    public static String name(AeadAlgorithm algorithm) {
+        match (algorithm) {
+            AeadAlgorithm.AES_128_GCM => return "AES-128-GCM";
+            AeadAlgorithm.AES_256_GCM => return "AES-256-GCM";
+            AeadAlgorithm.CHACHA20_POLY1305 => return "ChaCha20-Poly1305";
+        }
+    }
+}
+
+/**
+ * Module for AEAD encryption and decryption operations.
+ *
+ * NOTE: This file is an INTRINSIC-BACKED STUB for IDE/tooling support.
+ * The function bodies are placeholders - actual implementation is provided
+ * by the compiler via intrinsic lowering to C FFI runtime functions.
+ */
+module Aead {
+    // =========================================================================
+    // Key and Nonce Generation
+    // =========================================================================
+
+    /**
+     * Generates a cryptographically secure random key for the specified algorithm.
+     *
+     * @param algorithm The AEAD algorithm to generate a key for
+     * @return A new random key of the appropriate size
+     * @throws RandomError if secure random generation fails
+     */
+    @intrinsic("crypto.aead_generate_key")
+    public static bytes generateKey(AeadAlgorithm algorithm) throws RandomError {
+        // Intrinsic: generates random key via C FFI
+        return bytes.allocate(AeadAlgorithm.keySize(algorithm));
+    }
+
+    /**
+     * Generates a cryptographically secure random nonce for the specified algorithm.
+     *
+     * CRITICAL: Never reuse a nonce with the same key! Each encryption must
+     * use a unique nonce. For random nonces, the probability of collision
+     * after 2^48 encryptions is approximately 2^-32.
+     *
+     * For very high-volume encryption (>2^32 messages), consider using
+     * counter-based nonces instead.
+     *
+     * @param algorithm The AEAD algorithm to generate a nonce for
+     * @return A new random nonce (12 bytes)
+     * @throws RandomError if secure random generation fails
+     */
+    @intrinsic("crypto.aead_generate_nonce")
+    public static bytes generateNonce(AeadAlgorithm algorithm) throws RandomError {
+        // Intrinsic: generates random nonce via C FFI
+        return bytes.allocate(12);
+    }
+
+    // =========================================================================
+    // Encryption
+    // =========================================================================
+
+    /**
+     * Encrypts data using AEAD.
+     *
+     * The output is ciphertext || tag (the authentication tag is appended).
+     * The output size is plaintext.length + 16 (tag size).
+     *
+     * @param algorithm The AEAD algorithm to use
+     * @param key The encryption key (must match algorithm's key size)
+     * @param nonce The nonce (must be unique for each encryption with same key)
+     * @param plaintext The data to encrypt
+     * @param aad Additional authenticated data (authenticated but not encrypted)
+     * @return The ciphertext with appended authentication tag
+     * @throws InvalidKeyError if the key size is wrong
+     * @throws InvalidNonceError if the nonce size is wrong
+     */
+    @intrinsic("crypto.aead_encrypt")
+    public static bytes encrypt(
+        AeadAlgorithm algorithm,
+        bytes key,
+        bytes nonce,
+        bytes plaintext,
+        bytes aad
+    ) throws (InvalidKeyError, InvalidNonceError) {
+        // Intrinsic: encrypts via C FFI
+        return bytes.allocate(plaintext.length() + 16);
+    }
+
+    /**
+     * Encrypts data using AEAD without additional authenticated data.
+     *
+     * Convenience method equivalent to encrypt(algorithm, key, nonce, plaintext, bytes.empty()).
+     *
+     * @param algorithm The AEAD algorithm to use
+     * @param key The encryption key
+     * @param nonce The nonce (must be unique)
+     * @param plaintext The data to encrypt
+     * @return The ciphertext with appended authentication tag
+     * @throws InvalidKeyError if the key size is wrong
+     * @throws InvalidNonceError if the nonce size is wrong
+     */
+    public static bytes encrypt(
+        AeadAlgorithm algorithm,
+        bytes key,
+        bytes nonce,
+        bytes plaintext
+    ) throws (InvalidKeyError, InvalidNonceError) {
+        return Aead.encrypt(algorithm, key, nonce, plaintext, bytes.empty());
+    }
+
+    // =========================================================================
+    // Decryption
+    // =========================================================================
+
+    /**
+     * Decrypts data using AEAD with authentication verification.
+     *
+     * The input is expected to be ciphertext || tag.
+     * Decryption will fail if:
+     * - The ciphertext was tampered with
+     * - The wrong key was used
+     * - The AAD doesn't match what was used during encryption
+     * - The authentication tag is invalid
+     *
+     * @param algorithm The AEAD algorithm to use
+     * @param key The decryption key
+     * @param nonce The same nonce used for encryption
+     * @param ciphertext The ciphertext with appended authentication tag
+     * @param aad The same additional authenticated data used for encryption
+     * @return The decrypted plaintext
+     * @throws InvalidKeyError if the key size is wrong
+     * @throws InvalidNonceError if the nonce size is wrong
+     * @throws DecryptionError if decryption or authentication fails
+     */
+    @intrinsic("crypto.aead_decrypt")
+    public static bytes decrypt(
+        AeadAlgorithm algorithm,
+        bytes key,
+        bytes nonce,
+        bytes ciphertext,
+        bytes aad
+    ) throws (InvalidKeyError, InvalidNonceError, DecryptionError) {
+        // Intrinsic: decrypts via C FFI
+        int plaintextLen = ciphertext.length() - 16;
+        if (plaintextLen < 0) {
+            throw DecryptionError.new("Ciphertext too short");
+        }
+        return bytes.allocate(plaintextLen);
+    }
+
+    /**
+     * Decrypts data using AEAD without additional authenticated data.
+     *
+     * Convenience method equivalent to decrypt(algorithm, key, nonce, ciphertext, bytes.empty()).
+     *
+     * @param algorithm The AEAD algorithm to use
+     * @param key The decryption key
+     * @param nonce The same nonce used for encryption
+     * @param ciphertext The ciphertext with appended authentication tag
+     * @return The decrypted plaintext
+     * @throws InvalidKeyError if the key size is wrong
+     * @throws InvalidNonceError if the nonce size is wrong
+     * @throws DecryptionError if decryption or authentication fails
+     */
+    public static bytes decrypt(
+        AeadAlgorithm algorithm,
+        bytes key,
+        bytes nonce,
+        bytes ciphertext
+    ) throws (InvalidKeyError, InvalidNonceError, DecryptionError) {
+        return Aead.decrypt(algorithm, key, nonce, ciphertext, bytes.empty());
+    }
+
+    // =========================================================================
+    // Utility Functions
+    // =========================================================================
+
+    /**
+     * Returns the output size for encrypting data of the given length.
+     *
+     * @param plaintextLen The length of the plaintext
+     * @return The output size (plaintextLen + tag size)
+     */
+    public static int encryptedSize(int plaintextLen) {
+        return plaintextLen + 16; // All algorithms use 16-byte tags
+    }
+
+    /**
+     * Returns the plaintext size for ciphertext of the given length.
+     *
+     * @param ciphertextLen The length of the ciphertext (including tag)
+     * @return The plaintext size, or -1 if ciphertext is too short
+     */
+    public static int decryptedSize(int ciphertextLen) {
+        if (ciphertextLen < 16) {
+            return -1;
+        }
+        return ciphertextLen - 16;
+    }
+}

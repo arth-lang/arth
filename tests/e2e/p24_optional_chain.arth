@@ -1,0 +1,110 @@
+package test;
+
+import arth.*;
+
+// Test: Optional chaining with ?. operator - P24
+// Optional chaining provides safe field access on Optional values
+// expr?.field returns Optional<FieldType>:
+//   - If expr is Some(x), returns Some(x.field)
+//   - If expr is None, returns None
+//
+// Expected output:
+//   Test 1: Basic optional chaining
+//   some?.name value: Alice
+//   none?.name isSome: 0
+//   Test 2: Nested struct optional chaining
+//   address?.city value: NYC
+//   none person city isSome: 0
+//   Test 3: Chained optional access
+//   age via orElse: 30
+//   missing age via orElse: -1
+//   Test 4: Optional chaining with integer fields
+//   point?.x value: 10
+//   point?.y value: 20
+
+struct User {
+    String name;
+    int age;
+}
+
+struct Address {
+    String city;
+    String street;
+}
+
+struct Person {
+    String name;
+    Address address;
+}
+
+struct Point {
+    int x;
+    int y;
+}
+
+module Main {
+    public static void main() {
+        // Test 1: Basic optional chaining on struct with String field
+        println("Test 1: Basic optional chaining");
+
+        User u = User { name: "Alice", age: 30 };
+        var someUser = Optional.some(u);
+        var noUser = Optional.none();
+
+        // someUser?.name should return Some("Alice")
+        var someName = someUser?.name;
+        println("some?.name value: " + Optional.unwrap(someName));
+
+        // noUser?.name should return None
+        var noneName = noUser?.name;
+        println("none?.name isSome: " + Optional.isSome(noneName));
+
+        // Test 2: Optional chaining with nested structs
+        println("Test 2: Nested struct optional chaining");
+
+        Address addr = Address { city: "NYC", street: "Main St" };
+        Person p = Person { name: "Bob", address: addr };
+        var somePerson = Optional.some(p);
+        var noPerson = Optional.none();
+
+        // somePerson?.address should return Some(Address)
+        var someAddr = somePerson?.address;
+        // Get the city from the unwrapped address
+        Address unwrappedAddr = Optional.unwrap(someAddr);
+        println("address?.city value: " + unwrappedAddr.city);
+
+        // noPerson?.address should return None
+        var noAddr = noPerson?.address;
+        println("none person city isSome: " + Optional.isSome(noAddr));
+
+        // Test 3: Using optional chaining result with orElse
+        println("Test 3: Chained optional access");
+
+        // Create fresh user for this test
+        User u2 = User { name: "Charlie", age: 30 };
+        var user2 = Optional.some(u2);
+        var someAge = user2?.age;
+        int ageVal = Optional.orElse(someAge, -1);
+        println("age via orElse: " + ageVal);
+
+        var noUser2 = Optional.none();
+        var noAge = noUser2?.age;
+        int noAgeVal = Optional.orElse(noAge, -1);
+        println("missing age via orElse: " + noAgeVal);
+
+        // Test 4: Optional chaining with integer fields
+        println("Test 4: Optional chaining with integer fields");
+
+        Point pt = Point { x: 10, y: 20 };
+        var somePoint = Optional.some(pt);
+
+        var xOpt = somePoint?.x;
+        println("point?.x value: " + Optional.unwrap(xOpt));
+
+        // Need fresh point for y access
+        Point pt2 = Point { x: 10, y: 20 };
+        var somePoint2 = Optional.some(pt2);
+        var yOpt = somePoint2?.y;
+        println("point?.y value: " + Optional.unwrap(yOpt));
+    }
+}

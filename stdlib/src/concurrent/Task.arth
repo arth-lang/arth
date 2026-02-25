@@ -1,0 +1,146 @@
+/**
+ * INTRINSIC-BACKED STUB for IDE/tooling support.
+ *
+ * This module provides the Task<T> type for async function results.
+ * Actual implementation is handled by compiler intrinsics and VM runtime.
+ *
+ * @see src/compiler/lower/hir_to_ir.rs - async function lowering
+ * @see crates/arth-vm/src/runtime.rs - task runtime functions
+ */
+package concurrent;
+
+/**
+ * Task<T> represents an asynchronous computation that will produce a value of type T.
+ *
+ * Tasks are returned by async functions and can be awaited to obtain their result.
+ * Tasks support cancellation and can be joined or detached.
+ *
+ * Example:
+ * ```
+ * public async String fetchData(String url) throws HttpError {
+ *     return await Http.get(url);
+ * }
+ *
+ * // Caller:
+ * Task<String> task = fetchData("https://example.com");
+ * String result = await task;
+ * ```
+ */
+struct Task<T> {
+    /** Internal handle to the runtime task. */
+    private final int handle;
+}
+
+module TaskFns {
+    /**
+     * Spawns a new task to execute the given function.
+     *
+     * The function will run concurrently with the caller.
+     *
+     * @param f The function to execute asynchronously
+     * @return A Task handle that can be awaited or managed
+     */
+    @intrinsic("task.spawn")
+    public Task<void> spawn(fn() f) {
+        // Intrinsic: creates task, schedules f, returns handle
+        return Task { handle: 0 };
+    }
+
+    /**
+     * Awaits the task and returns its result.
+     *
+     * This is the underlying implementation for the await expression.
+     * Throws CancelledError if the task was cancelled.
+     *
+     * @param self The task to await
+     * @return The result of the async computation
+     * @throws CancelledError if the task was cancelled
+     */
+    @intrinsic("task.await")
+    public T await<T>(Task<T> self) throws CancelledError {
+        // Intrinsic: suspends until task completes, returns result or throws
+        return self.handle;
+    }
+
+    /**
+     * Joins the task, blocking until it completes.
+     *
+     * Unlike await, join does not suspend the current task but blocks the thread.
+     *
+     * @param self The task to join
+     * @return The result of the task
+     * @throws CancelledError if the task was cancelled
+     */
+    @intrinsic("task.join")
+    public T join<T>(Task<T> self) throws CancelledError {
+        // Intrinsic: blocks until completion
+        return self.handle;
+    }
+
+    /**
+     * Cancels the task.
+     *
+     * The task will not be immediately stopped, but will throw CancelledError
+     * at its next cancellation point (typically at await expressions).
+     *
+     * @param self The task to cancel
+     */
+    @intrinsic("task.cancel")
+    public void cancel<T>(Task<T> self) {
+        // Intrinsic: marks task as cancelled
+    }
+
+    /**
+     * Detaches the task, allowing it to run independently.
+     *
+     * A detached task will continue running even if its handle is dropped.
+     * Results and errors from detached tasks are silently discarded.
+     *
+     * @param self The task to detach
+     */
+    @intrinsic("task.detach")
+    public void detach<T>(Task<T> self) {
+        // Intrinsic: marks task as detached
+    }
+
+    /**
+     * Returns the handle for the current task.
+     *
+     * @return The current task handle, or 0 if not in a task context
+     */
+    @intrinsic("task.current")
+    public int current() {
+        // Intrinsic: returns current task context
+        return 0;
+    }
+
+    /**
+     * Cooperatively yields execution to other runnable tasks.
+     *
+     * This is a lightweight scheduler yield point.
+     */
+    public void yield() {
+        // Lowered to runtime task yield primitive by compiler.
+    }
+
+    /**
+     * Sleeps for at least `millis` milliseconds.
+     *
+     * This is a cooperative suspension point in async/task workflows.
+     *
+     * @param millis Sleep duration in milliseconds
+     */
+    public void sleep(int millis) {
+        // Lowered to runtime timer sleep primitive by compiler.
+    }
+
+    /**
+     * Checks whether the current task has been cancelled.
+     *
+     * @return true if cancelled, false otherwise
+     */
+    public bool checkCancel() {
+        // Lowered to runtime cancellation-check primitive by compiler.
+        return false;
+    }
+}

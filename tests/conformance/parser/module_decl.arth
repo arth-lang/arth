@@ -1,0 +1,69 @@
+package conformance;
+
+// @spec: spec.md §5 - Module declarations with implements clause
+// @expect: pass
+// @description: Validates module declaration parsing per spec §5
+
+public struct Point {
+    public Int x;
+    public Int y;
+}
+
+public interface Describable {
+    String describe();
+}
+
+// Simple module
+module PointFns {
+    public Point new(Int x, Int y) {
+        return Point { x: x, y: y };
+    }
+
+    public Int getX(Point p) {
+        return p.x;
+    }
+
+    public Int getY(Point p) {
+        return p.y;
+    }
+}
+
+// Module with implements clause
+module PointDescribable implements Describable {
+    public String describe(Point p) {
+        return "Point";
+    }
+}
+
+// Module with multiple functions
+module MathFns {
+    public Int add(Int a, Int b) {
+        return a + b;
+    }
+
+    public Int subtract(Int a, Int b) {
+        return a - b;
+    }
+
+    public Int multiply(Int a, Int b) {
+        return a * b;
+    }
+}
+
+// Export module for cross-package visibility
+export module PublicMath {
+    public Int square(Int x) {
+        return x * x;
+    }
+}
+
+module Main {
+    public static void main() {
+        Point p = PointFns.new(10, 20);
+        Int x = PointFns.getX(p);
+        Int sum = MathFns.add(1, 2);
+        Int sq = PublicMath.square(5);
+
+        println("module_decl: pass");
+    }
+}

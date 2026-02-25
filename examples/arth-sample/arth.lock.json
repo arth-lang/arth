@@ -1,0 +1,10 @@
+{
+  "package": { "name": "arth-sample", "version": "0.1.0" },
+  "dependencies": {
+    "org.example:net-http":      { "version": "1.2.3", "checksum": "sha256-AAA" },
+    "org.example:log":           { "version": "1.0.4", "checksum": "sha256-BBB" },
+    "org.example:encoding-json": { "version": "0.1.2", "checksum": "sha256-CCC" },
+    "org.example:concurrency":   { "version": "0.1.1", "checksum": "sha256-DDD" }
+  },
+  "metadata": { "lockfileVersion": 1, "resolvedAt": "2025-01-01T00:00:00Z" }
+}

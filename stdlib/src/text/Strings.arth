@@ -1,0 +1,352 @@
+// =============================================================================
+// Strings Module - String Processing Operations
+// =============================================================================
+//
+// Provides string manipulation functions: substring, split, trim, replace, etc.
+// All operations are UTF-8 aware and work with character indices.
+//
+// Usage:
+//   import text.Strings;
+//   Int len = Strings.len("hello");
+//   String upper = Strings.toUpper("hello");
+//   List<String> parts = Strings.split("a,b,c", ",");
+
+package text;
+
+/// String processing operations.
+/// All functions operate on immutable strings and return new strings.
+export module Strings {
+
+    // =========================================================================
+    // Length and Character Access
+    // =========================================================================
+
+    /// Get the length of a string (character count, not byte count).
+    /// Returns: number of Unicode characters in the string
+    @intrinsic("str.len")
+    public static Int len(String s) { return 0; }
+
+    /// Alias for len() for API compatibility.
+    @intrinsic("str.len")
+    public static Int length(String s) { return 0; }
+
+    /// Get a character at the specified index.
+    /// Returns: single-character string, or empty string if out of bounds
+    @intrinsic("str.char_at")
+    public static String charAt(String s, Int index) { return ""; }
+
+    // =========================================================================
+    // Substring Operations
+    // =========================================================================
+
+    /// Extract a substring from start (inclusive) to end (exclusive).
+    /// Uses character indices, not byte indices.
+    /// Returns: the substring, or empty string if indices are out of bounds
+    @intrinsic("str.substring")
+    public static String substring(String s, Int start, Int end) { return ""; }
+
+    /// Alias for substring() - extract a slice of the string.
+    @intrinsic("str.substring")
+    public static String slice(String s, Int start, Int end) { return ""; }
+
+    // =========================================================================
+    // Search Operations
+    // =========================================================================
+
+    /// Find the first index of a substring.
+    /// Returns: index of first occurrence, or -1 if not found
+    @intrinsic("str.index_of")
+    public static Int indexOf(String s, String needle) { return -1; }
+
+    /// Find the last index of a substring.
+    /// Returns: index of last occurrence, or -1 if not found
+    @intrinsic("str.last_index_of")
+    public static Int lastIndexOf(String s, String needle) { return -1; }
+
+    /// Check if a string contains a substring.
+    /// Returns: true if needle is found in s
+    @intrinsic("str.contains")
+    public static Bool contains(String s, String needle) { return false; }
+
+    /// Check if a string starts with a prefix.
+    @intrinsic("str.starts_with")
+    public static Bool startsWith(String s, String prefix) { return false; }
+
+    /// Check if a string ends with a suffix.
+    @intrinsic("str.ends_with")
+    public static Bool endsWith(String s, String suffix) { return false; }
+
+    // =========================================================================
+    // Transformation Operations
+    // =========================================================================
+
+    /// Convert string to lowercase.
+    @intrinsic("str.to_lower")
+    public static String toLower(String s) { return ""; }
+
+    /// Alias for toLower().
+    @intrinsic("str.to_lower")
+    public static String toLowerCase(String s) { return ""; }
+
+    /// Convert string to uppercase.
+    @intrinsic("str.to_upper")
+    public static String toUpper(String s) { return ""; }
+
+    /// Alias for toUpper().
+    @intrinsic("str.to_upper")
+    public static String toUpperCase(String s) { return ""; }
+
+    /// Trim whitespace from both ends of a string.
+    @intrinsic("str.trim")
+    public static String trim(String s) { return ""; }
+
+    /// Replace all occurrences of a substring.
+    @intrinsic("str.replace")
+    public static String replace(String s, String old, String new_) { return ""; }
+
+    /// Alias for replace().
+    @intrinsic("str.replace")
+    public static String replaceAll(String s, String old, String new_) { return ""; }
+
+    /// Repeat a string n times.
+    @intrinsic("str.repeat")
+    public static String repeat(String s, Int n) { return ""; }
+
+    // =========================================================================
+    // Concatenation and Splitting
+    // =========================================================================
+
+    /// Concatenate two strings.
+    @intrinsic("str.concat")
+    public static String concat(String a, String b) { return ""; }
+
+    /// Split a string by a delimiter.
+    /// Returns: list handle containing the parts
+    @intrinsic("str.split")
+    public static Int split(String s, String delimiter) { return 0; }
+
+    // =========================================================================
+    // Parsing and Formatting
+    // =========================================================================
+
+    /// Parse a string as an integer.
+    /// Returns: the parsed integer, or 0 on parse error
+    @intrinsic("str.parse_int")
+    public static Int parseInt(String s) { return 0; }
+
+    /// Parse a string as a float.
+    /// Returns: the parsed float, or 0.0 on parse error
+    @intrinsic("str.parse_float")
+    public static Float parseFloat(String s) { return 0.0; }
+
+    /// Convert an integer to a string.
+    @intrinsic("str.int_to_str")
+    public static String fromInt(Int n) { return ""; }
+
+    /// Convert a float to a string.
+    @intrinsic("str.float_to_str")
+    public static String fromFloat(Float f) { return ""; }
+
+    // =========================================================================
+    // Pure Arth Convenience Functions
+    // =========================================================================
+
+    /// Check if a string is empty.
+    public static Bool isEmpty(String s) {
+        return len(s) == 0;
+    }
+
+    /// Check if a string is not empty.
+    public static Bool isNotEmpty(String s) {
+        return len(s) > 0;
+    }
+
+    /// Get the first character of a string.
+    /// Returns: first character as a string, or empty string if s is empty
+    public static String first(String s) {
+        if (len(s) == 0) {
+            return "";
+        }
+        return charAt(s, 0);
+    }
+
+    /// Get the last character of a string.
+    /// Returns: last character as a string, or empty string if s is empty
+    public static String last(String s) {
+        Int n = len(s);
+        if (n == 0) {
+            return "";
+        }
+        return charAt(s, n - 1);
+    }
+
+    /// Reverse a string.
+    public static String reverse(String s) {
+        Int n = len(s);
+        if (n <= 1) {
+            return s;
+        }
+        String result = "";
+        Int i = n - 1;
+        while (i >= 0) {
+            result = concat(result, charAt(s, i));
+            i = i - 1;
+        }
+        return result;
+    }
+
+    /// Pad a string on the left to reach a target length.
+    public static String padLeft(String s, Int targetLen, String padChar) {
+        Int n = len(s);
+        if (n >= targetLen) {
+            return s;
+        }
+        Int padCount = targetLen - n;
+        String pad = repeat(padChar, padCount);
+        return concat(pad, s);
+    }
+
+    /// Pad a string on the right to reach a target length.
+    public static String padRight(String s, Int targetLen, String padChar) {
+        Int n = len(s);
+        if (n >= targetLen) {
+            return s;
+        }
+        Int padCount = targetLen - n;
+        String pad = repeat(padChar, padCount);
+        return concat(s, pad);
+    }
+
+    /// Count occurrences of a substring.
+    public static Int count(String s, String needle) {
+        Int needleLen = len(needle);
+        if (needleLen == 0) {
+            return 0;
+        }
+        Int cnt = 0;
+        Int idx = indexOf(s, needle);
+        while (idx >= 0) {
+            cnt = cnt + 1;
+            // Search from position after the match
+            Int nextStart = idx + needleLen;
+            if (nextStart >= len(s)) {
+                return cnt;
+            }
+            String rest = substring(s, nextStart, len(s));
+            Int nextIdx = indexOf(rest, needle);
+            if (nextIdx < 0) {
+                return cnt;
+            }
+            idx = nextStart + nextIdx;
+        }
+        return cnt;
+    }
+
+    /// Check if two strings are equal (case-insensitive).
+    public static Bool equalsIgnoreCase(String a, String b) {
+        return toLower(a) == toLower(b);
+    }
+
+    /// Remove a prefix from a string if present.
+    public static String removePrefix(String s, String prefix) {
+        if (startsWith(s, prefix)) {
+            return substring(s, len(prefix), len(s));
+        }
+        return s;
+    }
+
+    /// Remove a suffix from a string if present.
+    public static String removeSuffix(String s, String suffix) {
+        if (endsWith(s, suffix)) {
+            return substring(s, 0, len(s) - len(suffix));
+        }
+        return s;
+    }
+
+    // =========================================================================
+    // Advanced Split Operations (Pure Arth)
+    // =========================================================================
+
+    /// Split a string into lines.
+    /// Handles both Unix (\n) and Windows (\r\n) line endings.
+    /// Returns: list handle containing the lines
+    public static Int splitLines(String s) {
+        // First normalize Windows line endings to Unix
+        String normalized = replace(s, "\r\n", "\n");
+        // Also handle standalone \r (old Mac style)
+        normalized = replace(normalized, "\r", "\n");
+        // Split by newline
+        return split(normalized, "\n");
+    }
+
+    /// Split a string at the first occurrence of a delimiter.
+    /// Returns a tuple-like result: (beforeHandle, afterHandle)
+    /// where beforeHandle and afterHandle are list handles with one element each.
+    /// If delimiter not found, returns (s, "") effectively.
+    ///
+    /// Usage:
+    ///   Int result = Strings.splitOnce("key=value", "=");
+    ///   // result is a list handle with 2 elements: ["key", "value"]
+    public static Int splitOnce(String s, String delimiter) {
+        Int idx = indexOf(s, delimiter);
+        Int resultList = __arth_list_new();
+        if (idx < 0) {
+            // Delimiter not found - return original string and empty
+            __arth_list_push(resultList, s);
+            __arth_list_push(resultList, "");
+        } else {
+            String before = substring(s, 0, idx);
+            String after = substring(s, idx + len(delimiter), len(s));
+            __arth_list_push(resultList, before);
+            __arth_list_push(resultList, after);
+        }
+        return resultList;
+    }
+
+    /// Split a string by delimiter, limiting to at most n parts.
+    /// If the string has more than n-1 delimiters, the last part
+    /// contains the rest of the string including remaining delimiters.
+    /// Returns: list handle containing at most n parts
+    ///
+    /// Example:
+    ///   splitN("a:b:c:d", ":", 2) -> ["a", "b:c:d"]
+    ///   splitN("a:b:c:d", ":", 3) -> ["a", "b", "c:d"]
+    public static Int splitN(String s, String delimiter, Int n) {
+        Int resultList = __arth_list_new();
+        if (n <= 0) {
+            return resultList;
+        }
+        if (n == 1) {
+            __arth_list_push(resultList, s);
+            return resultList;
+        }
+
+        Int delimLen = len(delimiter);
+        String remaining = s;
+        Int count = 0;
+
+        while (count < n - 1) {
+            Int idx = indexOf(remaining, delimiter);
+            if (idx < 0) {
+                // No more delimiters found
+                __arth_list_push(resultList, remaining);
+                return resultList;
+            }
+            String part = substring(remaining, 0, idx);
+            __arth_list_push(resultList, part);
+            remaining = substring(remaining, idx + delimLen, len(remaining));
+            count = count + 1;
+        }
+
+        // Add the remaining string as the last part
+        __arth_list_push(resultList, remaining);
+        return resultList;
+    }
+
+    // Internal list intrinsics used by split functions
+    @intrinsic("list.new")
+    static Int __arth_list_new() { return 0; }
+
+    @intrinsic("list.push")
+    static Int __arth_list_push(Int list, String value) { return 0; }
+}

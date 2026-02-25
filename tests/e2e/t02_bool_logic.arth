@@ -1,0 +1,29 @@
+package test;
+
+// Test: Boolean logic operations
+// Expected output:
+//   true
+//   true
+//   false
+//   false
+//   true
+
+module Main {
+    public static void main() {
+        Bool t = true;
+        Bool f = false;
+
+        // AND
+        println(t && t);  // true
+
+        // OR
+        println(t || f);  // true
+
+        // NOT
+        println(!t);  // false
+
+        // Combined
+        println(f && t);  // false
+        println(!f);  // true
+    }
+}

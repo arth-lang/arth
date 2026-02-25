@@ -1,0 +1,399 @@
+// =============================================================================
+// HTML Parser Module - DOM-like HTML Parsing and Querying
+// =============================================================================
+//
+// Provides lenient HTML parsing with DOM-like querying capabilities.
+// Uses handle-based API where parsed documents and nodes are represented
+// as opaque integer handles.
+//
+// NOTE: This file is an INTRINSIC-BACKED STUB for IDE/tooling support.
+// The function bodies are placeholders - actual implementation is provided
+// by the compiler via intrinsic lowering to VM runtime functions.
+//
+// Usage:
+//   import markup.*;
+//
+//   module Main {
+//       public static void main() throws (HtmlError) {
+//           String html = """
+//               <html>
+//                   <head><title>Test</title></head>
+//                   <body><div id="main">Hello</div></body>
+//               </html>
+//           """;
+//           Int doc = Html.parse(html);
+//           Int title = HtmlNode.querySelector(doc, "title");
+//           String text = HtmlNode.textContent(title);
+//       }
+//   }
+//
+// @see src/compiler/intrinsics.rs for intrinsic registry
+// @see crates/arth-vm/src/runtime.rs for VM implementation
+
+package markup;
+
+// =============================================================================
+// Error Type
+// =============================================================================
+
+/// Error type for HTML parsing operations.
+public struct HtmlError {
+    /// Error message describing the issue
+    public final String message;
+    /// Line number where error occurred (1-indexed, 0 if unknown)
+    public final Int line;
+    /// Column number where error occurred (1-indexed, 0 if unknown)
+    public final Int column;
+}
+
+// =============================================================================
+// Node Type Enum
+// =============================================================================
+
+/// Node type constants matching DOM specification.
+public enum HtmlNodeType {
+    ELEMENT = 1,
+    TEXT = 3,
+    COMMENT = 8,
+    DOCUMENT = 9
+}
+
+// =============================================================================
+// Html Module - Parsing and Serialization
+// =============================================================================
+
+/// HTML parsing and serialization operations.
+/// All parse operations return opaque handles (Int) that can be used
+/// with HtmlNode functions for querying.
+export module Html {
+
+    // -------------------------------------------------------------------------
+    // Parsing Operations
+    // -------------------------------------------------------------------------
+
+    /// Parse an HTML string and return a document handle.
+    ///
+    /// Uses lenient (browser-like) parsing that handles malformed HTML
+    /// gracefully by auto-closing tags, fixing nesting, etc.
+    ///
+    /// @param html The HTML string to parse
+    /// @return A document handle for querying
+    /// @throws HtmlError if parsing fails completely
+    @intrinsic("html.parse")
+    public static Int parse(String html) throws (HtmlError) {
+        return 0;
+    }
+
+    /// Parse an HTML fragment (not a full document).
+    ///
+    /// Parses HTML content without wrapping in <html><body> tags.
+    /// Useful for parsing partial HTML snippets.
+    ///
+    /// @param html The HTML fragment to parse
+    /// @return A fragment handle for querying
+    /// @throws HtmlError if parsing fails
+    @intrinsic("html.parse_fragment")
+    public static Int parseFragment(String html) throws (HtmlError) {
+        return 0;
+    }
+
+    // -------------------------------------------------------------------------
+    // Serialization Operations
+    // -------------------------------------------------------------------------
+
+    /// Serialize a document or node back to an HTML string.
+    ///
+    /// @param handle The document or node handle
+    /// @return The HTML string representation
+    @intrinsic("html.stringify")
+    public static String stringify(Int handle) {
+        return "";
+    }
+
+    /// Serialize with pretty-printing (indentation).
+    ///
+    /// @param handle The document or node handle
+    /// @param indent Number of spaces for each indentation level
+    /// @return The formatted HTML string
+    @intrinsic("html.stringify_pretty")
+    public static String stringifyPretty(Int handle, Int indent) {
+        return "";
+    }
+
+    // -------------------------------------------------------------------------
+    // Memory Management
+    // -------------------------------------------------------------------------
+
+    /// Release a document handle and free associated memory.
+    ///
+    /// After calling this, the handle is invalid and should not be used.
+    /// Child node handles from this document also become invalid.
+    ///
+    /// @param handle The document handle to release
+    @intrinsic("html.free")
+    public static void free(Int handle) {
+    }
+}
+
+// =============================================================================
+// HtmlNode Module - Node Properties and Queries
+// =============================================================================
+
+/// HTML node query and inspection operations.
+/// All handles are obtained from Html.parse() or query methods.
+export module HtmlNode {
+
+    // -------------------------------------------------------------------------
+    // Node Properties
+    // -------------------------------------------------------------------------
+
+    /// Get the type of a node.
+    ///
+    /// @param handle The node handle
+    /// @return HtmlNodeType value (1=ELEMENT, 3=TEXT, 8=COMMENT, 9=DOCUMENT)
+    @intrinsic("html.node_type")
+    public static Int nodeType(Int handle) {
+        return 0;
+    }
+
+    /// Get the tag name of an element node.
+    ///
+    /// Returns lowercase tag name for elements (e.g., "div", "span").
+    /// Returns empty string for non-element nodes.
+    ///
+    /// @param handle The node handle
+    /// @return The tag name or empty string
+    @intrinsic("html.tag_name")
+    public static String tagName(Int handle) {
+        return "";
+    }
+
+    /// Get the text content of a node and its descendants.
+    ///
+    /// For element nodes, concatenates all text node descendants.
+    /// For text nodes, returns the text content directly.
+    ///
+    /// @param handle The node handle
+    /// @return The text content
+    @intrinsic("html.text_content")
+    public static String textContent(Int handle) {
+        return "";
+    }
+
+    /// Get the inner HTML of an element.
+    ///
+    /// Returns the serialized HTML of all child nodes.
+    ///
+    /// @param handle The element handle
+    /// @return The inner HTML string
+    @intrinsic("html.inner_html")
+    public static String innerHTML(Int handle) {
+        return "";
+    }
+
+    /// Get the outer HTML of an element (including the element itself).
+    ///
+    /// @param handle The element handle
+    /// @return The outer HTML string
+    @intrinsic("html.outer_html")
+    public static String outerHTML(Int handle) {
+        return "";
+    }
+
+    // -------------------------------------------------------------------------
+    // Attributes
+    // -------------------------------------------------------------------------
+
+    /// Get an attribute value by name.
+    ///
+    /// @param handle The element handle
+    /// @param name The attribute name (case-insensitive)
+    /// @return The attribute value, or empty string if not present
+    @intrinsic("html.get_attr")
+    public static String getAttribute(Int handle, String name) {
+        return "";
+    }
+
+    /// Check if an element has an attribute.
+    ///
+    /// @param handle The element handle
+    /// @param name The attribute name (case-insensitive)
+    /// @return true if the attribute exists
+    @intrinsic("html.has_attr")
+    public static Bool hasAttribute(Int handle, String name) {
+        return false;
+    }
+
+    /// Get all attribute names of an element.
+    ///
+    /// @param handle The element handle
+    /// @return A list handle containing attribute names as strings
+    @intrinsic("html.attr_names")
+    public static Int getAttributeNames(Int handle) {
+        return 0;
+    }
+
+    // -------------------------------------------------------------------------
+    // Tree Navigation
+    // -------------------------------------------------------------------------
+
+    /// Get the parent node.
+    ///
+    /// @param handle The node handle
+    /// @return Parent node handle, or 0 if no parent (root)
+    @intrinsic("html.parent")
+    public static Int parentNode(Int handle) {
+        return 0;
+    }
+
+    /// Get all child nodes.
+    ///
+    /// @param handle The node handle
+    /// @return A list handle containing child node handles
+    @intrinsic("html.children")
+    public static Int childNodes(Int handle) {
+        return 0;
+    }
+
+    /// Get only element children (excluding text/comment nodes).
+    ///
+    /// @param handle The node handle
+    /// @return A list handle containing element child handles
+    @intrinsic("html.element_children")
+    public static Int children(Int handle) {
+        return 0;
+    }
+
+    /// Get the first child node.
+    ///
+    /// @param handle The node handle
+    /// @return First child handle, or 0 if no children
+    @intrinsic("html.first_child")
+    public static Int firstChild(Int handle) {
+        return 0;
+    }
+
+    /// Get the last child node.
+    ///
+    /// @param handle The node handle
+    /// @return Last child handle, or 0 if no children
+    @intrinsic("html.last_child")
+    public static Int lastChild(Int handle) {
+        return 0;
+    }
+
+    /// Get the next sibling node.
+    ///
+    /// @param handle The node handle
+    /// @return Next sibling handle, or 0 if no next sibling
+    @intrinsic("html.next_sibling")
+    public static Int nextSibling(Int handle) {
+        return 0;
+    }
+
+    /// Get the previous sibling node.
+    ///
+    /// @param handle The node handle
+    /// @return Previous sibling handle, or 0 if no previous sibling
+    @intrinsic("html.prev_sibling")
+    public static Int previousSibling(Int handle) {
+        return 0;
+    }
+
+    // -------------------------------------------------------------------------
+    // Query Methods
+    // -------------------------------------------------------------------------
+
+    /// Find the first element matching a CSS selector.
+    ///
+    /// Supports basic selectors:
+    /// - Tag: "div", "span", "a"
+    /// - ID: "#main", "#header"
+    /// - Class: ".btn", ".active"
+    /// - Descendant: "div .item", "ul li"
+    /// - Combined: "div#main.container"
+    ///
+    /// @param handle The root node handle to search from
+    /// @param selector The CSS selector string
+    /// @return Matching element handle, or 0 if not found
+    @intrinsic("html.query_selector")
+    public static Int querySelector(Int handle, String selector) {
+        return 0;
+    }
+
+    /// Find all elements matching a CSS selector.
+    ///
+    /// @param handle The root node handle to search from
+    /// @param selector The CSS selector string
+    /// @return A list handle containing matching element handles
+    @intrinsic("html.query_selector_all")
+    public static Int querySelectorAll(Int handle, String selector) {
+        return 0;
+    }
+
+    /// Find an element by its ID attribute.
+    ///
+    /// @param handle The root node handle to search from
+    /// @param id The ID to search for
+    /// @return Matching element handle, or 0 if not found
+    @intrinsic("html.get_by_id")
+    public static Int getElementById(Int handle, String id) {
+        return 0;
+    }
+
+    /// Find all elements with a specific tag name.
+    ///
+    /// @param handle The root node handle to search from
+    /// @param tag The tag name (case-insensitive)
+    /// @return A list handle containing matching element handles
+    @intrinsic("html.get_by_tag")
+    public static Int getElementsByTagName(Int handle, String tag) {
+        return 0;
+    }
+
+    /// Find all elements with a specific class.
+    ///
+    /// @param handle The root node handle to search from
+    /// @param className The class name to search for
+    /// @return A list handle containing matching element handles
+    @intrinsic("html.get_by_class")
+    public static Int getElementsByClassName(Int handle, String className) {
+        return 0;
+    }
+
+    // -------------------------------------------------------------------------
+    // Utility Functions (Pure Arth)
+    // -------------------------------------------------------------------------
+
+    /// Check if a node is an element node.
+    public static Bool isElement(Int handle) {
+        return nodeType(handle) == 1;
+    }
+
+    /// Check if a node is a text node.
+    public static Bool isText(Int handle) {
+        return nodeType(handle) == 3;
+    }
+
+    /// Check if a node is a comment node.
+    public static Bool isComment(Int handle) {
+        return nodeType(handle) == 8;
+    }
+
+    /// Check if a node is a document node.
+    public static Bool isDocument(Int handle) {
+        return nodeType(handle) == 9;
+    }
+
+    /// Check if a node has any children.
+    public static Bool hasChildren(Int handle) {
+        return firstChild(handle) != 0;
+    }
+
+    /// Check if an element has a specific class.
+    /// Uses the class attribute and checks for exact match or space-separated.
+    @intrinsic("html.has_class")
+    public static Bool hasClass(Int handle, String className) {
+        return false;
+    }
+}

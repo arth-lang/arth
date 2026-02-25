@@ -1,0 +1,432 @@
+package mail;
+
+/**
+ * Email address types and parsing.
+ *
+ * This module provides types for representing and parsing email addresses
+ * according to RFC 5321 (SMTP) and RFC 5322 (Internet Message Format).
+ *
+ * Supported address formats:
+ * - Simple: `user@example.com`
+ * - With display name: `John Doe <john@example.com>`
+ * - Quoted display name: `"Doe, John" <john@example.com>`
+ * - Group: `Team: alice@x.com, bob@x.com;`
+ *
+ * Example usage:
+ * ```arth
+ * import mail.*;
+ *
+ * // Parse a simple address
+ * InternetAddress addr = InternetAddress.parse("user@example.com");
+ *
+ * // Parse with display name
+ * InternetAddress named = InternetAddress.parse("Alice <alice@example.com>");
+ * String name = InternetAddress.getName(named);      // "Alice"
+ * String email = InternetAddress.getAddress(named);  // "alice@example.com"
+ *
+ * // Parse multiple addresses
+ * Address[] list = InternetAddress.parseList("a@x.com, b@x.com");
+ *
+ * // Create an address programmatically
+ * InternetAddress addr = InternetAddress.of("bob@example.com", "Bob Smith");
+ * ```
+ *
+ * @see mail.MimeMessage for using addresses in messages
+ */
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Address Interface
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Base interface for all email address types.
+ *
+ * This interface is implemented by InternetAddress and GroupAddress.
+ */
+public interface Address {
+    /// Returns the address type ("rfc822" for InternetAddress, "group" for GroupAddress).
+    String getType();
+
+    /// Returns the string representation of the address.
+    String toString();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Internet Address (RFC 5322)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Represents an RFC 5322 email address.
+ *
+ * An InternetAddress has two main components:
+ * - address: The email address itself (user@domain)
+ * - personal: Optional display name (e.g., "John Doe")
+ *
+ * The address is always stored in lowercase for comparison purposes.
+ */
+public struct InternetAddress {
+    /// The email address (e.g., "user@example.com")
+    public final String address;
+    /// The display name, or empty string if not set (e.g., "John Doe")
+    public final String personal;
+}
+
+module InternetAddress implements Address {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Factory Methods
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Creates an InternetAddress with just an email address.
+    public static InternetAddress of(String address) {
+        return InternetAddress {
+            address: address,
+            personal: ""
+        };
+    }
+
+    /// Creates an InternetAddress with email and display name.
+    public static InternetAddress ofNamed(String address, String personal) {
+        return InternetAddress {
+            address: address,
+            personal: personal
+        };
+    }
+
+    /// Parses a single email address string.
+    ///
+    /// Accepts formats:
+    /// - `user@example.com`
+    /// - `User Name <user@example.com>`
+    /// - `"User, Name" <user@example.com>`
+    ///
+    /// @throws AddressError if the address is malformed
+    @intrinsic("mail.address.parse")
+    public static InternetAddress parse(String addressStr) throws (AddressError) {
+        // Intrinsic implementation - placeholder
+        return InternetAddress {
+            address: addressStr,
+            personal: ""
+        };
+    }
+
+    /// Parses a comma-separated list of email addresses.
+    ///
+    /// @throws AddressError if any address is malformed
+    @intrinsic("mail.address.parse_list")
+    public static InternetAddress[] parseList(String addressList) throws (AddressError) {
+        // Intrinsic implementation - placeholder
+        InternetAddress[] result;
+        return result;
+    }
+
+    /// Validates an email address without throwing.
+    ///
+    /// Returns true if the address is syntactically valid according to RFC 5321.
+    @intrinsic("mail.address.validate")
+    public static bool validate(String addressStr) {
+        // Intrinsic implementation - placeholder
+        return true;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Accessors
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns the email address (e.g., "user@example.com").
+    public static String getAddress(InternetAddress self) {
+        return self.address;
+    }
+
+    /// Returns the display name, or empty string if not set.
+    public static String getName(InternetAddress self) {
+        return self.personal;
+    }
+
+    /// Returns the display name, or empty string if not set.
+    /// Alias for getName().
+    public static String getPersonal(InternetAddress self) {
+        return self.personal;
+    }
+
+    /// Returns true if this address has a display name.
+    public static bool hasName(InternetAddress self) {
+        return self.personal != "";
+    }
+
+    /// Returns the local part of the email address (before @).
+    public static String getLocalPart(InternetAddress self) {
+        int atPos = indexOf(self.address, "@");
+        if (atPos < 0) {
+            return self.address;
+        }
+        return substring(self.address, 0, atPos);
+    }
+
+    /// Returns the domain part of the email address (after @).
+    public static String getDomain(InternetAddress self) {
+        int atPos = indexOf(self.address, "@");
+        if (atPos < 0) {
+            return "";
+        }
+        return substring(self.address, atPos + 1, length(self.address));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Formatting
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns the string representation of this address.
+    ///
+    /// If a display name is set, returns "Name <address>".
+    /// Otherwise, returns just the address.
+    public String toString(InternetAddress self) {
+        if (self.personal == "") {
+            return self.address;
+        }
+        // Check if personal name needs quoting
+        if (needsQuoting(self.personal)) {
+            return "\"" + escapeQuotes(self.personal) + "\" <" + self.address + ">";
+        }
+        return self.personal + " <" + self.address + ">";
+    }
+
+    /// Returns "rfc822" as the address type.
+    public String getType(InternetAddress self) {
+        return "rfc822";
+    }
+
+    /// Returns the address formatted for use in a header (RFC 2047 encoding if needed).
+    @intrinsic("mail.address.encode_header")
+    public static String toEncodedString(InternetAddress self) {
+        // Intrinsic implementation - placeholder
+        return InternetAddress.toString(self);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Comparison
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns true if two addresses are equal (case-insensitive comparison).
+    public static bool equals(InternetAddress a, InternetAddress b) {
+        return toLowerCase(a.address) == toLowerCase(b.address);
+    }
+
+    /// Returns true if this address matches the given email string (case-insensitive).
+    public static bool equalsAddress(InternetAddress self, String email) {
+        return toLowerCase(self.address) == toLowerCase(email);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Internal Helpers
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Checks if a string needs to be quoted in an address.
+    static bool needsQuoting(String s) {
+        // Check for special characters that require quoting
+        int len = length(s);
+        for (int i = 0; i < len; i = i + 1) {
+            char c = charAt(s, i);
+            if (c == ',' || c == ';' || c == ':' || c == '<' || c == '>' ||
+                c == '(' || c == ')' || c == '[' || c == ']' || c == '"' ||
+                c == '\\' || c == '@') {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// Escapes double quotes in a string.
+    static String escapeQuotes(String s) {
+        // Simple escape - replace " with \"
+        return replace(s, "\"", "\\\"");
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Group Address (RFC 5322)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Represents an RFC 5322 group address.
+ *
+ * A group address has the format: `group-name: addr1, addr2, ...;`
+ *
+ * Example: `Team: alice@example.com, bob@example.com;`
+ */
+public struct GroupAddress {
+    /// The group name (e.g., "Team")
+    public final String name;
+    /// The addresses in the group
+    public final InternetAddress[] members;
+}
+
+module GroupAddress implements Address {
+    /// Creates an empty GroupAddress with just a name.
+    public static GroupAddress of(String name) {
+        GroupAddress g;
+        g.name = name;
+        return g;
+    }
+
+    /// Creates a GroupAddress with name and members.
+    public static GroupAddress ofMembers(String name, InternetAddress[] members) {
+        return GroupAddress {
+            name: name,
+            members: members
+        };
+    }
+
+    /// Parses a group address string.
+    ///
+    /// Accepts format: `group-name: addr1, addr2, ...;`
+    ///
+    /// @throws AddressError if the group syntax is malformed
+    @intrinsic("mail.address.parse_group")
+    public static GroupAddress parse(String groupStr) throws (AddressError) {
+        // Intrinsic implementation - placeholder
+        GroupAddress g;
+        g.name = groupStr;
+        return g;
+    }
+
+    /// Returns the group name.
+    public static String getName(GroupAddress self) {
+        return self.name;
+    }
+
+    /// Returns the addresses in the group.
+    public static InternetAddress[] getMembers(GroupAddress self) {
+        return self.members;
+    }
+
+    /// Returns the number of members in the group.
+    public static int getMemberCount(GroupAddress self) {
+        return length(self.members);
+    }
+
+    /// Returns the member at the given index.
+    public static InternetAddress getMember(GroupAddress self, int index) {
+        return self.members[index];
+    }
+
+    /// Returns "group" as the address type.
+    public String getType(GroupAddress self) {
+        return "group";
+    }
+
+    /// Returns the string representation of this group address.
+    public String toString(GroupAddress self) {
+        String result = self.name + ": ";
+        int count = length(self.members);
+        for (int i = 0; i < count; i = i + 1) {
+            if (i > 0) {
+                result = result + ", ";
+            }
+            result = result + InternetAddress.toString(self.members[i]);
+        }
+        result = result + ";";
+        return result;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Address Utilities
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Utility module for working with addresses.
+ */
+module AddressUtil {
+    /// Extracts all email addresses from a list that may contain groups.
+    public static InternetAddress[] flatten(Address[] addresses) {
+        // First pass: count total addresses
+        int total = 0;
+        int len = length(addresses);
+        for (int i = 0; i < len; i = i + 1) {
+            Address addr = addresses[i];
+            if (addr.getType() == "rfc822") {
+                total = total + 1;
+            } else {
+                // Group - count members
+                GroupAddress g = (GroupAddress) addr;
+                total = total + GroupAddress.getMemberCount(g);
+            }
+        }
+
+        // Second pass: collect addresses
+        InternetAddress[] result = new InternetAddress[total];
+        int idx = 0;
+        for (int i = 0; i < len; i = i + 1) {
+            Address addr = addresses[i];
+            if (addr.getType() == "rfc822") {
+                result[idx] = (InternetAddress) addr;
+                idx = idx + 1;
+            } else {
+                GroupAddress g = (GroupAddress) addr;
+                InternetAddress[] members = GroupAddress.getMembers(g);
+                int memberCount = length(members);
+                for (int j = 0; j < memberCount; j = j + 1) {
+                    result[idx] = members[j];
+                    idx = idx + 1;
+                }
+            }
+        }
+
+        return result;
+    }
+
+    /// Formats a list of addresses as a comma-separated string.
+    public static String format(Address[] addresses) {
+        String result = "";
+        int len = length(addresses);
+        for (int i = 0; i < len; i = i + 1) {
+            if (i > 0) {
+                result = result + ", ";
+            }
+            result = result + addresses[i].toString();
+        }
+        return result;
+    }
+
+    /// Formats a list of InternetAddresses as a comma-separated string.
+    public static String formatList(InternetAddress[] addresses) {
+        String result = "";
+        int len = length(addresses);
+        for (int i = 0; i < len; i = i + 1) {
+            if (i > 0) {
+                result = result + ", ";
+            }
+            result = result + InternetAddress.toString(addresses[i]);
+        }
+        return result;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// String Helper Functions (should be imported from string module)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// These are placeholder declarations - actual implementation comes from string stdlib
+@intrinsic("string.index_of")
+static int indexOf(String s, String sub) { return -1; }
+
+@intrinsic("string.substring")
+static String substring(String s, int start, int end) { return ""; }
+
+@intrinsic("string.length")
+static int length(String s) { return 0; }
+
+@intrinsic("string.char_at")
+static char charAt(String s, int index) { return ' '; }
+
+@intrinsic("string.to_lower_case")
+static String toLowerCase(String s) { return s; }
+
+@intrinsic("string.replace")
+static String replace(String s, String old, String new) { return s; }
+
+@intrinsic("array.length")
+static int length(InternetAddress[] arr) { return 0; }
+
+@intrinsic("array.length")
+static int length(Address[] arr) { return 0; }

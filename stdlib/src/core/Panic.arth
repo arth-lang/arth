@@ -1,0 +1,88 @@
+package core;
+
+/**
+ * Panic and unwind infrastructure.
+ *
+ * NOTE: This file is an INTRINSIC-BACKED STUB for IDE/tooling support.
+ * The function bodies are placeholders - actual implementation is provided
+ * by the compiler via intrinsic lowering to VM runtime functions.
+ *
+ * Panic is the last-resort error mechanism in Arth. Unlike exceptions which
+ * represent recoverable errors, panics indicate programming errors or
+ * unrecoverable conditions. The default behavior is to unwind the stack
+ * and terminate, but custom unwind handlers can be installed for cleanup.
+ *
+ * Prefer typed exceptions for recoverable errors. Use panic only for:
+ * - Assertion failures
+ * - Index out of bounds
+ * - Unreachable code paths
+ * - Invariant violations
+ *
+ * Example usage:
+ * ```
+ * import core.*;
+ *
+ * module Main {
+ *     public static void main() {
+ *         // Simple panic with message
+ *         if (index < 0) {
+ *             Panic.panic("index must be non-negative");
+ *         }
+ *
+ *         // Install custom unwind handler for cleanup
+ *         Panic.setUnwindHandler(myCleanupHandler);
+ *         // ... risky code ...
+ *         Panic.clearUnwindHandler();
+ *     }
+ *
+ *     public static void myCleanupHandler() {
+ *         String msg = Panic.getMessage();
+ *         Console.println("Panicked: " + msg);
+ *         // perform cleanup...
+ *     }
+ * }
+ * ```
+ *
+ * @see src/compiler/intrinsics.rs for intrinsic registry
+ * @see crates/arth-vm/src/runtime.rs for VM implementation
+ */
+
+module Panic {
+    /// Triggers a panic with the given message.
+    ///
+    /// This immediately begins stack unwinding. Control does not return
+    /// to the caller. If an unwind handler is installed, it will be called.
+    /// Otherwise, the program terminates.
+    ///
+    /// @param message The panic message describing the error
+    @intrinsic("panic.panic")
+    public static void panic(String message) { }
+
+    /// Installs a custom unwind handler.
+    ///
+    /// The handler is called during stack unwinding before the program
+    /// terminates. Only one handler can be active at a time; setting
+    /// a new handler replaces the previous one.
+    ///
+    /// The handler is represented as an opaque function handle (Int).
+    ///
+    /// @param handler The unwind handler function handle
+    @intrinsic("panic.set_unwind_handler")
+    public static void setUnwindHandler(Int handler) { }
+
+    /// Removes the currently installed unwind handler.
+    ///
+    /// After calling this, panics will cause immediate termination
+    /// without calling any custom handler.
+    @intrinsic("panic.clear_unwind_handler")
+    public static void clearUnwindHandler() { }
+
+    /// Returns the message of the current panic.
+    ///
+    /// This is only valid when called from within an unwind handler.
+    /// Outside of an unwind context, returns an empty string.
+    ///
+    /// @return The panic message, or empty string if not in unwind context
+    @intrinsic("panic.get_message")
+    public static String getMessage() { return ""; }
+}

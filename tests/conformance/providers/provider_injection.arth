@@ -1,0 +1,63 @@
+package conformance;
+
+// @spec: spec.md §11 - Provider injection pattern
+// @expect: pass
+// @description: Validates explicit provider passing (no implicit globals)
+
+provider DbProvider {
+    public final String connectionString;
+}
+
+provider CacheProvider {
+    public final Int capacity;
+}
+
+// Bundle of providers for dependency injection
+public struct Providers {
+    public final DbProvider db;
+    public final CacheProvider cache;
+}
+
+module DbProviderFns {
+    public DbProvider new(String connectionString) {
+        return DbProvider { connectionString: connectionString };
+    }
+}
+
+module CacheProviderFns {
+    public CacheProvider new(Int capacity) {
+        return CacheProvider { capacity: capacity };
+    }
+}
+
+// Service that depends on providers
+module UserService {
+    // Explicit provider parameter (not implicit global)
+    public String getUser(Providers p, String id) {
+        String conn = p.db.connectionString;
+        Int cap = p.cache.capacity;
+        return "user:" + id;
+    }
+
+    // Accept individual provider
+    public String getUserFromDb(DbProvider db, String id) {
+        return "user:" + id;
+    }
+}
+
+module Main {
+    public static void main() {
+        // Create providers at boundary
+        DbProvider db = DbProviderFns.new("postgres://localhost/db");
+        CacheProvider cache = CacheProviderFns.new(1000);
+
+        // Bundle for injection
+        Providers p = Providers { db: db, cache: cache };
+
+        // Pass explicitly to services
+        String user = UserService.getUser(p, "123");
+        String user2 = UserService.getUserFromDb(db, "456");
+
+        println("provider_injection: pass");
+    }
+}

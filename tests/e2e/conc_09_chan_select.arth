@@ -1,0 +1,381 @@
+package test;
+
+// Test: C09 - Channel Select
+//
+// This test verifies that channel select works correctly, allowing
+// a task to wait on multiple channels simultaneously and receive
+// from whichever becomes ready first.
+//
+// Test scenario:
+// - Create multiple channels
+// - Add them to a select set
+// - Verify non-blocking and blocking select operations
+// - Verify correct channel index and value retrieval
+
+module Executor {
+    // Executor intrinsics mapped to __arth_executor_* VM calls
+}
+
+module MpmcChan {
+    // MPMC channel intrinsics mapped to __arth_mpmc_chan_* VM calls
+}
+
+module Main {
+    public static void main() {
+        println("=== C09: Channel Select ===");
+
+        // Initialize thread pool with 4 threads
+        println("Initializing pool with 4 threads...");
+        Int initResult = Executor.init(4);
+        println("Pool initialized: " + initResult);
+
+        Int resetResult = Executor.resetStats();
+
+        println("=== Test 1: Select Setup ===");
+        // Create 3 channels
+        Int ch1 = MpmcChan.create(10);
+        Int ch2 = MpmcChan.create(10);
+        Int ch3 = MpmcChan.create(10);
+        println("Created 3 channels: " + ch1 + ", " + ch2 + ", " + ch3);
+
+        // Clear select set
+        MpmcChan.selectClear();
+        println("Select set cleared");
+
+        // Add channels to select set
+        Int idx1 = MpmcChan.selectAdd(ch1);
+        Int idx2 = MpmcChan.selectAdd(ch2);
+        Int idx3 = MpmcChan.selectAdd(ch3);
+        println("Added channels at indices: " + idx1 + ", " + idx2 + ", " + idx3);
+
+        // Check count
+        Int count = MpmcChan.selectCount();
+        println("Select set count: " + count);
+
+        Int test1Pass = 0;
+        if (idx1 == 0) {
+            if (idx2 == 1) {
+                if (idx3 == 2) {
+                    if (count == 3) {
+                        println("Test 1 (select setup): PASS");
+                        test1Pass = 1;
+                    }
+                }
+            }
+        }
+        if (test1Pass == 0) {
+            println("Test 1 FAIL: expected indices 0,1,2 and count 3");
+        }
+
+        println("=== Test 2: Try Select on Empty Channels ===");
+        // All channels empty, try select should return 1 (none ready)
+        Int tryResult = MpmcChan.trySelectRecv();
+        println("trySelectRecv on empty channels: " + tryResult);
+
+        Int test2Pass = 0;
+        if (tryResult == 1) {
+            println("Test 2 (try select empty): PASS");
+            test2Pass = 1;
+        } else {
+            println("Test 2 FAIL: expected 1 (none ready), got " + tryResult);
+        }
+
+        println("=== Test 3: Try Select with Data on Channel 2 ===");
+        // Send to channel 2 (middle channel)
+        Int sendStatus = MpmcChan.send(ch2, 200);
+        println("Sent 200 to ch2: " + sendStatus);
+
+        // Now try select should succeed and return channel 2's data
+        Int tryResult2 = MpmcChan.trySelectRecv();
+        Int readyIdx = MpmcChan.selectGetReadyIndex();
+        Int readyVal = MpmcChan.selectGetValue();
+        println("trySelectRecv: status=" + tryResult2 + ", index=" + readyIdx + ", value=" + readyVal);
+
+        Int test3Pass = 0;
+        if (tryResult2 == 0) {
+            if (readyIdx == 1) {
+                if (readyVal == 200) {
+                    println("Test 3 (try select with data): PASS");
+                    test3Pass = 1;
+                }
+            }
+        }
+        if (test3Pass == 0) {
+            println("Test 3 FAIL: expected status=0, index=1, value=200");
+        }
+
+        println("=== Test 4: Try Select with Data on First Channel ===");
+        // Reset and test channel 1
+        MpmcChan.selectClear();
+        MpmcChan.selectAdd(ch1);
+        MpmcChan.selectAdd(ch2);
+        MpmcChan.selectAdd(ch3);
+
+        // Send to channel 1
+        Int sendStatus2 = MpmcChan.send(ch1, 100);
+        println("Sent 100 to ch1: " + sendStatus2);
+
+        Int tryResult3 = MpmcChan.trySelectRecv();
+        Int readyIdx2 = MpmcChan.selectGetReadyIndex();
+        Int readyVal2 = MpmcChan.selectGetValue();
+        println("trySelectRecv: status=" + tryResult3 + ", index=" + readyIdx2 + ", value=" + readyVal2);
+
+        Int test4Pass = 0;
+        if (tryResult3 == 0) {
+            if (readyIdx2 == 0) {
+                if (readyVal2 == 100) {
+                    println("Test 4 (try select first channel): PASS");
+                    test4Pass = 1;
+                }
+            }
+        }
+        if (test4Pass == 0) {
+            println("Test 4 FAIL: expected status=0, index=0, value=100");
+        }
+
+        println("=== Test 5: Try Select with Data on Last Channel ===");
+        // Reset and test channel 3
+        MpmcChan.selectClear();
+        MpmcChan.selectAdd(ch1);
+        MpmcChan.selectAdd(ch2);
+        MpmcChan.selectAdd(ch3);
+
+        // Send to channel 3
+        Int sendStatus3 = MpmcChan.send(ch3, 300);
+        println("Sent 300 to ch3: " + sendStatus3);
+
+        Int tryResult4 = MpmcChan.trySelectRecv();
+        Int readyIdx3 = MpmcChan.selectGetReadyIndex();
+        Int readyVal3 = MpmcChan.selectGetValue();
+        println("trySelectRecv: status=" + tryResult4 + ", index=" + readyIdx3 + ", value=" + readyVal3);
+
+        Int test5Pass = 0;
+        if (tryResult4 == 0) {
+            if (readyIdx3 == 2) {
+                if (readyVal3 == 300) {
+                    println("Test 5 (try select last channel): PASS");
+                    test5Pass = 1;
+                }
+            }
+        }
+        if (test5Pass == 0) {
+            println("Test 5 FAIL: expected status=0, index=2, value=300");
+        }
+
+        println("=== Test 6: Blocking Select ===");
+        // Reset select set
+        MpmcChan.selectClear();
+        MpmcChan.selectAdd(ch1);
+        MpmcChan.selectAdd(ch2);
+        MpmcChan.selectAdd(ch3);
+
+        // Send data first (so blocking select returns immediately)
+        Int sendStatus4 = MpmcChan.send(ch2, 500);
+        println("Sent 500 to ch2: " + sendStatus4);
+
+        Int blockResult = MpmcChan.selectRecvBlocking();
+        Int blockIdx = MpmcChan.selectGetReadyIndex();
+        Int blockVal = MpmcChan.selectGetValue();
+        println("selectRecvBlocking: status=" + blockResult + ", index=" + blockIdx + ", value=" + blockVal);
+
+        Int test6Pass = 0;
+        if (blockResult == 0) {
+            if (blockIdx == 1) {
+                if (blockVal == 500) {
+                    println("Test 6 (blocking select): PASS");
+                    test6Pass = 1;
+                }
+            }
+        }
+        if (test6Pass == 0) {
+            println("Test 6 FAIL: expected status=0, index=1, value=500");
+        }
+
+        println("=== Test 7: Select with Multiple Data ===");
+        // When multiple channels have data, should get first one checked (index order)
+        MpmcChan.selectClear();
+        MpmcChan.selectAdd(ch1);
+        MpmcChan.selectAdd(ch2);
+        MpmcChan.selectAdd(ch3);
+
+        // Send to all channels
+        MpmcChan.send(ch1, 111);
+        MpmcChan.send(ch2, 222);
+        MpmcChan.send(ch3, 333);
+        println("Sent to all 3 channels");
+
+        Int multiResult = MpmcChan.trySelectRecv();
+        Int multiIdx = MpmcChan.selectGetReadyIndex();
+        Int multiVal = MpmcChan.selectGetValue();
+        println("trySelectRecv: status=" + multiResult + ", index=" + multiIdx + ", value=" + multiVal);
+
+        // Should get channel 0 (ch1) first due to iteration order
+        Int test7Pass = 0;
+        if (multiResult == 0) {
+            if (multiIdx == 0) {
+                if (multiVal == 111) {
+                    println("Test 7 (multi data, FIFO order): PASS");
+                    test7Pass = 1;
+                }
+            }
+        }
+        if (test7Pass == 0) {
+            println("Test 7 FAIL: expected status=0, index=0, value=111");
+        }
+
+        // Drain remaining data
+        MpmcChan.recv(ch2);
+        MpmcChan.recv(ch3);
+
+        println("=== Test 8: Select Get Handle ===");
+        // Verify we can get handles back from select set
+        Int h0 = MpmcChan.selectGetHandle(0);
+        Int h1 = MpmcChan.selectGetHandle(1);
+        Int h2 = MpmcChan.selectGetHandle(2);
+        Int h_invalid = MpmcChan.selectGetHandle(5);
+        println("Handles: " + h0 + ", " + h1 + ", " + h2 + ", invalid=" + h_invalid);
+
+        Int test8Pass = 0;
+        if (h0 == ch1) {
+            if (h1 == ch2) {
+                if (h2 == ch3) {
+                    if (h_invalid == -1) {
+                        println("Test 8 (select get handle): PASS");
+                        test8Pass = 1;
+                    }
+                }
+            }
+        }
+        if (test8Pass == 0) {
+            println("Test 8 FAIL: handle mismatch");
+        }
+
+        println("=== Test 9: Select with Task Registration ===");
+        // Test select with task registration (simulates blocking for executor integration)
+        MpmcChan.selectClear();
+        MpmcChan.selectAdd(ch1);
+        MpmcChan.selectAdd(ch2);
+
+        // Channels are empty, so select should register task as waiting
+        Int simTaskId = 999;
+        Int taskResult = MpmcChan.selectRecvWithTask(simTaskId);
+        println("selectRecvWithTask(999) on empty: " + taskResult);
+
+        // Check waiting counts on each channel
+        Int wait1 = MpmcChan.waitingReceiverCount(ch1);
+        Int wait2 = MpmcChan.waitingReceiverCount(ch2);
+        println("Waiting receivers: ch1=" + wait1 + ", ch2=" + wait2);
+
+        Int test9aPass = 0;
+        if (taskResult == 1) {
+            if (wait1 == 1) {
+                if (wait2 == 1) {
+                    println("Test 9a (task registered on all): PASS");
+                    test9aPass = 1;
+                }
+            }
+        }
+        if (test9aPass == 0) {
+            println("Test 9a FAIL: expected status=1, wait1=1, wait2=1");
+        }
+
+        // Deregister from all
+        MpmcChan.selectDeregister(simTaskId, -1);
+        Int afterWait1 = MpmcChan.waitingReceiverCount(ch1);
+        Int afterWait2 = MpmcChan.waitingReceiverCount(ch2);
+        println("After deregister: ch1=" + afterWait1 + ", ch2=" + afterWait2);
+
+        Int test9bPass = 0;
+        if (afterWait1 == 0) {
+            if (afterWait2 == 0) {
+                println("Test 9b (deregister from all): PASS");
+                test9bPass = 1;
+            }
+        }
+        if (test9bPass == 0) {
+            println("Test 9b FAIL: expected wait=0 on both");
+        }
+
+        println("=== Test 10: Select Deregister Except One ===");
+        // Re-register
+        MpmcChan.selectClear();
+        MpmcChan.selectAdd(ch1);
+        MpmcChan.selectAdd(ch2);
+        MpmcChan.selectAdd(ch3);
+        MpmcChan.selectRecvWithTask(888);
+
+        // Deregister except index 1 (ch2)
+        MpmcChan.selectDeregister(888, 1);
+        Int exceptWait1 = MpmcChan.waitingReceiverCount(ch1);
+        Int exceptWait2 = MpmcChan.waitingReceiverCount(ch2);
+        Int exceptWait3 = MpmcChan.waitingReceiverCount(ch3);
+        println("After deregister except 1: ch1=" + exceptWait1 + ", ch2=" + exceptWait2 + ", ch3=" + exceptWait3);
+
+        Int test10Pass = 0;
+        if (exceptWait1 == 0) {
+            if (exceptWait2 == 1) {
+                if (exceptWait3 == 0) {
+                    println("Test 10 (deregister except one): PASS");
+                    test10Pass = 1;
+                }
+            }
+        }
+        if (test10Pass == 0) {
+            println("Test 10 FAIL: expected ch1=0, ch2=1, ch3=0");
+        }
+
+        // Clean up waiting receiver
+        MpmcChan.selectDeregister(888, -1);
+
+        println("=== Test 11: Select on Closed Channels ===");
+        // Close all channels
+        MpmcChan.close(ch1);
+        MpmcChan.close(ch2);
+        MpmcChan.close(ch3);
+        println("All channels closed");
+
+        MpmcChan.selectClear();
+        MpmcChan.selectAdd(ch1);
+        MpmcChan.selectAdd(ch2);
+        MpmcChan.selectAdd(ch3);
+
+        Int closedResult = MpmcChan.trySelectRecv();
+        println("trySelectRecv on closed channels: " + closedResult);
+
+        Int test11Pass = 0;
+        if (closedResult == 2) {
+            println("Test 11 (closed channels): PASS");
+            test11Pass = 1;
+        } else {
+            println("Test 11 FAIL: expected 2 (all closed), got " + closedResult);
+        }
+
+        println("=== Test 12: Empty Select Set ===");
+        MpmcChan.selectClear();
+        Int emptyCount = MpmcChan.selectCount();
+        Int emptyResult = MpmcChan.trySelectRecv();
+        println("Empty select: count=" + emptyCount + ", tryRecv=" + emptyResult);
+
+        Int test12Pass = 0;
+        if (emptyCount == 0) {
+            if (emptyResult == 3) {
+                println("Test 12 (empty select set): PASS");
+                test12Pass = 1;
+            }
+        }
+        if (test12Pass == 0) {
+            println("Test 12 FAIL: expected count=0, result=3");
+        }
+
+        // Summary
+        println("=== Summary ===");
+        Int totalPassed = test1Pass + test2Pass + test3Pass + test4Pass + test5Pass + test6Pass + test7Pass + test8Pass + test9aPass + test9bPass + test10Pass + test11Pass + test12Pass;
+        println("Tests passed: " + totalPassed + "/13");
+
+        if (totalPassed == 13) {
+            println("=== C09: PASSED - Channel select works correctly ===");
+        } else {
+            println("=== C09: FAILED ===");
+        }
+    }
+}

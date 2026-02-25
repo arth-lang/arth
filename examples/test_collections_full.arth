@@ -1,0 +1,72 @@
+package test;
+
+module Main {
+    public void main() {
+        // Test 1: List literals
+        print("=== Test 1: List Literals ===");
+        int x = [1, 2, 3, 4, 5][2];  // Should be 3
+        print(x);
+
+        // Test 2: Map literals
+        print("=== Test 2: Map Literals ===");
+        // Note: Maps currently work with runtime, map literals create new maps
+
+        // Test 3: List API - push, get, len
+        print("=== Test 3: List API Basics ===");
+        List<Int> nums = List.new();
+        List.push(nums, 10);
+        List.push(nums, 20);
+        List.push(nums, 30);
+        int len = List.len(nums);
+        print(len);  // Should print 3
+        int val = List.get(nums, 1);
+        print(val);  // Should print 20
+
+        // Test 4: indexOf
+        print("=== Test 4: indexOf ===");
+        int idx = List.indexOf(nums, 20);
+        print(idx);  // Should print 1
+        int notFound = List.indexOf(nums, 999);
+        print(notFound);  // Should print -1
+
+        // Test 5: contains
+        print("=== Test 5: contains ===");
+        int has20 = List.contains(nums, 20);
+        print(has20);  // Should print 1
+        int has999 = List.contains(nums, 999);
+        print(has999);  // Should print 0
+
+        // Test 6: insert
+        print("=== Test 6: insert ===");
+        List.insert(nums, 1, 15);  // Insert 15 at index 1
+        int newLen = List.len(nums);
+        print(newLen);  // Should print 4
+        int inserted = List.get(nums, 1);
+        print(inserted);  // Should print 15
+
+        // Test 7: remove
+        print("=== Test 7: remove ===");
+        int removed = List.remove(nums, 1);  // Remove at index 1
+        print(removed);  // Should print 15
+        int afterRemove = List.len(nums);
+        print(afterRemove);  // Should print 3
+
+        // Test 8: clear
+        print("=== Test 8: clear ===");
+        List.clear(nums);
+        int afterClear = List.len(nums);
+        print(afterClear);  // Should print 0
+
+        // Test 9: Map operations
+        print("=== Test 9: Map Operations ===");
+        Map<Int, Int> m = Map.new();
+        Map.put(m, 1, 100);
+        Map.put(m, 2, 200);
+        int mapLen = Map.len(m);
+        print(mapLen);  // Should print 2
+        int mapVal = Map.get(m, 1);
+        print(mapVal);  // Should print 100
+
+        print("=== All Tests Complete ===");
+    }
+}

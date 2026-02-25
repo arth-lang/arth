@@ -1,0 +1,101 @@
+package examples.tests;
+
+/**
+ * Illustrative tests for advanced map helpers:
+ * - entries / toEntries / fromEntries
+ * - merge (with and without conflictFn)
+ * - update, forEach
+ * - mapValues, filterKeys, filter
+ * - find, findKey, any, all, partition
+ *
+ * NOTE: This is an illustrative example only; the Arth sample
+ * test runner is not wired into `cargo test`.
+ */
+module MapAdvancedTest {
+    public void main() {
+        // Base map used across tests
+        Int m = Map.new();
+        Map.put(m, 1, 10);
+        Map.put(m, 2, 20);
+        Map.put(m, 3, 30);
+
+        println("=== entries / toEntries / fromEntries ===");
+        Int entries = map.entries(m);
+        Int firstEntry = array.get(entries, 0);
+        // Print key and value from the first entry [key, value]
+        println(array.get(firstEntry, 0));
+        println(array.get(firstEntry, 1));
+
+        Int entries2 = map.toEntries(m);
+        Int m2 = map.fromEntries(entries2);
+        println(Map.len(m2)); // Should print 3
+
+        println("=== update ===");
+        map.update(m, 1, fn(Int old) { return old + 1; });
+        println(Map.get(m, 1)); // 11
+
+        println("=== forEach / any / all ===");
+        Int sum = 0;
+        map.forEach(m, fn(Int k, Int v) {
+            sum = sum + v;
+            return;
+        });
+        println(sum); // 11 + 20 + 30 = 61
+
+        Bool hasBig = map.any(m, fn(Int k, Int v) { return v >= 30; });
+        println(hasBig); // 1 (true)
+
+        Bool allPositive = map.all(m, fn(Int k, Int v) { return v > 0; });
+        println(allPositive); // 1 (true)
+
+        println("=== find / findKey ===");
+        Optional<Int> foundEntry = map.find(m, fn(Int k, Int v) { return k == 2; });
+        println(option.isSome(foundEntry)); // 1
+        if (option.isSome(foundEntry)) {
+            Int e = option.orElse(foundEntry, 0);
+            println(array.get(e, 0)); // 2
+            println(array.get(e, 1)); // 20
+        }
+
+        Optional<Int> foundKey = map.findKey(m, fn(Int k, Int v) { return v == 30; });
+        println(option.isSome(foundKey)); // 1
+        println(option.orElse(foundKey, 0)); // 3
+
+        println("=== mapValues ===");
+        Int doubled = map.mapValues(m, fn(Int k, Int v) { return v * 2; });
+        println(Map.get(doubled, 1)); // 22
+        println(Map.get(doubled, 2)); // 40
+
+        println("=== filter / filterKeys ===");
+        Int evenKeys = map.filterKeys(m, fn(Int k) { return k % 2 == 0; });
+        println(Map.len(evenKeys)); // 1
+
+        Int gt20 = map.filter(m, fn(Int k, Int v) { return v > 20; });
+        println(Map.len(gt20)); // 2
+
+        println("=== merge (default and conflictFn) ===");
+        Int left = Map.new();
+        Map.put(left, 1, 1);
+        Map.put(left, 2, 2);
+
+        Int right = Map.new();
+        Map.put(right, 2, 20);
+        Map.put(right, 3, 30);
+
+        Int mergedDefault = map.merge(left, right);
+        println(Map.get(mergedDefault, 1)); // 1
+        println(Map.get(mergedDefault, 2)); // 20
+        println(Map.get(mergedDefault, 3)); // 30
+
+        Int mergedConflict = map.merge(left, right, fn(Int key, Int a, Int b) { return a + b; });
+        println(Map.get(mergedConflict, 2)); // 22
+
+        println("=== partition ===");
+        MapPartitionResult part = map.partition(m, fn(Int k, Int v) { return v >= 20; });
+        println(Map.len(part.matches)); // 2
+        println(Map.len(part.rest));    // 1
+
+        println("=== MapAdvancedTest complete ===");
+    }
+}
+

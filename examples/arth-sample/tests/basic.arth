@@ -1,0 +1,12 @@
+package tests.basic;
+
+import app.*;
+import encoding.json.*;
+
+@test
+void json_roundtrip() throws (EncodeError, DecodeError) {
+  User u = User { id: "t1", createdAt: DateTime.now() };
+  bytes b = Json.serialize<User>(u, UserCodec.codec());
+  User v = Json.deserialize<User>(b, UserCodec.codec());
+  // If decode throws, the test fails; equality derive is optional.
+}

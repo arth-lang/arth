@@ -1,0 +1,188 @@
+package test;
+
+// Test: C02 - Work-Stealing Queues
+//
+// This test verifies the work-stealing infrastructure:
+// - Global injector queue receives new tasks
+// - Workers steal tasks from other workers' local deques
+// - All tasks complete successfully
+// - Multiple workers participate in execution (proves work-stealing)
+//
+// The test spawns CPU-bound tasks and verifies that multiple
+// worker threads participate in executing them.
+
+module Executor {
+    // Executor intrinsics are recognized by HIR-to-IR lowering
+    // and mapped to __arth_executor_* VM calls
+}
+
+module Main {
+    public static void main() {
+        println("=== C02: Work-Stealing Queues ===");
+
+        // Initialize thread pool with 4 threads
+        println("Initializing pool with 4 threads...");
+        Int initResult = Executor.init(4);
+        println("Pool initialized: " + initResult);
+
+        // Verify thread count
+        Int threadCount = Executor.threadCount();
+        println("Thread count: " + threadCount);
+
+        // Reset worker stats for clean measurement
+        println("Resetting stats...");
+        Int resetResult = Executor.resetStats();
+
+        println("=== Spawning tasks with CPU work ===");
+        println("Spawning 1000 tasks...");
+
+        // Work type 1 = CPU iterations, arg = iterations per task
+        // Spawn many tasks to ensure work distribution
+        Int workType = 1;
+        Int iterations = 10000;
+
+        // Spawn 100 tasks in batch 1
+        Int b1t0 = Executor.spawnWithArg(workType, iterations);
+        Int b1t1 = Executor.spawnWithArg(workType, iterations);
+        Int b1t2 = Executor.spawnWithArg(workType, iterations);
+        Int b1t3 = Executor.spawnWithArg(workType, iterations);
+        Int b1t4 = Executor.spawnWithArg(workType, iterations);
+        Int b1t5 = Executor.spawnWithArg(workType, iterations);
+        Int b1t6 = Executor.spawnWithArg(workType, iterations);
+        Int b1t7 = Executor.spawnWithArg(workType, iterations);
+        Int b1t8 = Executor.spawnWithArg(workType, iterations);
+        Int b1t9 = Executor.spawnWithArg(workType, iterations);
+
+        // Spawn more tasks
+        Int b2t0 = Executor.spawnWithArg(workType, iterations);
+        Int b2t1 = Executor.spawnWithArg(workType, iterations);
+        Int b2t2 = Executor.spawnWithArg(workType, iterations);
+        Int b2t3 = Executor.spawnWithArg(workType, iterations);
+        Int b2t4 = Executor.spawnWithArg(workType, iterations);
+        Int b2t5 = Executor.spawnWithArg(workType, iterations);
+        Int b2t6 = Executor.spawnWithArg(workType, iterations);
+        Int b2t7 = Executor.spawnWithArg(workType, iterations);
+        Int b2t8 = Executor.spawnWithArg(workType, iterations);
+        Int b2t9 = Executor.spawnWithArg(workType, iterations);
+
+        // Spawn more to increase workload
+        Int b3t0 = Executor.spawnWithArg(workType, iterations);
+        Int b3t1 = Executor.spawnWithArg(workType, iterations);
+        Int b3t2 = Executor.spawnWithArg(workType, iterations);
+        Int b3t3 = Executor.spawnWithArg(workType, iterations);
+        Int b3t4 = Executor.spawnWithArg(workType, iterations);
+        Int b3t5 = Executor.spawnWithArg(workType, iterations);
+        Int b3t6 = Executor.spawnWithArg(workType, iterations);
+        Int b3t7 = Executor.spawnWithArg(workType, iterations);
+        Int b3t8 = Executor.spawnWithArg(workType, iterations);
+        Int b3t9 = Executor.spawnWithArg(workType, iterations);
+
+        Int b4t0 = Executor.spawnWithArg(workType, iterations);
+        Int b4t1 = Executor.spawnWithArg(workType, iterations);
+        Int b4t2 = Executor.spawnWithArg(workType, iterations);
+        Int b4t3 = Executor.spawnWithArg(workType, iterations);
+        Int b4t4 = Executor.spawnWithArg(workType, iterations);
+        Int b4t5 = Executor.spawnWithArg(workType, iterations);
+        Int b4t6 = Executor.spawnWithArg(workType, iterations);
+        Int b4t7 = Executor.spawnWithArg(workType, iterations);
+        Int b4t8 = Executor.spawnWithArg(workType, iterations);
+        Int b4t9 = Executor.spawnWithArg(workType, iterations);
+
+        println("Tasks spawned: 40");
+
+        // Join all tasks
+        println("=== Joining all tasks ===");
+
+        // Join batch 1
+        Int r1_0 = Executor.join(b1t0);
+        Int r1_1 = Executor.join(b1t1);
+        Int r1_2 = Executor.join(b1t2);
+        Int r1_3 = Executor.join(b1t3);
+        Int r1_4 = Executor.join(b1t4);
+        Int r1_5 = Executor.join(b1t5);
+        Int r1_6 = Executor.join(b1t6);
+        Int r1_7 = Executor.join(b1t7);
+        Int r1_8 = Executor.join(b1t8);
+        Int r1_9 = Executor.join(b1t9);
+
+        // Join batch 2
+        Int r2_0 = Executor.join(b2t0);
+        Int r2_1 = Executor.join(b2t1);
+        Int r2_2 = Executor.join(b2t2);
+        Int r2_3 = Executor.join(b2t3);
+        Int r2_4 = Executor.join(b2t4);
+        Int r2_5 = Executor.join(b2t5);
+        Int r2_6 = Executor.join(b2t6);
+        Int r2_7 = Executor.join(b2t7);
+        Int r2_8 = Executor.join(b2t8);
+        Int r2_9 = Executor.join(b2t9);
+
+        // Join batch 3
+        Int r3_0 = Executor.join(b3t0);
+        Int r3_1 = Executor.join(b3t1);
+        Int r3_2 = Executor.join(b3t2);
+        Int r3_3 = Executor.join(b3t3);
+        Int r3_4 = Executor.join(b3t4);
+        Int r3_5 = Executor.join(b3t5);
+        Int r3_6 = Executor.join(b3t6);
+        Int r3_7 = Executor.join(b3t7);
+        Int r3_8 = Executor.join(b3t8);
+        Int r3_9 = Executor.join(b3t9);
+
+        // Join batch 4
+        Int r4_0 = Executor.join(b4t0);
+        Int r4_1 = Executor.join(b4t1);
+        Int r4_2 = Executor.join(b4t2);
+        Int r4_3 = Executor.join(b4t3);
+        Int r4_4 = Executor.join(b4t4);
+        Int r4_5 = Executor.join(b4t5);
+        Int r4_6 = Executor.join(b4t6);
+        Int r4_7 = Executor.join(b4t7);
+        Int r4_8 = Executor.join(b4t8);
+        Int r4_9 = Executor.join(b4t9);
+
+        println("All tasks joined");
+
+        // Get work distribution stats
+        println("=== Work Distribution Stats ===");
+        Int workersUsed = Executor.activeExecutorCount();
+        println("Workers that executed tasks: " + workersUsed);
+
+        // Get per-worker counts
+        Int w0 = Executor.workerTaskCount(0);
+        Int w1 = Executor.workerTaskCount(1);
+        Int w2 = Executor.workerTaskCount(2);
+        Int w3 = Executor.workerTaskCount(3);
+        println("Worker 0 tasks: " + w0);
+        println("Worker 1 tasks: " + w1);
+        println("Worker 2 tasks: " + w2);
+        println("Worker 3 tasks: " + w3);
+
+        Int totalExecuted = w0 + w1 + w2 + w3;
+        println("Total executed: " + totalExecuted);
+
+        // Verify work-stealing happened
+        println("=== Verification ===");
+
+        // Check that multiple workers participated
+        if (workersUsed >= 2) {
+            println("Multiple workers participated: PASS (" + workersUsed + " workers)");
+        } else {
+            println("Multiple workers participated: FAIL (only " + workersUsed + " worker)");
+        }
+
+        // Check all tasks completed (we spawned 40 tasks)
+        if (totalExecuted == 40) {
+            println("All tasks completed: PASS");
+        } else {
+            println("All tasks completed: FAIL (" + totalExecuted + " of 40)");
+        }
+
+        // Final verdict
+        if (workersUsed >= 2 && totalExecuted == 40) {
+            println("=== C02: All tests passed ===");
+        } else {
+            println("=== C02: FAILED ===");
+        }
+    }
+}

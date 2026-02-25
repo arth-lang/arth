@@ -1,0 +1,362 @@
+package mail;
+
+/**
+ * Mail store (receiving) interface.
+ *
+ * A Store represents a connection to an IMAP or POP3 server for reading mail.
+ *
+ * Example usage:
+ * ```arth
+ * import mail.*;
+ * import mail.imap.*;
+ *
+ * // Connect to IMAP store
+ * Session session = SessionBuilder.new()
+ *     .imaps("imap.example.com", 993)
+ *     .auth("user@example.com", "password")
+ *     .build();
+ *
+ * Store store = await Imap.connect(session);
+ * try {
+ *     Folder inbox = Store.getInbox(store);
+ *     await Folder.open(inbox, FolderMode.READ_ONLY);
+ *
+ *     Message[] messages = await Folder.getMessages(inbox);
+ *     // Process messages...
+ *
+ *     Folder.close(inbox, false);
+ * } finally {
+ *     Store.disconnect(store);
+ * }
+ * ```
+ *
+ * @see mail.Session for configuration
+ * @see mail.Folder for folder operations
+ * @see mail.imap.Imap for IMAP store
+ * @see mail.pop3.Pop3 for POP3 store
+ */
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Store State
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Store connection state.
+ */
+public enum StoreState {
+    /// Not connected
+    DISCONNECTED,
+    /// Connected, not authenticated
+    CONNECTED,
+    /// Connected and authenticated
+    AUTHENTICATED,
+    /// Error state
+    ERROR
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Store Type
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Type of mail store.
+ */
+public enum StoreType {
+    /// IMAP store (supports folders, server-side search)
+    IMAP,
+    /// POP3 store (simple mailbox access)
+    POP3
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Store Structure
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Represents a connection to a mail store (IMAP or POP3 server).
+ */
+public struct Store {
+    /// Opaque connection handle
+    public final int handle;
+    /// Session configuration
+    public final Session session;
+    /// Store type (IMAP or POP3)
+    public final StoreType storeType;
+    /// Current connection state
+    public final StoreState state;
+    /// Server capabilities
+    public final String[] capabilities;
+}
+
+module Store {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Connection Management
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Connects to the mail store configured in the session.
+    ///
+    /// This establishes a connection and performs authentication if configured.
+    @intrinsic("mail.store.connect")
+    public static async Store connect(Session session)
+        throws (ConnectionError, AuthenticationError, TlsError, TimeoutError) {
+        // Intrinsic implementation - placeholder
+        StoreType stype = StoreType.IMAP;
+        if (session.protocol == Protocol.POP3 || session.protocol == Protocol.POP3S) {
+            stype = StoreType.POP3;
+        }
+
+        return Store {
+            handle: 0,
+            session: session,
+            storeType: stype,
+            state: StoreState.AUTHENTICATED,
+            capabilities: new String[0]
+        };
+    }
+
+    /// Disconnects from the mail store.
+    @intrinsic("mail.store.disconnect")
+    public static void disconnect(Store self) throws (ConnectionError) {
+        // Intrinsic implementation - placeholder
+    }
+
+    /// Returns true if connected.
+    public static bool isConnected(Store self) {
+        return self.state == StoreState.CONNECTED ||
+               self.state == StoreState.AUTHENTICATED;
+    }
+
+    /// Returns true if authenticated.
+    public static bool isAuthenticated(Store self) {
+        return self.state == StoreState.AUTHENTICATED;
+    }
+
+    /// Returns the current state.
+    public static StoreState getState(Store self) {
+        return self.state;
+    }
+
+    /// Returns the store type.
+    public static StoreType getStoreType(Store self) {
+        return self.storeType;
+    }
+
+    /// Returns the session configuration.
+    public static Session getSession(Store self) {
+        return self.session;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Folder Access
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns the INBOX folder.
+    @intrinsic("mail.store.get_inbox")
+    public static Folder getInbox(Store self) throws (FolderError) {
+        // Intrinsic implementation - placeholder
+        return Folder {
+            handle: 0,
+            store: self,
+            name: "INBOX",
+            fullName: "INBOX",
+            folderType: FolderType.INBOX,
+            state: FolderState.CLOSED,
+            messageCount: 0,
+            unreadCount: 0,
+            recentCount: 0
+        };
+    }
+
+    /// Returns a folder by name.
+    @intrinsic("mail.store.get_folder")
+    public static Folder getFolder(Store self, String name) throws (FolderError) {
+        // Intrinsic implementation - placeholder
+        return Folder {
+            handle: 0,
+            store: self,
+            name: name,
+            fullName: name,
+            folderType: FolderType.CUSTOM,
+            state: FolderState.CLOSED,
+            messageCount: 0,
+            unreadCount: 0,
+            recentCount: 0
+        };
+    }
+
+    /// Returns the default (root) folder.
+    @intrinsic("mail.store.get_default_folder")
+    public static Folder getDefaultFolder(Store self) throws (FolderError) {
+        // Intrinsic implementation - placeholder
+        return Folder {
+            handle: 0,
+            store: self,
+            name: "",
+            fullName: "",
+            folderType: FolderType.CUSTOM,
+            state: FolderState.CLOSED,
+            messageCount: 0,
+            unreadCount: 0,
+            recentCount: 0
+        };
+    }
+
+    /// Lists all folders.
+    @intrinsic("mail.store.list_folders")
+    public static Folder[] listFolders(Store self) throws (FolderError) {
+        // Intrinsic implementation - placeholder
+        return new Folder[0];
+    }
+
+    /// Lists folders matching a pattern.
+    ///
+    /// Pattern can include wildcards:
+    /// - * matches any characters
+    /// - % matches any characters except hierarchy delimiter
+    @intrinsic("mail.store.list_folders_pattern")
+    public static Folder[] listFoldersPattern(Store self, String pattern) throws (FolderError) {
+        // Intrinsic implementation - placeholder
+        return new Folder[0];
+    }
+
+    /// Lists subscribed folders (IMAP only).
+    @intrinsic("mail.store.list_subscribed")
+    public static Folder[] listSubscribed(Store self) throws (FolderError) {
+        // Intrinsic implementation - placeholder
+        return new Folder[0];
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Folder Management
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Creates a new folder.
+    @intrinsic("mail.store.create_folder")
+    public static Folder createFolder(Store self, String name) throws (FolderError) {
+        // Intrinsic implementation - placeholder
+        return Folder {
+            handle: 0,
+            store: self,
+            name: name,
+            fullName: name,
+            folderType: FolderType.CUSTOM,
+            state: FolderState.CLOSED,
+            messageCount: 0,
+            unreadCount: 0,
+            recentCount: 0
+        };
+    }
+
+    /// Deletes a folder.
+    @intrinsic("mail.store.delete_folder")
+    public static void deleteFolder(Store self, String name) throws (FolderError) {
+        // Intrinsic implementation - placeholder
+    }
+
+    /// Renames a folder.
+    @intrinsic("mail.store.rename_folder")
+    public static void renameFolder(Store self, String oldName, String newName) throws (FolderError) {
+        // Intrinsic implementation - placeholder
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Server Capabilities
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns the server capabilities.
+    public static String[] getCapabilities(Store self) {
+        return self.capabilities;
+    }
+
+    /// Returns true if the server supports a capability.
+    public static bool hasCapability(Store self, String capability) {
+        String upper = toUpperCase(capability);
+        int len = length(self.capabilities);
+        for (int i = 0; i < len; i = i + 1) {
+            if (toUpperCase(self.capabilities[i]) == upper) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// Returns true if the server supports IDLE (IMAP push notifications).
+    public static bool supportsIdle(Store self) {
+        return hasCapability(self, "IDLE");
+    }
+
+    /// Returns true if the server supports UIDPLUS.
+    public static bool supportsUidPlus(Store self) {
+        return hasCapability(self, "UIDPLUS");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Quota (IMAP)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns the quota for the mailbox (IMAP only).
+    @intrinsic("mail.store.get_quota")
+    public static Quota getQuota(Store self) throws (StoreError) {
+        // Intrinsic implementation - placeholder
+        return Quota {
+            used: 0,
+            limit: 0,
+            messageCount: 0,
+            messageLimit: 0
+        };
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Quota Information
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Mailbox quota information.
+ */
+public struct Quota {
+    /// Storage used in bytes
+    public final int64 used;
+    /// Storage limit in bytes (0 = unlimited)
+    public final int64 limit;
+    /// Number of messages
+    public final int messageCount;
+    /// Message count limit (0 = unlimited)
+    public final int messageLimit;
+}
+
+module Quota {
+    /// Returns the percentage of storage used.
+    public static int getUsagePercent(Quota self) {
+        if (self.limit == 0) {
+            return 0;
+        }
+        return (int) ((self.used * 100) / self.limit);
+    }
+
+    /// Returns true if the quota is exceeded.
+    public static bool isExceeded(Quota self) {
+        if (self.limit > 0 && self.used >= self.limit) {
+            return true;
+        }
+        if (self.messageLimit > 0 && self.messageCount >= self.messageLimit) {
+            return true;
+        }
+        return false;
+    }
+
+    /// Returns true if the quota is nearly exceeded (>90%).
+    public static bool isNearLimit(Quota self) {
+        return getUsagePercent(self) >= 90;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helper Functions
+// ─────────────────────────────────────────────────────────────────────────────
+
+@intrinsic("string.to_upper_case")
+static String toUpperCase(String s) { return s; }
+
+@intrinsic("array.length")
+static int length(String[] arr) { return 0; }

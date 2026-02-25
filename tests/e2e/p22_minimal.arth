@@ -1,0 +1,32 @@
+package test;
+
+// Minimal test for nested provider mutation
+// Expected: After setting to 999, should print 999
+// Actual: Prints 100 (original value)
+
+provider Counter {
+    shared Int value;
+}
+
+struct Bundle {
+    Counter counter;
+}
+
+module Main {
+    public static void main() {
+        // Create counter with value 100
+        Counter c = Counter { value: 100 };
+        println("Direct counter: " + c.value);
+
+        // Put in bundle
+        Bundle b = Bundle { counter: c };
+        println("Through bundle: " + b.counter.value);
+
+        // Try to modify through bundle
+        b.counter.value = 999;
+        println("After bundle set: " + b.counter.value);
+
+        // Also check direct
+        println("Direct after: " + c.value);
+    }
+}

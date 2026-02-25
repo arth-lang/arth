@@ -1,0 +1,35 @@
+package test.native;
+
+module Main {
+    public static void main() {
+        Int acc = 0;
+
+        for (Int i = 0; i < 5; i = i + 1) {
+            if (i % 2 == 0) {
+                acc = acc + i;
+            } else {
+                acc = acc + 1;
+            }
+        }
+
+        Int n = 3;
+        while (n > 0) {
+            acc = acc + n;
+            n = n - 1;
+        }
+
+        Int nested = 0;
+        for (Int a = 0; a < 2; a = a + 1) {
+            for (Int b = 0; b < 2; b = b + 1) {
+                nested = nested + a + b;
+            }
+        }
+
+        Int total = acc + nested;
+        if (total == 18) {
+            println("PHASE1_CONTROL_FLOW_OK");
+        } else {
+            println("PHASE1_CONTROL_FLOW_BAD");
+        }
+    }
+}

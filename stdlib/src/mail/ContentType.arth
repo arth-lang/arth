@@ -1,0 +1,451 @@
+package mail;
+
+/**
+ * MIME Content-Type header parsing and representation.
+ *
+ * This module provides types for parsing and working with MIME content types
+ * according to RFC 2045 (MIME Part One: Format of Internet Message Bodies).
+ *
+ * A Content-Type header has the format:
+ *   type/subtype; param1=value1; param2=value2
+ *
+ * Example values:
+ * - `text/plain`
+ * - `text/html; charset=utf-8`
+ * - `multipart/mixed; boundary="----=_Part_123"`
+ * - `application/pdf; name="report.pdf"`
+ *
+ * Example usage:
+ * ```arth
+ * import mail.*;
+ *
+ * ContentType ct = ContentType.parse("text/html; charset=utf-8");
+ * String type = ContentType.getType(ct);           // "text"
+ * String subtype = ContentType.getSubtype(ct);     // "html"
+ * String charset = ContentType.getParam(ct, "charset"); // "utf-8"
+ *
+ * // Check content type
+ * if (ContentType.match(ct, "text/html")) {
+ *     // Handle HTML content
+ * }
+ * ```
+ *
+ * @see mail.Part for using content types with message parts
+ */
+
+import map.*;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Content Type Structure
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Represents a MIME Content-Type header value.
+ *
+ * The content type consists of:
+ * - type: The primary type (e.g., "text", "application", "multipart")
+ * - subtype: The subtype (e.g., "plain", "html", "mixed")
+ * - parameters: Key-value pairs (e.g., charset, boundary, name)
+ */
+public struct ContentType {
+    /// Primary MIME type (e.g., "text", "application", "multipart")
+    public final String primaryType;
+    /// MIME subtype (e.g., "plain", "html", "mixed")
+    public final String subType;
+    /// Parameters as an opaque map handle
+    public final int paramsHandle;
+}
+
+module ContentType {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Common Content Types
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// text/plain
+    public static ContentType TEXT_PLAIN() {
+        return ContentType.of("text", "plain");
+    }
+
+    /// text/html
+    public static ContentType TEXT_HTML() {
+        return ContentType.of("text", "html");
+    }
+
+    /// application/octet-stream
+    public static ContentType OCTET_STREAM() {
+        return ContentType.of("application", "octet-stream");
+    }
+
+    /// multipart/mixed
+    public static ContentType MULTIPART_MIXED() {
+        return ContentType.of("multipart", "mixed");
+    }
+
+    /// multipart/alternative
+    public static ContentType MULTIPART_ALTERNATIVE() {
+        return ContentType.of("multipart", "alternative");
+    }
+
+    /// multipart/related
+    public static ContentType MULTIPART_RELATED() {
+        return ContentType.of("multipart", "related");
+    }
+
+    /// message/rfc822
+    public static ContentType MESSAGE_RFC822() {
+        return ContentType.of("message", "rfc822");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Factory Methods
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Creates a ContentType with type and subtype only.
+    public static ContentType of(String primaryType, String subType) {
+        return ContentType {
+            primaryType: toLowerCase(primaryType),
+            subType: toLowerCase(subType),
+            paramsHandle: Map.new()
+        };
+    }
+
+    /// Creates a ContentType with a parameter.
+    public static ContentType withParam(String primaryType, String subType, String paramName, String paramValue) {
+        int params = Map.new();
+        Map.put(params, toLowerCase(paramName), paramValue);
+        return ContentType {
+            primaryType: toLowerCase(primaryType),
+            subType: toLowerCase(subType),
+            paramsHandle: params
+        };
+    }
+
+    /// Parses a Content-Type header value.
+    ///
+    /// Accepts formats:
+    /// - `type/subtype`
+    /// - `type/subtype; param=value`
+    /// - `type/subtype; param1=value1; param2="quoted value"`
+    ///
+    /// @throws EncodingError if the content type is malformed
+    @intrinsic("mail.content_type.parse")
+    public static ContentType parse(String contentTypeStr) throws (EncodingError) {
+        // Intrinsic implementation - placeholder
+        // Parse "type/subtype; params..."
+        int semiPos = indexOf(contentTypeStr, ";");
+        String mediaType;
+        String paramStr;
+
+        if (semiPos < 0) {
+            mediaType = trim(contentTypeStr);
+            paramStr = "";
+        } else {
+            mediaType = trim(substring(contentTypeStr, 0, semiPos));
+            paramStr = substring(contentTypeStr, semiPos + 1, length(contentTypeStr));
+        }
+
+        int slashPos = indexOf(mediaType, "/");
+        String primaryType;
+        String subType;
+
+        if (slashPos < 0) {
+            primaryType = toLowerCase(mediaType);
+            subType = "";
+        } else {
+            primaryType = toLowerCase(substring(mediaType, 0, slashPos));
+            subType = toLowerCase(substring(mediaType, slashPos + 1, length(mediaType)));
+        }
+
+        int params = Map.new();
+        // TODO: Parse parameters from paramStr
+
+        return ContentType {
+            primaryType: primaryType,
+            subType: subType,
+            paramsHandle: params
+        };
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Accessors
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns the primary type (e.g., "text", "application").
+    public static String getType(ContentType self) {
+        return self.primaryType;
+    }
+
+    /// Returns the primary type (alias for getType).
+    public static String getPrimaryType(ContentType self) {
+        return self.primaryType;
+    }
+
+    /// Returns the subtype (e.g., "plain", "html").
+    public static String getSubtype(ContentType self) {
+        return self.subType;
+    }
+
+    /// Returns the subtype (alias for getSubtype).
+    public static String getSubType(ContentType self) {
+        return self.subType;
+    }
+
+    /// Returns the full media type as "type/subtype".
+    public static String getMediaType(ContentType self) {
+        return self.primaryType + "/" + self.subType;
+    }
+
+    /// Returns the full media type (alias for getMediaType).
+    public static String getBaseType(ContentType self) {
+        return self.primaryType + "/" + self.subType;
+    }
+
+    /// Returns a parameter value, or empty string if not found.
+    public static String getParam(ContentType self, String name) {
+        return Map.get(self.paramsHandle, toLowerCase(name));
+    }
+
+    /// Returns a parameter value, or empty string if not found.
+    /// Alias for getParam.
+    public static String getParameter(ContentType self, String name) {
+        return Map.get(self.paramsHandle, toLowerCase(name));
+    }
+
+    /// Returns the charset parameter, or "us-ascii" if not specified.
+    public static String getCharset(ContentType self) {
+        String charset = getParam(self, "charset");
+        if (charset == "") {
+            return "us-ascii";
+        }
+        return charset;
+    }
+
+    /// Returns the boundary parameter (for multipart types).
+    public static String getBoundary(ContentType self) {
+        return getParam(self, "boundary");
+    }
+
+    /// Returns the name parameter (for attachments).
+    public static String getName(ContentType self) {
+        return getParam(self, "name");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Type Checking
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns true if this content type matches the given media type.
+    ///
+    /// The match is case-insensitive and supports wildcards:
+    /// - "text/plain" matches "text/plain"
+    /// - "text/*" matches "text/plain", "text/html", etc.
+    /// - "*/*" matches anything
+    public static bool match(ContentType self, String mediaType) {
+        int slashPos = indexOf(mediaType, "/");
+        if (slashPos < 0) {
+            return toLowerCase(mediaType) == self.primaryType;
+        }
+
+        String type = toLowerCase(substring(mediaType, 0, slashPos));
+        String subtype = toLowerCase(substring(mediaType, slashPos + 1, length(mediaType)));
+
+        // Check primary type
+        if (type != "*" && type != self.primaryType) {
+            return false;
+        }
+
+        // Check subtype
+        if (subtype != "*" && subtype != self.subType) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /// Returns true if this is a text/* content type.
+    public static bool isText(ContentType self) {
+        return self.primaryType == "text";
+    }
+
+    /// Returns true if this is a multipart/* content type.
+    public static bool isMultipart(ContentType self) {
+        return self.primaryType == "multipart";
+    }
+
+    /// Returns true if this is a message/* content type.
+    public static bool isMessage(ContentType self) {
+        return self.primaryType == "message";
+    }
+
+    /// Returns true if this is application/octet-stream or similar binary type.
+    public static bool isBinary(ContentType self) {
+        if (self.primaryType == "application") {
+            return self.subType == "octet-stream" ||
+                   self.subType == "pdf" ||
+                   self.subType == "zip";
+        }
+        if (self.primaryType == "image" || self.primaryType == "audio" ||
+            self.primaryType == "video") {
+            return true;
+        }
+        return false;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Modification
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns a new ContentType with the charset parameter set.
+    public static ContentType withCharset(ContentType self, String charset) {
+        int newParams = Map.new();
+        // Copy existing params (simplified - should iterate)
+        Map.put(newParams, "charset", charset);
+        return ContentType {
+            primaryType: self.primaryType,
+            subType: self.subType,
+            paramsHandle: newParams
+        };
+    }
+
+    /// Returns a new ContentType with a parameter added or replaced.
+    public static ContentType setParam(ContentType self, String name, String value) {
+        int newParams = self.paramsHandle;
+        Map.put(newParams, toLowerCase(name), value);
+        return ContentType {
+            primaryType: self.primaryType,
+            subType: self.subType,
+            paramsHandle: newParams
+        };
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Formatting
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns the Content-Type as a header value string.
+    @intrinsic("mail.content_type.to_string")
+    public static String toString(ContentType self) {
+        String result = self.primaryType + "/" + self.subType;
+        // TODO: Append parameters
+        return result;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Content Disposition
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Represents a Content-Disposition header value.
+ *
+ * Values:
+ * - "inline": Display in message body
+ * - "attachment": Prompt for download with filename
+ */
+public struct ContentDisposition {
+    /// Disposition type ("inline" or "attachment")
+    public final String disposition;
+    /// Filename parameter
+    public final String filename;
+    /// Other parameters
+    public final int paramsHandle;
+}
+
+module ContentDisposition {
+    /// Content-Disposition: inline
+    public static ContentDisposition INLINE() {
+        return ContentDisposition {
+            disposition: "inline",
+            filename: "",
+            paramsHandle: Map.new()
+        };
+    }
+
+    /// Content-Disposition: attachment
+    public static ContentDisposition ATTACHMENT() {
+        return ContentDisposition {
+            disposition: "attachment",
+            filename: "",
+            paramsHandle: Map.new()
+        };
+    }
+
+    /// Creates an attachment disposition with filename.
+    public static ContentDisposition attachment(String filename) {
+        int params = Map.new();
+        Map.put(params, "filename", filename);
+        return ContentDisposition {
+            disposition: "attachment",
+            filename: filename,
+            paramsHandle: params
+        };
+    }
+
+    /// Creates an inline disposition with content ID.
+    public static ContentDisposition inline(String contentId) {
+        return ContentDisposition {
+            disposition: "inline",
+            filename: "",
+            paramsHandle: Map.new()
+        };
+    }
+
+    /// Parses a Content-Disposition header value.
+    @intrinsic("mail.content_disposition.parse")
+    public static ContentDisposition parse(String dispositionStr) throws (EncodingError) {
+        // Intrinsic implementation - placeholder
+        return ContentDisposition {
+            disposition: trim(dispositionStr),
+            filename: "",
+            paramsHandle: Map.new()
+        };
+    }
+
+    /// Returns the disposition type ("inline" or "attachment").
+    public static String getDisposition(ContentDisposition self) {
+        return self.disposition;
+    }
+
+    /// Returns the filename parameter, or empty string if not set.
+    public static String getFilename(ContentDisposition self) {
+        return self.filename;
+    }
+
+    /// Returns true if this is an attachment.
+    public static bool isAttachment(ContentDisposition self) {
+        return self.disposition == "attachment";
+    }
+
+    /// Returns true if this is inline.
+    public static bool isInline(ContentDisposition self) {
+        return self.disposition == "inline";
+    }
+
+    /// Returns the Content-Disposition as a header value string.
+    public static String toString(ContentDisposition self) {
+        String result = self.disposition;
+        if (self.filename != "") {
+            result = result + "; filename=\"" + self.filename + "\"";
+        }
+        return result;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// String Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+@intrinsic("string.index_of")
+static int indexOf(String s, String sub) { return -1; }
+
+@intrinsic("string.substring")
+static String substring(String s, int start, int end) { return ""; }
+
+@intrinsic("string.length")
+static int length(String s) { return 0; }
+
+@intrinsic("string.to_lower_case")
+static String toLowerCase(String s) { return s; }
+
+@intrinsic("string.trim")
+static String trim(String s) { return s; }

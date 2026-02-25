@@ -1,0 +1,54 @@
+package conformance;
+
+// @spec: spec.md §13 - Pattern matching on integers
+// @expect: pass
+// @description: Validates switch on integer values with default
+
+module Main {
+    public static void main() {
+        Int code = 200;
+        String status = "";
+
+        // Switch on int with cases and default
+        switch (code) {
+            case 200: {
+                status = "OK";
+            }
+            case 201: {
+                status = "Created";
+            }
+            case 400: {
+                status = "Bad Request";
+            }
+            case 404: {
+                status = "Not Found";
+            }
+            case 500: {
+                status = "Server Error";
+            }
+            default: {
+                status = "Unknown";
+            }
+        }
+
+        // Switch with multiple cases hitting default
+        Int level = 5;
+        String priority = "";
+        switch (level) {
+            case 1: {
+                priority = "critical";
+            }
+            case 2: {
+                priority = "high";
+            }
+            case 3: {
+                priority = "medium";
+            }
+            default: {
+                priority = "low";
+            }
+        }
+
+        println("switch_int: pass");
+    }
+}

@@ -1,0 +1,900 @@
+package crypto;
+
+/**
+ * Cryptographic exception hierarchy.
+ *
+ * All cryptographic operations that can fail throw typed exceptions from this
+ * hierarchy. The base interface CryptoError is sealed, meaning all exception
+ * types are defined here and exhaustive matching is possible.
+ *
+ * Exception hierarchy:
+ * ```
+ * CryptoError (sealed interface)
+ * ├── InvalidKeyError           # Key is malformed, wrong size, or invalid
+ * ├── InvalidNonceError         # Nonce is wrong size or reused
+ * ├── InvalidSignatureError     # Signature verification failed
+ * ├── DecryptionError           # Decryption or authentication failed
+ * ├── KeyGenerationError        # Failed to generate key material
+ * ├── KeyDerivationError        # KDF failed (bad params, OOM, etc.)
+ * ├── PasswordHashError         # Password hashing/verification failed
+ * ├── RandomError               # CSPRNG failure
+ * ├── EncodingError             # Base64/hex encoding/decoding failed
+ * ├── AlgorithmError            # Unsupported or unavailable algorithm
+ * ├── BufferSizeError           # Output buffer too small
+ * ├── SecureMemoryError         # Failed to allocate/lock secure memory
+ * ├── KeyringError              # Keyring access failed
+ * ├── KeyringNotFoundError      # Entry not found in keyring
+ * ├── KeyringAccessDeniedError  # User denied access to keyring
+ * └── KeyringUnavailableError   # Keyring service not available
+ * ```
+ *
+ * Example usage:
+ * ```arth
+ * try {
+ *     SecretKey key = Crypto.generateSecretKey(AeadAlgorithm.AES_256_GCM);
+ *     // ...
+ * } catch (KeyGenerationError e) {
+ *     Console.println("Failed to generate key: " + e.message);
+ * } catch (RandomError e) {
+ *     Console.println("CSPRNG failure: " + e.message);
+ * }
+ * ```
+ *
+ * @see crypto.Crypto for cryptographic operations
+ * @see crypto.Aead for authenticated encryption
+ */
+
+/**
+ * Base interface for all cryptographic errors.
+ *
+ * This is a sealed interface - all implementations are defined in this file.
+ * This allows exhaustive catch matching for cryptographic errors.
+ */
+// Note: Semantically sealed - all implementations defined in this file
+public interface CryptoError {
+    /// Returns the error message.
+    String getMessage();
+}
+
+// =============================================================================
+// Key Errors
+// =============================================================================
+
+/**
+ * Error thrown when a cryptographic key is invalid.
+ *
+ * Common causes:
+ * - Key is wrong size for the algorithm
+ * - Key material is malformed or corrupted
+ * - Key type doesn't match expected algorithm
+ * - Public key is not on the expected curve
+ */
+public struct InvalidKeyError {
+    /// Human-readable error message
+    public final String message;
+    /// The expected key size in bytes (0 if not applicable)
+    public final int expectedSize;
+    /// The actual key size in bytes (0 if not applicable)
+    public final int actualSize;
+}
+
+/**
+ * Module for InvalidKeyError providing factory and accessor functions.
+ */
+module InvalidKeyError implements CryptoError {
+    /// Creates a new InvalidKeyError with message only.
+    public static InvalidKeyError new(String message) {
+        return InvalidKeyError {
+            message: message,
+            expectedSize: 0,
+            actualSize: 0
+        };
+    }
+
+    /// Creates a new InvalidKeyError with size mismatch details.
+    public static InvalidKeyError withSize(String message, int expectedSize, int actualSize) {
+        return InvalidKeyError {
+            message: message,
+            expectedSize: expectedSize,
+            actualSize: actualSize
+        };
+    }
+
+    /// Returns the error message.
+    public String getMessage(InvalidKeyError self) {
+        return self.message;
+    }
+
+    /// Returns the expected key size.
+    public static int getExpectedSize(InvalidKeyError self) {
+        return self.expectedSize;
+    }
+
+    /// Returns the actual key size.
+    public static int getActualSize(InvalidKeyError self) {
+        return self.actualSize;
+    }
+}
+
+// =============================================================================
+// Nonce Errors
+// =============================================================================
+
+/**
+ * Error thrown when a nonce is invalid.
+ *
+ * Common causes:
+ * - Nonce is wrong size for the algorithm
+ * - Nonce was reused (detected by higher-level protocols)
+ */
+public struct InvalidNonceError {
+    /// Human-readable error message
+    public final String message;
+    /// The expected nonce size in bytes
+    public final int expectedSize;
+    /// The actual nonce size in bytes
+    public final int actualSize;
+}
+
+/**
+ * Module for InvalidNonceError providing factory and accessor functions.
+ */
+module InvalidNonceError implements CryptoError {
+    /// Creates a new InvalidNonceError with message only.
+    public static InvalidNonceError new(String message) {
+        return InvalidNonceError {
+            message: message,
+            expectedSize: 0,
+            actualSize: 0
+        };
+    }
+
+    /// Creates a new InvalidNonceError with size mismatch details.
+    public static InvalidNonceError withSize(String message, int expectedSize, int actualSize) {
+        return InvalidNonceError {
+            message: message,
+            expectedSize: expectedSize,
+            actualSize: actualSize
+        };
+    }
+
+    /// Returns the error message.
+    public String getMessage(InvalidNonceError self) {
+        return self.message;
+    }
+
+    /// Returns the expected nonce size.
+    public static int getExpectedSize(InvalidNonceError self) {
+        return self.expectedSize;
+    }
+
+    /// Returns the actual nonce size.
+    public static int getActualSize(InvalidNonceError self) {
+        return self.actualSize;
+    }
+}
+
+// =============================================================================
+// Signature Errors
+// =============================================================================
+
+/**
+ * Error thrown when signature verification fails.
+ *
+ * Note: This error intentionally provides minimal information to prevent
+ * information leakage about why verification failed.
+ */
+public struct InvalidSignatureError {
+    /// Human-readable error message
+    public final String message;
+}
+
+/**
+ * Module for InvalidSignatureError providing factory and accessor functions.
+ */
+module InvalidSignatureError implements CryptoError {
+    /// Creates a new InvalidSignatureError with message only.
+    public static InvalidSignatureError new(String message) {
+        return InvalidSignatureError {
+            message: message
+        };
+    }
+
+    /// Returns the error message.
+    public String getMessage(InvalidSignatureError self) {
+        return self.message;
+    }
+}
+
+// =============================================================================
+// Encryption/Decryption Errors
+// =============================================================================
+
+/**
+ * Error thrown when decryption or authentication fails.
+ *
+ * Common causes:
+ * - Wrong key used for decryption
+ * - Ciphertext was tampered with
+ * - Authentication tag verification failed
+ * - Corrupted ciphertext
+ *
+ * Note: This error intentionally provides minimal information to prevent
+ * information leakage. It does not distinguish between wrong key vs tampering.
+ */
+public struct DecryptionError {
+    /// Human-readable error message
+    public final String message;
+}
+
+/**
+ * Module for DecryptionError providing factory and accessor functions.
+ */
+module DecryptionError implements CryptoError {
+    /// Creates a new DecryptionError with message only.
+    public static DecryptionError new(String message) {
+        return DecryptionError {
+            message: message
+        };
+    }
+
+    /// Returns the error message.
+    public String getMessage(DecryptionError self) {
+        return self.message;
+    }
+}
+
+// =============================================================================
+// Key Generation Errors
+// =============================================================================
+
+/**
+ * Error thrown when key generation fails.
+ *
+ * Common causes:
+ * - CSPRNG failure
+ * - Unsupported algorithm
+ * - Resource exhaustion
+ */
+public struct KeyGenerationError {
+    /// Human-readable error message
+    public final String message;
+    /// The algorithm that failed
+    public final String algorithm;
+}
+
+/**
+ * Module for KeyGenerationError providing factory and accessor functions.
+ */
+module KeyGenerationError implements CryptoError {
+    /// Creates a new KeyGenerationError with message only.
+    public static KeyGenerationError new(String message) {
+        return KeyGenerationError {
+            message: message,
+            algorithm: ""
+        };
+    }
+
+    /// Creates a new KeyGenerationError with algorithm.
+    public static KeyGenerationError forAlgorithm(String message, String algorithm) {
+        return KeyGenerationError {
+            message: message,
+            algorithm: algorithm
+        };
+    }
+
+    /// Returns the error message.
+    public String getMessage(KeyGenerationError self) {
+        return self.message;
+    }
+
+    /// Returns the algorithm that failed.
+    public static String getAlgorithm(KeyGenerationError self) {
+        return self.algorithm;
+    }
+}
+
+// =============================================================================
+// Key Derivation Errors
+// =============================================================================
+
+/**
+ * Error thrown when key derivation fails.
+ *
+ * Common causes:
+ * - Invalid KDF parameters
+ * - Memory allocation failure (Argon2)
+ * - Output length too large
+ */
+public struct KeyDerivationError {
+    /// Human-readable error message
+    public final String message;
+    /// The KDF algorithm that failed
+    public final String algorithm;
+}
+
+/**
+ * Module for KeyDerivationError providing factory and accessor functions.
+ */
+module KeyDerivationError implements CryptoError {
+    /// Creates a new KeyDerivationError with message only.
+    public static KeyDerivationError new(String message) {
+        return KeyDerivationError {
+            message: message,
+            algorithm: ""
+        };
+    }
+
+    /// Creates a new KeyDerivationError with algorithm.
+    public static KeyDerivationError forAlgorithm(String message, String algorithm) {
+        return KeyDerivationError {
+            message: message,
+            algorithm: algorithm
+        };
+    }
+
+    /// Returns the error message.
+    public String getMessage(KeyDerivationError self) {
+        return self.message;
+    }
+
+    /// Returns the algorithm that failed.
+    public static String getAlgorithm(KeyDerivationError self) {
+        return self.algorithm;
+    }
+}
+
+// =============================================================================
+// Password Hash Errors
+// =============================================================================
+
+/**
+ * Error thrown when password hashing or verification fails.
+ *
+ * Common causes:
+ * - Invalid parameters (cost too low, memory too high)
+ * - Malformed password hash string
+ * - Unsupported hash algorithm in stored hash
+ */
+public struct PasswordHashError {
+    /// Human-readable error message
+    public final String message;
+    /// The password hash algorithm that failed
+    public final String algorithm;
+}
+
+/**
+ * Module for PasswordHashError providing factory and accessor functions.
+ */
+module PasswordHashError implements CryptoError {
+    /// Creates a new PasswordHashError with message only.
+    public static PasswordHashError new(String message) {
+        return PasswordHashError {
+            message: message,
+            algorithm: ""
+        };
+    }
+
+    /// Creates a new PasswordHashError with algorithm.
+    public static PasswordHashError forAlgorithm(String message, String algorithm) {
+        return PasswordHashError {
+            message: message,
+            algorithm: algorithm
+        };
+    }
+
+    /// Returns the error message.
+    public String getMessage(PasswordHashError self) {
+        return self.message;
+    }
+
+    /// Returns the algorithm that failed.
+    public static String getAlgorithm(PasswordHashError self) {
+        return self.algorithm;
+    }
+}
+
+// =============================================================================
+// Random Errors
+// =============================================================================
+
+/**
+ * Error thrown when the CSPRNG fails.
+ *
+ * This is a critical error that indicates the system cannot provide
+ * cryptographically secure random bytes.
+ *
+ * Common causes:
+ * - Entropy pool exhausted (rare on modern systems)
+ * - System random device unavailable
+ * - Operating system error
+ */
+public struct RandomError {
+    /// Human-readable error message
+    public final String message;
+}
+
+/**
+ * Module for RandomError providing factory and accessor functions.
+ */
+module RandomError implements CryptoError {
+    /// Creates a new RandomError with message only.
+    public static RandomError new(String message) {
+        return RandomError {
+            message: message
+        };
+    }
+
+    /// Returns the error message.
+    public String getMessage(RandomError self) {
+        return self.message;
+    }
+}
+
+// =============================================================================
+// Encoding Errors
+// =============================================================================
+
+/**
+ * Error thrown when encoding or decoding fails.
+ *
+ * Common causes:
+ * - Invalid base64 characters
+ * - Invalid hex characters
+ * - Incorrect padding
+ * - Odd-length hex string
+ */
+public struct EncodingError {
+    /// Human-readable error message
+    public final String message;
+    /// The encoding format that failed (e.g., "base64", "hex")
+    public final String format;
+    /// The position where the error occurred (-1 if not applicable)
+    public final int position;
+}
+
+/**
+ * Module for EncodingError providing factory and accessor functions.
+ */
+module EncodingError implements CryptoError {
+    /// Creates a new EncodingError with message only.
+    public static EncodingError new(String message) {
+        return EncodingError {
+            message: message,
+            format: "",
+            position: -1
+        };
+    }
+
+    /// Creates a new EncodingError with format.
+    public static EncodingError forFormat(String message, String format) {
+        return EncodingError {
+            message: message,
+            format: format,
+            position: -1
+        };
+    }
+
+    /// Creates a new EncodingError with full details.
+    public static EncodingError full(String message, String format, int position) {
+        return EncodingError {
+            message: message,
+            format: format,
+            position: position
+        };
+    }
+
+    /// Returns the error message.
+    public String getMessage(EncodingError self) {
+        return self.message;
+    }
+
+    /// Returns the encoding format.
+    public static String getFormat(EncodingError self) {
+        return self.format;
+    }
+
+    /// Returns the error position.
+    public static int getPosition(EncodingError self) {
+        return self.position;
+    }
+}
+
+// =============================================================================
+// Algorithm Errors
+// =============================================================================
+
+/**
+ * Error thrown when an algorithm is unsupported or unavailable.
+ *
+ * Common causes:
+ * - Algorithm not compiled into the binary
+ * - Hardware acceleration not available
+ * - Algorithm disabled by policy
+ */
+public struct AlgorithmError {
+    /// Human-readable error message
+    public final String message;
+    /// The algorithm that is unsupported
+    public final String algorithm;
+}
+
+/**
+ * Module for AlgorithmError providing factory and accessor functions.
+ */
+module AlgorithmError implements CryptoError {
+    /// Creates a new AlgorithmError with message only.
+    public static AlgorithmError new(String message) {
+        return AlgorithmError {
+            message: message,
+            algorithm: ""
+        };
+    }
+
+    /// Creates a new AlgorithmError with algorithm name.
+    public static AlgorithmError forAlgorithm(String message, String algorithm) {
+        return AlgorithmError {
+            message: message,
+            algorithm: algorithm
+        };
+    }
+
+    /// Returns the error message.
+    public String getMessage(AlgorithmError self) {
+        return self.message;
+    }
+
+    /// Returns the unsupported algorithm.
+    public static String getAlgorithm(AlgorithmError self) {
+        return self.algorithm;
+    }
+}
+
+// =============================================================================
+// Buffer Size Errors
+// =============================================================================
+
+/**
+ * Error thrown when an output buffer is too small.
+ *
+ * This error provides the required size so callers can allocate
+ * an appropriately sized buffer and retry.
+ */
+public struct BufferSizeError {
+    /// Human-readable error message
+    public final String message;
+    /// The minimum required buffer size in bytes
+    public final int requiredSize;
+    /// The actual buffer size provided in bytes
+    public final int providedSize;
+}
+
+/**
+ * Module for BufferSizeError providing factory and accessor functions.
+ */
+module BufferSizeError implements CryptoError {
+    /// Creates a new BufferSizeError with message only.
+    public static BufferSizeError new(String message) {
+        return BufferSizeError {
+            message: message,
+            requiredSize: 0,
+            providedSize: 0
+        };
+    }
+
+    /// Creates a new BufferSizeError with size details.
+    public static BufferSizeError withSizes(String message, int requiredSize, int providedSize) {
+        return BufferSizeError {
+            message: message,
+            requiredSize: requiredSize,
+            providedSize: providedSize
+        };
+    }
+
+    /// Returns the error message.
+    public String getMessage(BufferSizeError self) {
+        return self.message;
+    }
+
+    /// Returns the required buffer size.
+    public static int getRequiredSize(BufferSizeError self) {
+        return self.requiredSize;
+    }
+
+    /// Returns the provided buffer size.
+    public static int getProvidedSize(BufferSizeError self) {
+        return self.providedSize;
+    }
+}
+
+// =============================================================================
+// Secure Memory Errors
+// =============================================================================
+
+/**
+ * Error thrown when secure memory allocation fails.
+ *
+ * Common causes:
+ * - mlock() failed (resource limits)
+ * - Out of memory
+ * - Secure memory region exhausted
+ */
+public struct SecureMemoryError {
+    /// Human-readable error message
+    public final String message;
+    /// The requested allocation size in bytes
+    public final int requestedSize;
+}
+
+/**
+ * Module for SecureMemoryError providing factory and accessor functions.
+ */
+module SecureMemoryError implements CryptoError {
+    /// Creates a new SecureMemoryError with message only.
+    public static SecureMemoryError new(String message) {
+        return SecureMemoryError {
+            message: message,
+            requestedSize: 0
+        };
+    }
+
+    /// Creates a new SecureMemoryError with size.
+    public static SecureMemoryError withSize(String message, int requestedSize) {
+        return SecureMemoryError {
+            message: message,
+            requestedSize: requestedSize
+        };
+    }
+
+    /// Returns the error message.
+    public String getMessage(SecureMemoryError self) {
+        return self.message;
+    }
+
+    /// Returns the requested allocation size.
+    public static int getRequestedSize(SecureMemoryError self) {
+        return self.requestedSize;
+    }
+}
+
+// =============================================================================
+// Key Store Errors
+// =============================================================================
+
+/**
+ * Error thrown when key store operations fail.
+ *
+ * Common causes:
+ * - Key already exists (for store without overwrite)
+ * - Key not found (for load/delete)
+ * - Secure memory allocation failure
+ * - Invalid key data
+ */
+public struct KeyStoreError {
+    /// Human-readable error message
+    public final String message;
+    /// The key ID involved
+    public final String keyId;
+}
+
+/**
+ * Module for KeyStoreError providing factory and accessor functions.
+ */
+module KeyStoreError implements CryptoError {
+    /// Creates a new KeyStoreError with message only.
+    public static KeyStoreError new(String message) {
+        return KeyStoreError {
+            message: message,
+            keyId: ""
+        };
+    }
+
+    /// Creates a new KeyStoreError with key ID.
+    public static KeyStoreError forKey(String message, String keyId) {
+        return KeyStoreError {
+            message: message,
+            keyId: keyId
+        };
+    }
+
+    /// Returns the error message.
+    public String getMessage(KeyStoreError self) {
+        return self.message;
+    }
+
+    /// Returns the key ID.
+    public static String getKeyId(KeyStoreError self) {
+        return self.keyId;
+    }
+}
+
+// =============================================================================
+// Keyring Errors
+// =============================================================================
+
+/**
+ * Error thrown when keyring access fails.
+ *
+ * This is the base error for keyring operations. More specific errors
+ * (KeyringNotFoundError, KeyringAccessDeniedError, KeyringUnavailableError)
+ * provide additional context.
+ */
+public struct KeyringError {
+    /// Human-readable error message
+    public final String message;
+    /// The service name involved
+    public final String service;
+    /// The account name involved
+    public final String account;
+}
+
+/**
+ * Module for KeyringError providing factory and accessor functions.
+ */
+module KeyringError implements CryptoError {
+    /// Creates a new KeyringError with message only.
+    public static KeyringError new(String message) {
+        return KeyringError {
+            message: message,
+            service: "",
+            account: ""
+        };
+    }
+
+    /// Creates a new KeyringError with service and account.
+    public static KeyringError forEntry(String message, String service, String account) {
+        return KeyringError {
+            message: message,
+            service: service,
+            account: account
+        };
+    }
+
+    /// Returns the error message.
+    public String getMessage(KeyringError self) {
+        return self.message;
+    }
+
+    /// Returns the service name.
+    public static String getService(KeyringError self) {
+        return self.service;
+    }
+
+    /// Returns the account name.
+    public static String getAccount(KeyringError self) {
+        return self.account;
+    }
+}
+
+/**
+ * Error thrown when a keyring entry is not found.
+ */
+public struct KeyringNotFoundError {
+    /// Human-readable error message
+    public final String message;
+    /// The service name that was not found
+    public final String service;
+    /// The account name that was not found
+    public final String account;
+}
+
+/**
+ * Module for KeyringNotFoundError providing factory and accessor functions.
+ */
+module KeyringNotFoundError implements CryptoError {
+    /// Creates a new KeyringNotFoundError with message only.
+    public static KeyringNotFoundError new(String message) {
+        return KeyringNotFoundError {
+            message: message,
+            service: "",
+            account: ""
+        };
+    }
+
+    /// Creates a new KeyringNotFoundError with service and account.
+    public static KeyringNotFoundError forEntry(String message, String service, String account) {
+        return KeyringNotFoundError {
+            message: message,
+            service: service,
+            account: account
+        };
+    }
+
+    /// Returns the error message.
+    public String getMessage(KeyringNotFoundError self) {
+        return self.message;
+    }
+
+    /// Returns the service name.
+    public static String getService(KeyringNotFoundError self) {
+        return self.service;
+    }
+
+    /// Returns the account name.
+    public static String getAccount(KeyringNotFoundError self) {
+        return self.account;
+    }
+}
+
+/**
+ * Error thrown when the user denies access to the keyring.
+ *
+ * This typically happens on macOS when the user clicks "Deny" on
+ * the Keychain access dialog.
+ */
+public struct KeyringAccessDeniedError {
+    /// Human-readable error message
+    public final String message;
+    /// The service name that was denied
+    public final String service;
+    /// The account name that was denied
+    public final String account;
+}
+
+/**
+ * Module for KeyringAccessDeniedError providing factory and accessor functions.
+ */
+module KeyringAccessDeniedError implements CryptoError {
+    /// Creates a new KeyringAccessDeniedError with message only.
+    public static KeyringAccessDeniedError new(String message) {
+        return KeyringAccessDeniedError {
+            message: message,
+            service: "",
+            account: ""
+        };
+    }
+
+    /// Creates a new KeyringAccessDeniedError with service and account.
+    public static KeyringAccessDeniedError forEntry(String message, String service, String account) {
+        return KeyringAccessDeniedError {
+            message: message,
+            service: service,
+            account: account
+        };
+    }
+
+    /// Returns the error message.
+    public String getMessage(KeyringAccessDeniedError self) {
+        return self.message;
+    }
+
+    /// Returns the service name.
+    public static String getService(KeyringAccessDeniedError self) {
+        return self.service;
+    }
+
+    /// Returns the account name.
+    public static String getAccount(KeyringAccessDeniedError self) {
+        return self.account;
+    }
+}
+
+/**
+ * Error thrown when the system keyring service is not available.
+ *
+ * Common causes:
+ * - Linux: No Secret Service daemon running (GNOME Keyring, KWallet)
+ * - Headless server without keyring support
+ * - Container environment without keyring access
+ */
+public struct KeyringUnavailableError {
+    /// Human-readable error message
+    public final String message;
+}
+
+/**
+ * Module for KeyringUnavailableError providing factory and accessor functions.
+ */
+module KeyringUnavailableError implements CryptoError {
+    /// Creates a new KeyringUnavailableError with message only.
+    public static KeyringUnavailableError new(String message) {
+        return KeyringUnavailableError {
+            message: message
+        };
+    }
+
+    /// Returns the error message.
+    public String getMessage(KeyringUnavailableError self) {
+        return self.message;
+    }
+}

@@ -1,0 +1,422 @@
+package crypto;
+
+/**
+ * Cryptographic algorithm identifiers.
+ *
+ * This file defines enumerations for all supported cryptographic algorithms.
+ * Algorithms are grouped by category:
+ * - Hash algorithms (SHA-256, SHA-512, SHA-3, BLAKE3)
+ * - AEAD algorithms (AES-GCM, ChaCha20-Poly1305)
+ * - Signature algorithms (Ed25519, ECDSA, RSA-PSS)
+ * - Key derivation algorithms (HKDF, PBKDF2, Argon2)
+ * - Password hashing algorithms (Argon2id, bcrypt)
+ * - Key exchange algorithms (X25519, ECDH)
+ *
+ * Note: Only modern, secure algorithms are supported. Legacy algorithms
+ * (MD5, SHA-1, DES, etc.) are intentionally not included.
+ *
+ * @see crypto.Hash for hashing operations
+ * @see crypto.Aead for authenticated encryption
+ * @see crypto.Signature for digital signatures
+ */
+
+// =============================================================================
+// Hash Algorithms
+// =============================================================================
+
+/**
+ * Cryptographic hash algorithm identifiers.
+ *
+ * All algorithms produce fixed-size outputs:
+ * - SHA256: 32 bytes
+ * - SHA384: 48 bytes
+ * - SHA512: 64 bytes
+ * - SHA3_256: 32 bytes
+ * - SHA3_512: 64 bytes
+ * - BLAKE3: 32 bytes (default, can produce more)
+ */
+public enum HashAlgorithm {
+    /// SHA-256 (NIST FIPS 180-4)
+    SHA256,
+    /// SHA-384 (NIST FIPS 180-4)
+    SHA384,
+    /// SHA-512 (NIST FIPS 180-4)
+    SHA512,
+    /// SHA3-256 (NIST FIPS 202)
+    SHA3_256,
+    /// SHA3-512 (NIST FIPS 202)
+    SHA3_512,
+    /// BLAKE3 (modern, fast hash)
+    BLAKE3
+}
+
+/**
+ * Module for HashAlgorithm providing utility functions.
+ */
+module HashAlgorithm {
+    /// Returns the output size in bytes for this algorithm.
+    public static int outputSize(HashAlgorithm algo) {
+        switch (algo) {
+            case HashAlgorithm.SHA256: return 32;
+            case HashAlgorithm.SHA384: return 48;
+            case HashAlgorithm.SHA512: return 64;
+            case HashAlgorithm.SHA3_256: return 32;
+            case HashAlgorithm.SHA3_512: return 64;
+            case HashAlgorithm.BLAKE3: return 32;
+        }
+    }
+
+    /// Returns the block size in bytes for this algorithm.
+    public static int blockSize(HashAlgorithm algo) {
+        switch (algo) {
+            case HashAlgorithm.SHA256: return 64;
+            case HashAlgorithm.SHA384: return 128;
+            case HashAlgorithm.SHA512: return 128;
+            case HashAlgorithm.SHA3_256: return 136;
+            case HashAlgorithm.SHA3_512: return 72;
+            case HashAlgorithm.BLAKE3: return 64;
+        }
+    }
+
+    /// Returns the algorithm name as a string.
+    public static String name(HashAlgorithm algo) {
+        switch (algo) {
+            case HashAlgorithm.SHA256: return "SHA-256";
+            case HashAlgorithm.SHA384: return "SHA-384";
+            case HashAlgorithm.SHA512: return "SHA-512";
+            case HashAlgorithm.SHA3_256: return "SHA3-256";
+            case HashAlgorithm.SHA3_512: return "SHA3-512";
+            case HashAlgorithm.BLAKE3: return "BLAKE3";
+        }
+    }
+}
+
+// =============================================================================
+// AEAD Algorithms
+// =============================================================================
+
+/**
+ * Authenticated Encryption with Associated Data (AEAD) algorithm identifiers.
+ *
+ * All AEAD algorithms provide confidentiality and authenticity:
+ * - AES_128_GCM: 16-byte key, 12-byte nonce, 16-byte tag
+ * - AES_256_GCM: 32-byte key, 12-byte nonce, 16-byte tag
+ * - CHACHA20_POLY1305: 32-byte key, 12-byte nonce, 16-byte tag
+ */
+public enum AeadAlgorithm {
+    /// AES-128-GCM (NIST SP 800-38D)
+    AES_128_GCM,
+    /// AES-256-GCM (NIST SP 800-38D)
+    AES_256_GCM,
+    /// ChaCha20-Poly1305 (RFC 8439)
+    CHACHA20_POLY1305
+}
+
+/**
+ * Module for AeadAlgorithm providing utility functions.
+ */
+module AeadAlgorithm {
+    /// Returns the key size in bytes for this algorithm.
+    public static int keySize(AeadAlgorithm algo) {
+        switch (algo) {
+            case AeadAlgorithm.AES_128_GCM: return 16;
+            case AeadAlgorithm.AES_256_GCM: return 32;
+            case AeadAlgorithm.CHACHA20_POLY1305: return 32;
+        }
+    }
+
+    /// Returns the nonce size in bytes for this algorithm.
+    public static int nonceSize(AeadAlgorithm algo) {
+        switch (algo) {
+            case AeadAlgorithm.AES_128_GCM: return 12;
+            case AeadAlgorithm.AES_256_GCM: return 12;
+            case AeadAlgorithm.CHACHA20_POLY1305: return 12;
+        }
+    }
+
+    /// Returns the authentication tag size in bytes for this algorithm.
+    public static int tagSize(AeadAlgorithm algo) {
+        switch (algo) {
+            case AeadAlgorithm.AES_128_GCM: return 16;
+            case AeadAlgorithm.AES_256_GCM: return 16;
+            case AeadAlgorithm.CHACHA20_POLY1305: return 16;
+        }
+    }
+
+    /// Returns the algorithm name as a string.
+    public static String name(AeadAlgorithm algo) {
+        switch (algo) {
+            case AeadAlgorithm.AES_128_GCM: return "AES-128-GCM";
+            case AeadAlgorithm.AES_256_GCM: return "AES-256-GCM";
+            case AeadAlgorithm.CHACHA20_POLY1305: return "ChaCha20-Poly1305";
+        }
+    }
+}
+
+// =============================================================================
+// Signature Algorithms
+// =============================================================================
+
+/**
+ * Digital signature algorithm identifiers.
+ *
+ * Key sizes:
+ * - ED25519: 32-byte seed, 32-byte public key, 64-byte signature
+ * - ECDSA_P256_SHA256: ~32-byte private key, ~65-byte public key, ~64-byte signature
+ * - ECDSA_P384_SHA384: ~48-byte private key, ~97-byte public key, ~96-byte signature
+ * - RSA_PSS_SHA256: Variable (2048-4096 bit keys recommended)
+ */
+public enum SignatureAlgorithm {
+    /// Ed25519 (RFC 8032) - recommended
+    ED25519,
+    /// ECDSA with P-256 curve and SHA-256
+    ECDSA_P256_SHA256,
+    /// ECDSA with P-384 curve and SHA-384
+    ECDSA_P384_SHA384,
+    /// RSA-PSS with SHA-256 (PKCS#1 v2.1)
+    RSA_PSS_SHA256
+}
+
+/**
+ * Module for SignatureAlgorithm providing utility functions.
+ */
+module SignatureAlgorithm {
+    /// Returns the signature size in bytes for this algorithm.
+    /// For variable-size signatures (ECDSA, RSA), returns the maximum expected size.
+    public static int signatureSize(SignatureAlgorithm algo) {
+        switch (algo) {
+            case SignatureAlgorithm.ED25519: return 64;
+            case SignatureAlgorithm.ECDSA_P256_SHA256: return 72;
+            case SignatureAlgorithm.ECDSA_P384_SHA384: return 104;
+            case SignatureAlgorithm.RSA_PSS_SHA256: return 512;
+        }
+    }
+
+    /// Returns the private key size in bytes for this algorithm.
+    /// For RSA, this is an approximation; actual size depends on key generation.
+    public static int privateKeySize(SignatureAlgorithm algo) {
+        switch (algo) {
+            case SignatureAlgorithm.ED25519: return 32;
+            case SignatureAlgorithm.ECDSA_P256_SHA256: return 32;
+            case SignatureAlgorithm.ECDSA_P384_SHA384: return 48;
+            case SignatureAlgorithm.RSA_PSS_SHA256: return 2048;
+        }
+    }
+
+    /// Returns the public key size in bytes for this algorithm.
+    public static int publicKeySize(SignatureAlgorithm algo) {
+        switch (algo) {
+            case SignatureAlgorithm.ED25519: return 32;
+            case SignatureAlgorithm.ECDSA_P256_SHA256: return 65;
+            case SignatureAlgorithm.ECDSA_P384_SHA384: return 97;
+            case SignatureAlgorithm.RSA_PSS_SHA256: return 512;
+        }
+    }
+
+    /// Returns the algorithm name as a string.
+    public static String name(SignatureAlgorithm algo) {
+        switch (algo) {
+            case SignatureAlgorithm.ED25519: return "Ed25519";
+            case SignatureAlgorithm.ECDSA_P256_SHA256: return "ECDSA-P256-SHA256";
+            case SignatureAlgorithm.ECDSA_P384_SHA384: return "ECDSA-P384-SHA384";
+            case SignatureAlgorithm.RSA_PSS_SHA256: return "RSA-PSS-SHA256";
+        }
+    }
+}
+
+// =============================================================================
+// Key Derivation Algorithms
+// =============================================================================
+
+/**
+ * Key derivation function (KDF) algorithm identifiers.
+ *
+ * Use cases:
+ * - HKDF_SHA256, HKDF_SHA512: Derive keys from high-entropy secrets
+ * - PBKDF2_SHA256: Derive keys from passwords (use Argon2 instead if possible)
+ * - ARGON2ID: Modern password-based key derivation (recommended)
+ */
+public enum KdfAlgorithm {
+    /// HKDF with SHA-256 (RFC 5869)
+    HKDF_SHA256,
+    /// HKDF with SHA-512 (RFC 5869)
+    HKDF_SHA512,
+    /// PBKDF2 with SHA-256 (RFC 8018)
+    PBKDF2_SHA256,
+    /// Argon2id (recommended for password-based derivation)
+    ARGON2ID
+}
+
+/**
+ * Module for KdfAlgorithm providing utility functions.
+ */
+module KdfAlgorithm {
+    /// Returns the algorithm name as a string.
+    public static String name(KdfAlgorithm algo) {
+        switch (algo) {
+            case KdfAlgorithm.HKDF_SHA256: return "HKDF-SHA256";
+            case KdfAlgorithm.HKDF_SHA512: return "HKDF-SHA512";
+            case KdfAlgorithm.PBKDF2_SHA256: return "PBKDF2-SHA256";
+            case KdfAlgorithm.ARGON2ID: return "Argon2id";
+        }
+    }
+
+    /// Returns the default output size in bytes for this algorithm.
+    public static int defaultOutputSize(KdfAlgorithm algo) {
+        switch (algo) {
+            case KdfAlgorithm.HKDF_SHA256: return 32;
+            case KdfAlgorithm.HKDF_SHA512: return 64;
+            case KdfAlgorithm.PBKDF2_SHA256: return 32;
+            case KdfAlgorithm.ARGON2ID: return 32;
+        }
+    }
+
+    /// Returns whether this algorithm is suitable for password-based derivation.
+    public static Bool isPasswordBased(KdfAlgorithm algo) {
+        switch (algo) {
+            case KdfAlgorithm.HKDF_SHA256: return false;
+            case KdfAlgorithm.HKDF_SHA512: return false;
+            case KdfAlgorithm.PBKDF2_SHA256: return true;
+            case KdfAlgorithm.ARGON2ID: return true;
+        }
+    }
+}
+
+// =============================================================================
+// Password Hashing Algorithms
+// =============================================================================
+
+/**
+ * Password hashing algorithm identifiers.
+ *
+ * These algorithms are designed for secure password storage:
+ * - ARGON2ID: Modern, memory-hard (recommended)
+ * - BCRYPT: Well-established, widely supported
+ *
+ * Both output PHC-format strings for storage.
+ */
+public enum PasswordHashAlgorithm {
+    /// Argon2id (recommended)
+    ARGON2ID,
+    /// bcrypt (well-established)
+    BCRYPT
+}
+
+/**
+ * Module for PasswordHashAlgorithm providing utility functions.
+ */
+module PasswordHashAlgorithm {
+    /// Returns the algorithm name as a string.
+    public static String name(PasswordHashAlgorithm algo) {
+        switch (algo) {
+            case PasswordHashAlgorithm.ARGON2ID: return "Argon2id";
+            case PasswordHashAlgorithm.BCRYPT: return "bcrypt";
+        }
+    }
+
+    /// Returns the PHC string prefix for this algorithm.
+    public static String phcPrefix(PasswordHashAlgorithm algo) {
+        switch (algo) {
+            case PasswordHashAlgorithm.ARGON2ID: return "$argon2id$";
+            case PasswordHashAlgorithm.BCRYPT: return "$2b$";
+        }
+    }
+}
+
+// =============================================================================
+// Key Exchange Algorithms
+// =============================================================================
+
+/**
+ * Key exchange algorithm identifiers.
+ *
+ * Use for Diffie-Hellman style key agreement:
+ * - X25519: Modern elliptic curve (recommended)
+ * - ECDH_P256: NIST P-256 curve
+ * - ECDH_P384: NIST P-384 curve
+ */
+public enum KeyExchangeAlgorithm {
+    /// X25519 (RFC 7748) - recommended
+    X25519,
+    /// ECDH with P-256 curve
+    ECDH_P256,
+    /// ECDH with P-384 curve
+    ECDH_P384
+}
+
+/**
+ * Module for KeyExchangeAlgorithm providing utility functions.
+ */
+module KeyExchangeAlgorithm {
+    /// Returns the private key size in bytes for this algorithm.
+    public static int privateKeySize(KeyExchangeAlgorithm algo) {
+        switch (algo) {
+            case KeyExchangeAlgorithm.X25519: return 32;
+            case KeyExchangeAlgorithm.ECDH_P256: return 32;
+            case KeyExchangeAlgorithm.ECDH_P384: return 48;
+        }
+    }
+
+    /// Returns the public key size in bytes for this algorithm.
+    public static int publicKeySize(KeyExchangeAlgorithm algo) {
+        switch (algo) {
+            case KeyExchangeAlgorithm.X25519: return 32;
+            case KeyExchangeAlgorithm.ECDH_P256: return 65;
+            case KeyExchangeAlgorithm.ECDH_P384: return 97;
+        }
+    }
+
+    /// Returns the shared secret size in bytes for this algorithm.
+    public static int sharedSecretSize(KeyExchangeAlgorithm algo) {
+        switch (algo) {
+            case KeyExchangeAlgorithm.X25519: return 32;
+            case KeyExchangeAlgorithm.ECDH_P256: return 32;
+            case KeyExchangeAlgorithm.ECDH_P384: return 48;
+        }
+    }
+
+    /// Returns the algorithm name as a string.
+    public static String name(KeyExchangeAlgorithm algo) {
+        switch (algo) {
+            case KeyExchangeAlgorithm.X25519: return "X25519";
+            case KeyExchangeAlgorithm.ECDH_P256: return "ECDH-P256";
+            case KeyExchangeAlgorithm.ECDH_P384: return "ECDH-P384";
+        }
+    }
+}
+
+// =============================================================================
+// Key Size Constants
+// =============================================================================
+
+/**
+ * Standard key and nonce size constants.
+ */
+module CryptoConstants {
+    /// AES-128 key size in bytes
+    public static final int AES_128_KEY_SIZE = 16;
+    /// AES-256 key size in bytes
+    public static final int AES_256_KEY_SIZE = 32;
+    /// ChaCha20 key size in bytes
+    public static final int CHACHA20_KEY_SIZE = 32;
+    /// AES-GCM nonce size in bytes
+    public static final int AES_GCM_NONCE_SIZE = 12;
+    /// ChaCha20-Poly1305 nonce size in bytes
+    public static final int CHACHA20_NONCE_SIZE = 12;
+    /// AES-GCM authentication tag size in bytes
+    public static final int AES_GCM_TAG_SIZE = 16;
+    /// Ed25519 seed size in bytes
+    public static final int ED25519_SEED_SIZE = 32;
+    /// Ed25519 public key size in bytes
+    public static final int ED25519_PUBLIC_KEY_SIZE = 32;
+    /// Ed25519 signature size in bytes
+    public static final int ED25519_SIGNATURE_SIZE = 64;
+    /// X25519 key size in bytes
+    public static final int X25519_KEY_SIZE = 32;
+    /// SHA-256 output size in bytes
+    public static final int SHA256_OUTPUT_SIZE = 32;
+    /// SHA-512 output size in bytes
+    public static final int SHA512_OUTPUT_SIZE = 64;
+    /// BLAKE3 default output size in bytes
+    public static final int BLAKE3_OUTPUT_SIZE = 32;
+}

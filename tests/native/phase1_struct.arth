@@ -1,0 +1,18 @@
+package test.native;
+
+public struct Point {
+    public Int x;
+    public Int y;
+}
+
+module Main {
+    public static void main() {
+        Point p = Point { x: 10, y: 20 };
+        Int sum = p.x + p.y;
+        if (sum == 30) {
+            println("PHASE1_STRUCT_OK");
+        } else {
+            println("PHASE1_STRUCT_BAD");
+        }
+    }
+}

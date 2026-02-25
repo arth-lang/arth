@@ -1,0 +1,290 @@
+package concurrent.actors;
+
+/// Actor Patterns Example
+///
+/// Demonstrates the actor model in Arth:
+/// - Encapsulated mutable state with serialized access
+/// - Message-based communication
+/// - FIFO message processing
+/// - Request-response via one-shot channels
+/// - Supervision patterns
+
+import concurrent.*;
+import log.*;
+
+/// Counter actor messages
+enum CounterMsg {
+  Increment(int amount),
+  Decrement(int amount),
+  Get(Sender<int>),
+  Reset,
+  Stop
+}
+
+/// Bank account messages
+enum BankMsg {
+  Deposit(int amount, Sender<boolean>),
+  Withdraw(int amount, Sender<boolean>),
+  GetBalance(Sender<int>),
+  Close
+}
+
+/// Key-value store messages
+enum KVMsg<K, V> {
+  Put(K key, V value),
+  Get(K key, Sender<Optional<V>>),
+  Delete(K key),
+  Clear,
+  Stop
+}
+
+module ActorPatterns {
+  /// Basic counter actor with serialized state mutation
+  public async void counterActor(Receiver<CounterMsg> mailbox) {
+    Logger log = Logger.get("concurrent.actors");
+    int count = 0;
+
+    log.info("started", "Counter actor started", Fields.of("initial", count));
+
+    while (true) {
+      Optional<CounterMsg> msg = await mailbox.recv();
+      if (msg.isEmpty()) break;
+
+      switch (msg.get()) {
+        case CounterMsg.Increment(amount):
+          count = count + amount;
+          log.info("inc", "Incremented", Fields.of("by", amount, "now", count));
+
+        case CounterMsg.Decrement(amount):
+          count = count - amount;
+          log.info("dec", "Decremented", Fields.of("by", amount, "now", count));
+
+        case CounterMsg.Get(reply):
+          await reply.send(count);
+          reply.close();
+          log.info("get", "Sent current value", Fields.of("value", count));
+
+        case CounterMsg.Reset:
+          count = 0;
+          log.info("reset", "Reset to zero", Fields.of());
+
+        case CounterMsg.Stop:
+          log.info("stop", "Stopping actor", Fields.of("final", count));
+          break;
+      }
+
+      if (msg.get() == CounterMsg.Stop) break;
+    }
+  }
+
+  /// Spawn and use a counter actor
+  public async void useCounterActor() throws (CancelledError) {
+    Logger log = Logger.get("concurrent.actors");
+
+    // Create mailbox channel
+    Channel<CounterMsg> ch = Channel.create(100);
+    Sender<CounterMsg> tx = ch.sender();
+    Receiver<CounterMsg> rx = ch.receiver();
+
+    // Spawn actor
+    Task<void> actor = counterActor(rx);
+
+    // Send messages (FIFO order guaranteed)
+    await tx.send(CounterMsg.Increment(10));
+    await tx.send(CounterMsg.Increment(5));
+    await tx.send(CounterMsg.Decrement(3));
+
+    // Request-response pattern
+    Channel<int> reply = Channel.create(1);
+    await tx.send(CounterMsg.Get(reply.sender()));
+    Optional<int> value = await reply.receiver().recv();
+    log.info("got", "Counter value", Fields.of("value", value.getOrDefault(-1)));
+
+    // Stop the actor
+    await tx.send(CounterMsg.Stop);
+    tx.close();
+    await actor;
+  }
+
+  /// Bank account actor with business logic
+  public async void bankAccountActor(Receiver<BankMsg> mailbox, int initialBalance) {
+    Logger log = Logger.get("concurrent.actors");
+    int balance = initialBalance;
+
+    log.info("opened", "Bank account opened", Fields.of("balance", balance));
+
+    while (true) {
+      Optional<BankMsg> msg = await mailbox.recv();
+      if (msg.isEmpty()) break;
+
+      switch (msg.get()) {
+        case BankMsg.Deposit(amount, reply):
+          if (amount > 0) {
+            balance = balance + amount;
+            await reply.send(true);
+            log.info("deposit", "Deposited", Fields.of("amount", amount, "balance", balance));
+          } else {
+            await reply.send(false);
+          }
+          reply.close();
+
+        case BankMsg.Withdraw(amount, reply):
+          if (amount > 0 && amount <= balance) {
+            balance = balance - amount;
+            await reply.send(true);
+            log.info("withdraw", "Withdrew", Fields.of("amount", amount, "balance", balance));
+          } else {
+            await reply.send(false);
+            log.info("failed", "Withdrawal failed", Fields.of("amount", amount, "balance", balance));
+          }
+          reply.close();
+
+        case BankMsg.GetBalance(reply):
+          await reply.send(balance);
+          reply.close();
+
+        case BankMsg.Close:
+          log.info("closed", "Account closed", Fields.of("final", balance));
+          break;
+      }
+
+      if (msg.get() == BankMsg.Close) break;
+    }
+  }
+
+  /// Demonstrate bank account actor
+  public async void useBankAccount() throws (CancelledError) {
+    Logger log = Logger.get("concurrent.actors");
+
+    Channel<BankMsg> ch = Channel.create(50);
+    Sender<BankMsg> tx = ch.sender();
+
+    Task<void> actor = bankAccountActor(ch.receiver(), 1000);
+
+    // Deposit
+    Channel<boolean> r1 = Channel.create(1);
+    await tx.send(BankMsg.Deposit(500, r1.sender()));
+    Optional<boolean> ok1 = await r1.receiver().recv();
+    log.info("deposit", "Deposit result", Fields.of("ok", ok1.getOrDefault(false)));
+
+    // Withdraw within balance
+    Channel<boolean> r2 = Channel.create(1);
+    await tx.send(BankMsg.Withdraw(200, r2.sender()));
+    Optional<boolean> ok2 = await r2.receiver().recv();
+    log.info("withdraw", "Withdraw result", Fields.of("ok", ok2.getOrDefault(false)));
+
+    // Withdraw exceeding balance
+    Channel<boolean> r3 = Channel.create(1);
+    await tx.send(BankMsg.Withdraw(5000, r3.sender()));
+    Optional<boolean> ok3 = await r3.receiver().recv();
+    log.info("withdraw", "Overdraft result", Fields.of("ok", ok3.getOrDefault(false)));
+
+    // Check balance
+    Channel<int> r4 = Channel.create(1);
+    await tx.send(BankMsg.GetBalance(r4.sender()));
+    Optional<int> balance = await r4.receiver().recv();
+    log.info("balance", "Final balance", Fields.of("value", balance.getOrDefault(-1)));
+
+    await tx.send(BankMsg.Close);
+    tx.close();
+    await actor;
+  }
+
+  /// Actor supervisor pattern - restart on failure
+  public async void supervisedActor() throws (CancelledError) {
+    Logger log = Logger.get("concurrent.actors");
+
+    int restarts = 0;
+    final int maxRestarts = 3;
+
+    while (restarts < maxRestarts) {
+      Channel<CounterMsg> ch = Channel.create(100);
+      Sender<CounterMsg> tx = ch.sender();
+
+      Task<void> actor = counterActor(ch.receiver());
+
+      // Monitor the actor
+      TaskResult<void> result = Task.join(actor);
+
+      if (result.isOk()) {
+        log.info("clean", "Actor stopped cleanly", Fields.of());
+        break;
+      } else if (result.isPanicked()) {
+        restarts = restarts + 1;
+        log.info("restart", "Actor panicked, restarting",
+          Fields.of("attempt", restarts, "max", maxRestarts));
+      }
+    }
+
+    if (restarts >= maxRestarts) {
+      log.info("failed", "Actor exceeded max restarts", Fields.of());
+    }
+  }
+
+  /// Actor pool for parallel processing
+  public async void actorPool(int poolSize, Receiver<WorkItem> jobs) throws (CancelledError) {
+    Logger log = Logger.get("concurrent.actors");
+
+    // Create pool of worker actors
+    List<Task<void>> workers = [];
+    List<Sender<WorkItem>> senders = [];
+
+    for (int i = 0; i < poolSize; i++) {
+      Channel<WorkItem> ch = Channel.create(10);
+      senders.add(ch.sender());
+      int workerId = i;
+      workers.add(async {
+        workerActor(workerId, ch.receiver());
+      });
+    }
+
+    // Round-robin dispatch to workers
+    int next = 0;
+    while (true) {
+      Optional<WorkItem> job = await jobs.recv();
+      if (job.isEmpty()) break;
+
+      await senders.get(next).send(job.get());
+      next = (next + 1) % poolSize;
+    }
+
+    // Shutdown all workers
+    for (Sender<WorkItem> tx : senders) {
+      tx.close();
+    }
+
+    for (Task<void> worker : workers) {
+      await worker;
+    }
+
+    log.info("pool", "Actor pool shutdown complete", Fields.of());
+  }
+
+  /// Individual worker in the pool
+  async void workerActor(int id, Receiver<WorkItem> mailbox) {
+    Logger log = Logger.get("concurrent.actors");
+
+    while (true) {
+      Optional<WorkItem> item = await mailbox.recv();
+      if (item.isEmpty()) break;
+
+      switch (item.get()) {
+        case WorkItem.Job(jobId, data):
+          log.info("work", "Processing job",
+            Fields.of("worker", id, "job", jobId));
+          // Simulate work
+          await Task.sleep(Duration.ofMillis(10));
+
+        case WorkItem.Shutdown:
+          log.info("shutdown", "Worker shutting down", Fields.of("worker", id));
+          break;
+      }
+    }
+  }
+}
+
+/// Work item for actor pool
+enum WorkItem {
+  Job(int id, String data),
+  Shutdown
+}

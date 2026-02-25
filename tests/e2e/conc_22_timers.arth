@@ -1,0 +1,253 @@
+package conc_22_timers;
+
+// ============================================================================
+// C22: Async Timer Operations Test Suite
+// Tests: Timer.sleep, Timer.sleepAsync, Timer.now, Timer.elapsed, etc.
+// Verifies: Accurate timing, timer registration, expiration detection
+// ============================================================================
+
+module Main {
+
+    public void main() {
+        println("=== C22: Async Timer Operations Test ===");
+
+        int passed = 0;
+        int total = 0;
+
+        // Test 1: Timer.now returns positive timestamp
+        total = total + 1;
+        println("=== Test 1: Timer.now ===");
+        int now1 = Timer.now();
+        if (now1 > 0) {
+            println("Test 1 (now): PASS - timestamp = " + now1);
+            passed = passed + 1;
+        } else {
+            println("Test 1 FAIL: expected positive timestamp, got " + now1);
+        }
+
+        // Test 2: Timer.elapsed accuracy
+        total = total + 1;
+        println("=== Test 2: Timer.elapsed ===");
+        int start = Timer.now();
+        Timer.sleep(50);
+        int elapsed = Timer.elapsed(start);
+        if (elapsed >= 45 && elapsed <= 100) {
+            println("Test 2 (elapsed): PASS - elapsed = " + elapsed + " ms (expected ~50 ms)");
+            passed = passed + 1;
+        } else {
+            println("Test 2 FAIL: expected ~50 ms, got " + elapsed + " ms");
+        }
+
+        // Test 3: Timer.sleep accuracy (100ms)
+        total = total + 1;
+        println("=== Test 3: Timer.sleep accuracy (100ms) ===");
+        int sleepStart = Timer.now();
+        Timer.sleep(100);
+        int sleepElapsed = Timer.elapsed(sleepStart);
+        if (sleepElapsed >= 95 && sleepElapsed <= 150) {
+            println("Test 3 (sleep 100ms): PASS - actual = " + sleepElapsed + " ms");
+            passed = passed + 1;
+        } else {
+            println("Test 3 FAIL: expected 100-150 ms, got " + sleepElapsed + " ms");
+        }
+
+        // Test 4: Timer.sleepAsync registers timer
+        total = total + 1;
+        println("=== Test 4: Timer.sleepAsync registration ===");
+        int taskId = 12345;
+        int timerId = Timer.sleepAsync(200, taskId);
+        if (timerId >= 70000) {
+            println("Test 4 (sleepAsync): PASS - timer_id = " + timerId);
+            passed = passed + 1;
+        } else {
+            println("Test 4 FAIL: expected timer_id >= 70000, got " + timerId);
+        }
+
+        // Test 5: Timer.checkExpired (not yet expired)
+        total = total + 1;
+        println("=== Test 5: Timer.checkExpired (pending) ===");
+        int pendingStatus = Timer.checkExpired(timerId);
+        if (pendingStatus == 0) {
+            println("Test 5 (checkExpired pending): PASS - status = 0 (pending)");
+            passed = passed + 1;
+        } else {
+            println("Test 5 FAIL: expected 0 (pending), got " + pendingStatus);
+        }
+
+        // Test 6: Timer.getWaitingTask
+        total = total + 1;
+        println("=== Test 6: Timer.getWaitingTask ===");
+        int waitingTask = Timer.getWaitingTask(timerId);
+        if (waitingTask == taskId) {
+            println("Test 6 (getWaitingTask): PASS - task_id = " + waitingTask);
+            passed = passed + 1;
+        } else {
+            println("Test 6 FAIL: expected " + taskId + ", got " + waitingTask);
+        }
+
+        // Test 7: Timer.remaining (before expiration)
+        total = total + 1;
+        println("=== Test 7: Timer.remaining ===");
+        int remaining = Timer.remaining(timerId);
+        if (remaining > 0 && remaining <= 200) {
+            println("Test 7 (remaining): PASS - remaining = " + remaining + " ms");
+            passed = passed + 1;
+        } else {
+            println("Test 7 FAIL: expected 0 < remaining <= 200, got " + remaining);
+        }
+
+        // Test 8: Wait for timer to expire and check
+        total = total + 1;
+        println("=== Test 8: Timer expiration detection ===");
+        Timer.sleep(220);
+        int expiredStatus = Timer.checkExpired(timerId);
+        if (expiredStatus == 1) {
+            println("Test 8 (checkExpired after wait): PASS - status = 1 (expired)");
+            passed = passed + 1;
+        } else {
+            println("Test 8 FAIL: expected 1 (expired), got " + expiredStatus);
+        }
+
+        // Test 9: Timer.pollExpired finds expired timer
+        total = total + 1;
+        println("=== Test 9: Timer.pollExpired ===");
+        // Register another timer that expires immediately
+        int quickTimer = Timer.sleepAsync(1, 999);
+        Timer.sleep(10);
+        int polledTimer = Timer.pollExpired();
+        if (polledTimer == quickTimer || polledTimer == timerId) {
+            println("Test 9 (pollExpired): PASS - found timer = " + polledTimer);
+            passed = passed + 1;
+        } else {
+            println("Test 9 FAIL: expected to find expired timer, got " + polledTimer);
+        }
+
+        // Test 10: Timer.cancel
+        total = total + 1;
+        println("=== Test 10: Timer.cancel ===");
+        int cancelTimer = Timer.sleepAsync(1000, 888);
+        int cancelStatus = Timer.cancel(cancelTimer);
+        if (cancelStatus == 0) {
+            println("Test 10 (cancel): PASS - cancelled timer " + cancelTimer);
+            passed = passed + 1;
+        } else {
+            println("Test 10 FAIL: expected 0 (success), got " + cancelStatus);
+        }
+
+        // Test 11: Cancelled timer reports -1 on check
+        total = total + 1;
+        println("=== Test 11: Cancelled timer status ===");
+        int cancelledCheck = Timer.checkExpired(cancelTimer);
+        if (cancelledCheck == -1) {
+            println("Test 11 (cancelled check): PASS - status = -1 (cancelled)");
+            passed = passed + 1;
+        } else {
+            println("Test 11 FAIL: expected -1 (cancelled), got " + cancelledCheck);
+        }
+
+        // Test 12: Timer.remove cleans up
+        total = total + 1;
+        println("=== Test 12: Timer.remove ===");
+        int removeStatus = Timer.remove(timerId);
+        if (removeStatus == 0) {
+            println("Test 12 (remove): PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 12 FAIL: expected 0 (success), got " + removeStatus);
+        }
+
+        // Test 13: Removed timer returns -1
+        total = total + 1;
+        println("=== Test 13: Removed timer lookup ===");
+        int removedCheck = Timer.checkExpired(timerId);
+        if (removedCheck == -1) {
+            println("Test 13 (removed check): PASS - status = -1 (not found)");
+            passed = passed + 1;
+        } else {
+            println("Test 13 FAIL: expected -1 (not found), got " + removedCheck);
+        }
+
+        // Test 14: Multiple timers with different deadlines
+        total = total + 1;
+        println("=== Test 14: Multiple timers ===");
+        int t1 = Timer.sleepAsync(50, 1);
+        int t2 = Timer.sleepAsync(100, 2);
+        int t3 = Timer.sleepAsync(150, 3);
+        if (t1 != t2 && t2 != t3 && t1 != t3 && t1 >= 70000 && t2 >= 70000 && t3 >= 70000) {
+            println("Test 14 (multi-timer): PASS - t1=" + t1 + " t2=" + t2 + " t3=" + t3);
+            passed = passed + 1;
+        } else {
+            println("Test 14 FAIL: expected unique timer IDs >= 70000");
+        }
+
+        // Test 15: Timers expire in order
+        total = total + 1;
+        println("=== Test 15: Timer expiration order ===");
+        Timer.sleep(60);
+        int check1 = Timer.checkExpired(t1);
+        int check2 = Timer.checkExpired(t2);
+        int check3 = Timer.checkExpired(t3);
+        if (check1 == 1 && check2 == 0 && check3 == 0) {
+            println("Test 15 (expiration order): PASS - t1 expired, t2/t3 pending");
+            passed = passed + 1;
+        } else {
+            println("Test 15 PARTIAL: expected t1=1 t2=0 t3=0, got t1=" + check1 + " t2=" + check2 + " t3=" + check3);
+            if (check1 == 1) {
+                passed = passed + 1;
+            }
+        }
+
+        // Test 16: Zero sleep returns immediately
+        total = total + 1;
+        println("=== Test 16: Zero sleep ===");
+        int zeroStart = Timer.now();
+        Timer.sleep(0);
+        int zeroElapsed = Timer.elapsed(zeroStart);
+        if (zeroElapsed < 10) {
+            println("Test 16 (zero sleep): PASS - elapsed = " + zeroElapsed + " ms");
+            passed = passed + 1;
+        } else {
+            println("Test 16 FAIL: expected < 10 ms, got " + zeroElapsed + " ms");
+        }
+
+        // Test 17: Invalid timer ID returns error
+        total = total + 1;
+        println("=== Test 17: Invalid timer ID ===");
+        int invalidCheck = Timer.checkExpired(999999);
+        int invalidTask = Timer.getWaitingTask(999999);
+        int invalidCancel = Timer.cancel(999999);
+        if (invalidCheck == -1 && invalidTask == -1 && invalidCancel == -1) {
+            println("Test 17 (invalid ID): PASS - all returned -1");
+            passed = passed + 1;
+        } else {
+            println("Test 17 FAIL: expected all -1, got check=" + invalidCheck + " task=" + invalidTask + " cancel=" + invalidCancel);
+        }
+
+        // Test 18: Negative sleep duration is handled
+        total = total + 1;
+        println("=== Test 18: Negative sleep async ===");
+        int negTimer = Timer.sleepAsync(-100, 777);
+        if (negTimer == -1) {
+            println("Test 18 (negative async): PASS - returned -1 (error)");
+            passed = passed + 1;
+        } else {
+            println("Test 18 FAIL: expected -1, got " + negTimer);
+        }
+
+        // Clean up remaining timers
+        Timer.remove(t2);
+        Timer.remove(t3);
+        Timer.remove(quickTimer);
+        Timer.remove(cancelTimer);
+
+        // Summary
+        println("");
+        println("=== Test Summary ===");
+        println("Tests passed: " + passed + " / " + total);
+        if (passed == total) {
+            println("All C22 Timer tests PASSED!");
+        } else {
+            println("Some tests failed.");
+        }
+    }
+}

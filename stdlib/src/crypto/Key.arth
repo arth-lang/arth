@@ -1,0 +1,548 @@
+package crypto;
+
+/**
+ * Asymmetric cryptographic key types.
+ *
+ * This file defines types for public/private key pairs used in:
+ * - Digital signatures (Ed25519, ECDSA, RSA-PSS)
+ * - Key exchange (X25519, ECDH)
+ *
+ * Private keys are stored in secure memory and automatically zeroed on drop.
+ * Public keys are not sensitive and can be shared freely.
+ *
+ * Example usage:
+ * ```arth
+ * import crypto.*;
+ *
+ * module Example {
+ *     public void signAndVerify() throws (KeyGenerationError, RandomError) {
+ *         // Generate a signing key pair
+ *         KeyPair kp = KeyPair.generate(SignatureAlgorithm.ED25519);
+ *
+ *         // Sign some data
+ *         bytes message = "Hello, World!".toBytes();
+ *         Signature sig = Signature.sign(KeyPair.privateKey(kp), message);
+ *
+ *         // Verify with the public key
+ *         Bool valid = Signature.verify(KeyPair.publicKey(kp), message, sig);
+ *     }
+ * }
+ * ```
+ *
+ * @see crypto.Signature for signing/verification
+ * @see crypto.KeyExchange for key agreement
+ */
+
+// =============================================================================
+// Public Key
+// =============================================================================
+
+/**
+ * An asymmetric public key.
+ *
+ * Public keys are not sensitive and can be shared freely.
+ * They are used for:
+ * - Verifying signatures
+ * - Encrypting data (hybrid encryption)
+ * - Key exchange (deriving shared secrets)
+ */
+public struct PublicKey {
+    /// The algorithm this key is for
+    public final SignatureAlgorithm algorithm;
+    /// The raw public key bytes
+    public final bytes data;
+}
+
+/**
+ * Module for PublicKey operations.
+ */
+module PublicKey {
+    /**
+     * Creates a PublicKey from raw bytes.
+     *
+     * @param algorithm The signature algorithm
+     * @param keyBytes The raw public key bytes
+     * @return A new PublicKey
+     * @throws InvalidKeyError if the key is malformed or wrong size
+     */
+    @intrinsic("crypto.public_key_from_bytes")
+    public static PublicKey fromBytes(SignatureAlgorithm algorithm, bytes keyBytes)
+        throws InvalidKeyError {
+        int expectedSize = SignatureAlgorithm.publicKeySize(algorithm);
+        if (keyBytes.length() != expectedSize) {
+            throw InvalidKeyError.withSize(
+                "Public key size mismatch for " + SignatureAlgorithm.name(algorithm),
+                expectedSize,
+                keyBytes.length()
+            );
+        }
+        return PublicKey {
+            algorithm: algorithm,
+            data: keyBytes
+        };
+    }
+
+    /**
+     * Returns the raw public key bytes.
+     *
+     * @param self The public key
+     * @return The raw key bytes
+     */
+    public static bytes toBytes(PublicKey self) {
+        return self.data;
+    }
+
+    /**
+     * Returns the algorithm.
+     *
+     * @param self The public key
+     * @return The signature algorithm
+     */
+    public static SignatureAlgorithm algorithm(PublicKey self) {
+        return self.algorithm;
+    }
+
+    /**
+     * Returns the key size in bytes.
+     *
+     * @param self The public key
+     * @return The key size
+     */
+    public static int size(PublicKey self) {
+        return self.data.length();
+    }
+}
+
+// =============================================================================
+// Private Key
+// =============================================================================
+
+/**
+ * An asymmetric private key in secure memory.
+ *
+ * Private keys are stored in secure memory and automatically zeroed
+ * when dropped. They are used for:
+ * - Creating signatures
+ * - Decrypting data (hybrid encryption)
+ * - Key exchange (deriving shared secrets)
+ */
+public struct PrivateKey {
+    /// The algorithm this key is for
+    public final SignatureAlgorithm algorithm;
+    /// The secure storage for the private key bytes
+    final SecureBytes data;
+}
+
+/**
+ * Module for PrivateKey operations.
+ */
+module PrivateKey {
+    /**
+     * Creates a PrivateKey from raw bytes.
+     *
+     * The provided bytes are copied into secure memory.
+     * The caller should zero the original bytes after this call.
+     *
+     * @param algorithm The signature algorithm
+     * @param keyBytes The raw private key bytes
+     * @return A new PrivateKey
+     * @throws InvalidKeyError if the key is malformed or wrong size
+     * @throws SecureMemoryError if secure allocation fails
+     */
+    @intrinsic("crypto.private_key_from_bytes")
+    public static PrivateKey fromBytes(SignatureAlgorithm algorithm, bytes keyBytes)
+        throws (InvalidKeyError, SecureMemoryError) {
+        int expectedSize = SignatureAlgorithm.privateKeySize(algorithm);
+        if (keyBytes.length() != expectedSize) {
+            throw InvalidKeyError.withSize(
+                "Private key size mismatch for " + SignatureAlgorithm.name(algorithm),
+                expectedSize,
+                keyBytes.length()
+            );
+        }
+        return PrivateKey {
+            algorithm: algorithm,
+            data: SecureBytes { handle: 0, length: expectedSize }
+        };
+    }
+
+    /**
+     * Exports the private key bytes.
+     *
+     * WARNING: The returned bytes are NOT in secure memory.
+     * They should be zeroed immediately after use.
+     *
+     * @param self The private key
+     * @return A copy of the key bytes (caller must zero after use)
+     */
+    public static bytes toBytes(PrivateKey self) {
+        return SecureBytes.toBytes(self.data);
+    }
+
+    /**
+     * Returns the algorithm.
+     *
+     * @param self The private key
+     * @return The signature algorithm
+     */
+    public static SignatureAlgorithm algorithm(PrivateKey self) {
+        return self.algorithm;
+    }
+
+    /**
+     * Returns the key size in bytes.
+     *
+     * @param self The private key
+     * @return The key size
+     */
+    public static int size(PrivateKey self) {
+        return SecureBytes.length(self.data);
+    }
+
+    /**
+     * Derives the public key from this private key.
+     *
+     * @param self The private key
+     * @return The corresponding public key
+     */
+    @intrinsic("crypto.private_key_to_public")
+    public static PublicKey publicKey(PrivateKey self) {
+        // Intrinsic: derives public key from private key
+        return PublicKey {
+            algorithm: self.algorithm,
+            data: bytes.allocate(0)
+        };
+    }
+
+    /**
+     * Securely zeros and frees the private key material.
+     *
+     * After calling this, the key should not be used.
+     *
+     * @param self The key to destroy
+     */
+    public static void destroy(PrivateKey self) {
+        SecureBytes.zeroAndFree(self.data);
+    }
+}
+
+// =============================================================================
+// Key Pair
+// =============================================================================
+
+/**
+ * A public/private key pair for asymmetric cryptography.
+ *
+ * The private key is stored in secure memory and automatically zeroed
+ * when dropped.
+ */
+public struct KeyPair {
+    /// The public key (can be shared)
+    public final PublicKey publicKey;
+    /// The private key (must be kept secret)
+    final PrivateKey privateKey;
+}
+
+/**
+ * Module for KeyPair operations.
+ */
+module KeyPair {
+    /**
+     * Generates a new random key pair for the given signature algorithm.
+     *
+     * Uses the system CSPRNG to generate key material.
+     *
+     * @param algorithm The signature algorithm
+     * @return A new randomly generated key pair
+     * @throws KeyGenerationError if key generation fails
+     * @throws RandomError if the CSPRNG fails
+     */
+    @intrinsic("crypto.keypair_generate")
+    public static KeyPair generate(SignatureAlgorithm algorithm)
+        throws (KeyGenerationError, RandomError) {
+        // Intrinsic: generates random key pair via C FFI
+        return KeyPair {
+            publicKey: PublicKey {
+                algorithm: algorithm,
+                data: bytes.allocate(0)
+            },
+            privateKey: PrivateKey {
+                algorithm: algorithm,
+                data: SecureBytes { handle: 0, length: 0 }
+            }
+        };
+    }
+
+    /**
+     * Creates a KeyPair from a private key.
+     *
+     * The public key is derived from the private key.
+     *
+     * @param privateKey The private key
+     * @return A key pair with the derived public key
+     */
+    public static KeyPair fromPrivateKey(PrivateKey privateKey) {
+        PublicKey pubKey = PrivateKey.publicKey(privateKey);
+        return KeyPair {
+            publicKey: pubKey,
+            privateKey: privateKey
+        };
+    }
+
+    /**
+     * Returns the public key.
+     *
+     * @param self The key pair
+     * @return The public key
+     */
+    public static PublicKey publicKey(KeyPair self) {
+        return self.publicKey;
+    }
+
+    /**
+     * Returns the private key.
+     *
+     * @param self The key pair
+     * @return The private key
+     */
+    public static PrivateKey privateKey(KeyPair self) {
+        return self.privateKey;
+    }
+
+    /**
+     * Returns the algorithm.
+     *
+     * @param self The key pair
+     * @return The signature algorithm
+     */
+    public static SignatureAlgorithm algorithm(KeyPair self) {
+        return self.publicKey.algorithm;
+    }
+
+    /**
+     * Securely zeros and frees the private key material.
+     *
+     * After calling this, the key pair should not be used.
+     *
+     * @param self The key pair to destroy
+     */
+    public static void destroy(KeyPair self) {
+        PrivateKey.destroy(self.privateKey);
+    }
+}
+
+// =============================================================================
+// Key Exchange Public Key
+// =============================================================================
+
+/**
+ * A public key for key exchange (Diffie-Hellman).
+ *
+ * Separate from signature public keys since they use different algorithms.
+ */
+public struct ExchangePublicKey {
+    /// The key exchange algorithm
+    public final KeyExchangeAlgorithm algorithm;
+    /// The raw public key bytes
+    public final bytes data;
+}
+
+/**
+ * Module for ExchangePublicKey operations.
+ */
+module ExchangePublicKey {
+    /**
+     * Creates an ExchangePublicKey from raw bytes.
+     *
+     * @param algorithm The key exchange algorithm
+     * @param keyBytes The raw public key bytes
+     * @return A new ExchangePublicKey
+     * @throws InvalidKeyError if the key is malformed or wrong size
+     */
+    public static ExchangePublicKey fromBytes(KeyExchangeAlgorithm algorithm, bytes keyBytes)
+        throws InvalidKeyError {
+        int expectedSize = KeyExchangeAlgorithm.publicKeySize(algorithm);
+        if (keyBytes.length() != expectedSize) {
+            throw InvalidKeyError.withSize(
+                "Exchange public key size mismatch for " + KeyExchangeAlgorithm.name(algorithm),
+                expectedSize,
+                keyBytes.length()
+            );
+        }
+        return ExchangePublicKey {
+            algorithm: algorithm,
+            data: keyBytes
+        };
+    }
+
+    /**
+     * Returns the raw public key bytes.
+     *
+     * @param self The public key
+     * @return The raw key bytes
+     */
+    public static bytes toBytes(ExchangePublicKey self) {
+        return self.data;
+    }
+
+    /**
+     * Returns the algorithm.
+     *
+     * @param self The public key
+     * @return The key exchange algorithm
+     */
+    public static KeyExchangeAlgorithm algorithm(ExchangePublicKey self) {
+        return self.algorithm;
+    }
+}
+
+// =============================================================================
+// Key Exchange Private Key
+// =============================================================================
+
+/**
+ * A private key for key exchange (Diffie-Hellman) in secure memory.
+ */
+public struct ExchangePrivateKey {
+    /// The key exchange algorithm
+    public final KeyExchangeAlgorithm algorithm;
+    /// The secure storage for the private key
+    final SecureBytes data;
+}
+
+/**
+ * Module for ExchangePrivateKey operations.
+ */
+module ExchangePrivateKey {
+    /**
+     * Creates an ExchangePrivateKey from raw bytes.
+     *
+     * @param algorithm The key exchange algorithm
+     * @param keyBytes The raw private key bytes
+     * @return A new ExchangePrivateKey
+     * @throws InvalidKeyError if the key is malformed or wrong size
+     * @throws SecureMemoryError if secure allocation fails
+     */
+    @intrinsic("crypto.exchange_private_key_from_bytes")
+    public static ExchangePrivateKey fromBytes(KeyExchangeAlgorithm algorithm, bytes keyBytes)
+        throws (InvalidKeyError, SecureMemoryError) {
+        int expectedSize = KeyExchangeAlgorithm.privateKeySize(algorithm);
+        if (keyBytes.length() != expectedSize) {
+            throw InvalidKeyError.withSize(
+                "Exchange private key size mismatch for " + KeyExchangeAlgorithm.name(algorithm),
+                expectedSize,
+                keyBytes.length()
+            );
+        }
+        return ExchangePrivateKey {
+            algorithm: algorithm,
+            data: SecureBytes { handle: 0, length: expectedSize }
+        };
+    }
+
+    /**
+     * Derives the public key from this private key.
+     *
+     * @param self The private key
+     * @return The corresponding public key
+     */
+    @intrinsic("crypto.exchange_private_key_to_public")
+    public static ExchangePublicKey publicKey(ExchangePrivateKey self) {
+        return ExchangePublicKey {
+            algorithm: self.algorithm,
+            data: bytes.allocate(0)
+        };
+    }
+
+    /**
+     * Exports the private key bytes.
+     *
+     * WARNING: The returned bytes are NOT in secure memory.
+     *
+     * @param self The private key
+     * @return A copy of the key bytes
+     */
+    public static bytes toBytes(ExchangePrivateKey self) {
+        return SecureBytes.toBytes(self.data);
+    }
+
+    /**
+     * Securely zeros and frees the key material.
+     *
+     * @param self The key to destroy
+     */
+    public static void destroy(ExchangePrivateKey self) {
+        SecureBytes.zeroAndFree(self.data);
+    }
+}
+
+// =============================================================================
+// Key Exchange Key Pair
+// =============================================================================
+
+/**
+ * A public/private key pair for key exchange.
+ */
+public struct ExchangeKeyPair {
+    /// The public key (can be shared)
+    public final ExchangePublicKey publicKey;
+    /// The private key (must be kept secret)
+    final ExchangePrivateKey privateKey;
+}
+
+/**
+ * Module for ExchangeKeyPair operations.
+ */
+module ExchangeKeyPair {
+    /**
+     * Generates a new random key pair for key exchange.
+     *
+     * @param algorithm The key exchange algorithm
+     * @return A new randomly generated key pair
+     * @throws KeyGenerationError if key generation fails
+     * @throws RandomError if the CSPRNG fails
+     */
+    @intrinsic("crypto.exchange_keypair_generate")
+    public static ExchangeKeyPair generate(KeyExchangeAlgorithm algorithm)
+        throws (KeyGenerationError, RandomError) {
+        return ExchangeKeyPair {
+            publicKey: ExchangePublicKey {
+                algorithm: algorithm,
+                data: bytes.allocate(0)
+            },
+            privateKey: ExchangePrivateKey {
+                algorithm: algorithm,
+                data: SecureBytes { handle: 0, length: 0 }
+            }
+        };
+    }
+
+    /**
+     * Returns the public key.
+     *
+     * @param self The key pair
+     * @return The public key
+     */
+    public static ExchangePublicKey publicKey(ExchangeKeyPair self) {
+        return self.publicKey;
+    }
+
+    /**
+     * Returns the private key.
+     *
+     * @param self The key pair
+     * @return The private key
+     */
+    public static ExchangePrivateKey privateKey(ExchangeKeyPair self) {
+        return self.privateKey;
+    }
+
+    /**
+     * Securely zeros and frees the private key material.
+     *
+     * @param self The key pair to destroy
+     */
+    public static void destroy(ExchangeKeyPair self) {
+        ExchangePrivateKey.destroy(self.privateKey);
+    }
+}

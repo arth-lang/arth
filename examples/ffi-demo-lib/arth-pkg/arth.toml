@@ -1,0 +1,5 @@
+[package]
+name = "demo:math"
+version = "1.0.0"
+edition = "2025"
+arth-package = "demo"

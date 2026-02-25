@@ -1,0 +1,203 @@
+package ffi;
+
+/**
+ * FFI Error Handling
+ *
+ * This file provides error types for C FFI interoperation.
+ * When calling extern "C" functions with error-indicating attributes
+ * (@ffi_error_code, @ffi_errno), failures are captured as CError exceptions.
+ *
+ * Example usage:
+ * ```
+ * import ffi.*;
+ *
+ * @ffi_error_code(negative)
+ * @ffi_errno
+ * extern "C" fn open(path: *const u8, flags: int) -> int;
+ *
+ * module FileOps {
+ *     public int openFile(String path) throws CError {
+ *         unsafe {
+ *             return open(path.cstr(), 0);
+ *         }
+ *     }
+ * }
+ * ```
+ *
+ * @see docs/ffi-errors.md for the full FFI error propagation design
+ */
+
+/// Error type for C FFI operations.
+///
+/// CError captures error information from C library calls, including:
+/// - POSIX errno values
+/// - C return codes
+/// - Error messages from strerror or custom error functions
+///
+/// The `source` field indicates how the error was detected:
+/// - "errno" - errno was set after the call returned an error indicator
+/// - "return" - the return value itself indicated an error
+/// - "null" - a NULL pointer was returned indicating failure
+public struct CError {
+    /// The error code (errno value or return code)
+    public final int code;
+    /// Human-readable error message
+    public final String message;
+    /// Error source: "errno", "return", or "null"
+    public final String source;
+}
+
+/// Creates a CError from an errno value.
+module CErrorFns {
+    /// Create a CError from an errno value with strerror message.
+    @intrinsic("ffi.cerror_from_errno")
+    public CError fromErrno(int errno) {
+        // Intrinsic: calls strerror and constructs CError
+        return CError { code: errno, message: "", source: "errno" };
+    }
+
+    /// Create a CError from a return code with custom message.
+    public CError fromReturnCode(int code, String message) {
+        return CError { code: code, message: message, source: "return" };
+    }
+
+    /// Create a CError for NULL return with errno.
+    @intrinsic("ffi.cerror_from_null")
+    public CError fromNull() {
+        // Intrinsic: captures errno and calls strerror
+        return CError { code: 0, message: "", source: "null" };
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Common POSIX errno constants
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Operation not permitted
+public final int EPERM = 1;
+
+/// No such file or directory
+public final int ENOENT = 2;
+
+/// No such process
+public final int ESRCH = 3;
+
+/// Interrupted system call
+public final int EINTR = 4;
+
+/// I/O error
+public final int EIO = 5;
+
+/// No such device or address
+public final int ENXIO = 6;
+
+/// Argument list too long
+public final int E2BIG = 7;
+
+/// Exec format error
+public final int ENOEXEC = 8;
+
+/// Bad file number
+public final int EBADF = 9;
+
+/// No child processes
+public final int ECHILD = 10;
+
+/// Try again / Would block
+public final int EAGAIN = 11;
+
+/// Out of memory
+public final int ENOMEM = 12;
+
+/// Permission denied
+public final int EACCES = 13;
+
+/// Bad address
+public final int EFAULT = 14;
+
+/// Device or resource busy
+public final int EBUSY = 16;
+
+/// File exists
+public final int EEXIST = 17;
+
+/// Cross-device link
+public final int EXDEV = 18;
+
+/// No such device
+public final int ENODEV = 19;
+
+/// Not a directory
+public final int ENOTDIR = 20;
+
+/// Is a directory
+public final int EISDIR = 21;
+
+/// Invalid argument
+public final int EINVAL = 22;
+
+/// File table overflow
+public final int ENFILE = 23;
+
+/// Too many open files
+public final int EMFILE = 24;
+
+/// Not a typewriter
+public final int ENOTTY = 25;
+
+/// Text file busy
+public final int ETXTBSY = 26;
+
+/// File too large
+public final int EFBIG = 27;
+
+/// No space left on device
+public final int ENOSPC = 28;
+
+/// Illegal seek
+public final int ESPIPE = 29;
+
+/// Read-only file system
+public final int EROFS = 30;
+
+/// Too many links
+public final int EMLINK = 31;
+
+/// Broken pipe
+public final int EPIPE = 32;
+
+/// Math argument out of domain
+public final int EDOM = 33;
+
+/// Math result not representable
+public final int ERANGE = 34;
+
+/// Resource deadlock would occur
+public final int EDEADLK = 35;
+
+/// File name too long
+public final int ENAMETOOLONG = 36;
+
+/// No record locks available
+public final int ENOLCK = 37;
+
+/// Function not implemented
+public final int ENOSYS = 38;
+
+/// Directory not empty
+public final int ENOTEMPTY = 39;
+
+/// Connection refused
+public final int ECONNREFUSED = 111;
+
+/// Connection reset by peer
+public final int ECONNRESET = 104;
+
+/// Connection timed out
+public final int ETIMEDOUT = 110;
+
+/// Network is unreachable
+public final int ENETUNREACH = 101;
+
+/// Host is unreachable
+public final int EHOSTUNREACH = 113;

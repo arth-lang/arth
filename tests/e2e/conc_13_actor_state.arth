@@ -1,0 +1,444 @@
+package test;
+
+// Test: C13 - Actor State Isolation
+//
+// This test verifies the key safety property of actors:
+// - An actor processes messages one at a time (serial processing)
+// - Even with concurrent senders, state is never accessed concurrently
+// - No races, no lost updates
+//
+// Test approach:
+// - Create an actor with a mailbox
+// - Multiple "senders" send increment messages concurrently
+// - The actor receives all messages and counts them
+// - Verify: counter = total messages sent (no races, no lost updates)
+//
+// This MUST pass because:
+// 1. MPMC channels are thread-safe for concurrent sends
+// 2. Actor processes one message at a time (serial receive loop)
+
+module Executor {
+    // Executor intrinsics mapped to __arth_executor_* VM calls
+}
+
+module Actor {
+    // Actor intrinsics mapped to __arth_actor_* VM calls
+}
+
+module Instants {
+    // Time measurement intrinsics
+}
+
+module Main {
+    public static void main() {
+        println("=== C13: Actor State Isolation ===");
+
+        // Initialize thread pool with 4 threads
+        println("Initializing pool with 4 threads...");
+        Int initResult = Executor.init(4);
+        println("Pool initialized: " + initResult);
+
+        Int resetResult = Executor.resetStats();
+
+        println("=== Test 1: Serial Message Processing ===");
+        // Create an actor
+        Int actor1 = Actor.create(1000);
+        println("Created actor with capacity 1000");
+
+        // Send 1000 increment messages (value = 1 each)
+        Int totalSent = 1000;
+        Int i = 0;
+        while (i < totalSent) {
+            Actor.send(actor1, 1);
+            i = i + 1;
+        }
+        println("Sent " + totalSent + " increment messages");
+
+        // Actor "processes" messages by receiving and summing
+        Int counter = 0;
+        i = 0;
+        while (i < totalSent) {
+            Int msg = Actor.recv(actor1);
+            if (msg > 0) {
+                counter = counter + msg;
+            }
+            i = i + 1;
+        }
+        println("Counter after processing: " + counter);
+
+        Int test1Pass = 0;
+        if (counter == totalSent) {
+            println("Test 1 (serial processing): PASS");
+            test1Pass = 1;
+        } else {
+            println("Test 1 FAIL: expected " + totalSent + ", got " + counter);
+        }
+
+        Actor.close(actor1);
+
+        println("=== Test 2: Simulated Concurrent Senders ===");
+        // Simulate 4 "senders" each sending 250 messages
+        // In serial execution, this tests the batched send pattern
+        Int actor2 = Actor.create(1000);
+        Int messagesPerSender = 250;
+        Int numSenders = 4;
+        Int totalMessages = messagesPerSender * numSenders;
+
+        // Sender 1: sends values 1-250
+        i = 1;
+        while (i <= messagesPerSender) {
+            Actor.send(actor2, i);
+            i = i + 1;
+        }
+
+        // Sender 2: sends values 251-500
+        i = 251;
+        while (i <= 500) {
+            Actor.send(actor2, i);
+            i = i + 1;
+        }
+
+        // Sender 3: sends values 501-750
+        i = 501;
+        while (i <= 750) {
+            Actor.send(actor2, i);
+            i = i + 1;
+        }
+
+        // Sender 4: sends values 751-1000
+        i = 751;
+        while (i <= 1000) {
+            Actor.send(actor2, i);
+            i = i + 1;
+        }
+
+        println("4 senders sent " + messagesPerSender + " messages each");
+
+        // Actor processes all messages
+        // Expected sum: 1+2+...+1000 = 1000*1001/2 = 500500
+        Int expectedSum = 500500;
+        Int actualSum = 0;
+        Int msgCount = 0;
+
+        i = 0;
+        while (i < totalMessages) {
+            Int msg = Actor.recv(actor2);
+            if (msg >= 0) {
+                actualSum = actualSum + msg;
+                msgCount = msgCount + 1;
+            }
+            i = i + 1;
+        }
+        println("Processed " + msgCount + " messages, sum = " + actualSum);
+
+        Int test2Pass = 0;
+        if (msgCount == totalMessages) {
+            if (actualSum == expectedSum) {
+                println("Test 2 (simulated concurrent): PASS");
+                test2Pass = 1;
+            }
+        }
+        if (test2Pass == 0) {
+            println("Test 2 FAIL: expected " + totalMessages + " msgs, sum " + expectedSum);
+        }
+
+        Actor.close(actor2);
+
+        println("=== Test 3: Interleaved Multi-Sender Pattern ===");
+        // Interleave sends from multiple "senders"
+        Int actor3 = Actor.create(500);
+        Int rounds = 100;
+
+        // Each round: sender A sends round*4+1, B sends round*4+2, etc.
+        i = 0;
+        while (i < rounds) {
+            Actor.send(actor3, i * 4 + 1); // Sender A
+            Actor.send(actor3, i * 4 + 2); // Sender B
+            Actor.send(actor3, i * 4 + 3); // Sender C
+            Actor.send(actor3, i * 4 + 4); // Sender D
+            i = i + 1;
+        }
+        println("Interleaved " + rounds + " rounds from 4 senders");
+
+        // Verify all messages received in FIFO order
+        Int interleavedSum = 0;
+        Int interleavedCount = 0;
+        Int fifoOk = 1;
+        Int expectedVal = 1;
+
+        i = 0;
+        while (i < rounds * 4) {
+            Int msg = Actor.recv(actor3);
+            if (msg >= 0) {
+                interleavedSum = interleavedSum + msg;
+                interleavedCount = interleavedCount + 1;
+                if (msg != expectedVal) {
+                    fifoOk = 0;
+                }
+                expectedVal = expectedVal + 1;
+            }
+            i = i + 1;
+        }
+
+        // Expected sum: 1+2+3+...+400 = 400*401/2 = 80200
+        Int expectedInterSum = 80200;
+        println("Interleaved: count=" + interleavedCount + ", sum=" + interleavedSum + ", fifo=" + fifoOk);
+
+        Int test3Pass = 0;
+        if (interleavedCount == rounds * 4) {
+            if (interleavedSum == expectedInterSum) {
+                if (fifoOk == 1) {
+                    println("Test 3 (interleaved senders): PASS");
+                    test3Pass = 1;
+                }
+            }
+        }
+        if (test3Pass == 0) {
+            println("Test 3 FAIL");
+        }
+
+        Actor.close(actor3);
+
+        println("=== Test 4: State Accumulator Pattern ===");
+        // Actor accumulates state: sum of all received values
+        Int actor4 = Actor.create(200);
+
+        // Send 100 values: 1, 2, 3, ..., 100
+        i = 1;
+        while (i <= 100) {
+            Actor.sendBlocking(actor4, i);
+            i = i + 1;
+        }
+
+        // Actor processes and accumulates
+        Int state = 0;
+        i = 0;
+        while (i < 100) {
+            Int val = Actor.recvBlocking(actor4);
+            state = state + val;
+            i = i + 1;
+        }
+
+        // Expected: 1+2+...+100 = 5050
+        Int expectedState = 5050;
+        println("Final state (sum): " + state + " (expected " + expectedState + ")");
+
+        Int test4Pass = 0;
+        if (state == expectedState) {
+            println("Test 4 (state accumulator): PASS");
+            test4Pass = 1;
+        } else {
+            println("Test 4 FAIL");
+        }
+
+        Actor.close(actor4);
+
+        println("=== Test 5: High Volume State Isolation ===");
+        // High volume test to stress test isolation
+        Int actor5 = Actor.create(5000);
+        Int hvCount = 5000;
+        Int hvExpectedSum = 12497500; // 0+1+2+...+4999 = 4999*5000/2
+
+        Int startTime = Instants.now();
+
+        // Send hvCount messages
+        i = 0;
+        while (i < hvCount) {
+            Actor.send(actor5, i);
+            i = i + 1;
+        }
+
+        Int sendTime = Instants.elapsed(startTime);
+        println("Sent " + hvCount + " messages in " + sendTime + " ms");
+
+        // Receive and sum (simulates actor processing)
+        Int hvSum = 0;
+        Int hvReceived = 0;
+        Int recvStart = Instants.now();
+
+        i = 0;
+        while (i < hvCount) {
+            Int val = Actor.recv(actor5);
+            if (val >= 0) {
+                hvSum = hvSum + val;
+                hvReceived = hvReceived + 1;
+            }
+            i = i + 1;
+        }
+
+        Int recvTime = Instants.elapsed(recvStart);
+        println("Received " + hvReceived + " messages in " + recvTime + " ms");
+        println("Sum: " + hvSum + " (expected " + hvExpectedSum + ")");
+
+        Int test5Pass = 0;
+        if (hvReceived == hvCount) {
+            if (hvSum == hvExpectedSum) {
+                println("Test 5 (high volume isolation): PASS");
+                test5Pass = 1;
+            }
+        }
+        if (test5Pass == 0) {
+            println("Test 5 FAIL");
+        }
+
+        Actor.close(actor5);
+
+        println("=== Test 6: Multiple Actors Independent State ===");
+        // Create 4 actors, each with independent state
+        Int actorA = Actor.create(100);
+        Int actorB = Actor.create(100);
+        Int actorC = Actor.create(100);
+        Int actorD = Actor.create(100);
+
+        // Send different ranges to each
+        // A: 1-25, B: 26-50, C: 51-75, D: 76-100
+        i = 1;
+        while (i <= 25) {
+            Actor.send(actorA, i);
+            i = i + 1;
+        }
+        i = 26;
+        while (i <= 50) {
+            Actor.send(actorB, i);
+            i = i + 1;
+        }
+        i = 51;
+        while (i <= 75) {
+            Actor.send(actorC, i);
+            i = i + 1;
+        }
+        i = 76;
+        while (i <= 100) {
+            Actor.send(actorD, i);
+            i = i + 1;
+        }
+
+        // Each actor processes its messages
+        Int sumA = 0;
+        Int sumB = 0;
+        Int sumC = 0;
+        Int sumD = 0;
+
+        i = 0;
+        while (i < 25) {
+            sumA = sumA + Actor.recv(actorA);
+            sumB = sumB + Actor.recv(actorB);
+            sumC = sumC + Actor.recv(actorC);
+            sumD = sumD + Actor.recv(actorD);
+            i = i + 1;
+        }
+
+        // Expected: A=1+..+25=325, B=26+..+50=950, C=51+..+75=1575, D=76+..+100=2200
+        Int expA = 325;
+        Int expB = 950;
+        Int expC = 1575;
+        Int expD = 2200;
+        println("Sums: A=" + sumA + ", B=" + sumB + ", C=" + sumC + ", D=" + sumD);
+
+        Int test6Pass = 0;
+        if (sumA == expA) {
+            if (sumB == expB) {
+                if (sumC == expC) {
+                    if (sumD == expD) {
+                        println("Test 6 (multiple actors): PASS");
+                        test6Pass = 1;
+                    }
+                }
+            }
+        }
+        if (test6Pass == 0) {
+            println("Test 6 FAIL");
+        }
+
+        Actor.close(actorA);
+        Actor.close(actorB);
+        Actor.close(actorC);
+        Actor.close(actorD);
+
+        println("=== Test 7: Counter Increment Pattern ===");
+        // Classic actor pattern: counter that receives increment messages
+        Int counterActor = Actor.create(1000);
+        Int increments = 1000;
+
+        // Send 1000 increment messages (all with value 1)
+        i = 0;
+        while (i < increments) {
+            Actor.send(counterActor, 1);
+            i = i + 1;
+        }
+
+        // Actor "handles" each increment
+        Int counterValue = 0;
+        i = 0;
+        while (i < increments) {
+            Int inc = Actor.recv(counterActor);
+            if (inc > 0) {
+                counterValue = counterValue + inc;
+            }
+            i = i + 1;
+        }
+
+        println("Counter after " + increments + " increments: " + counterValue);
+
+        Int test7Pass = 0;
+        if (counterValue == increments) {
+            println("Test 7 (counter increments): PASS");
+            test7Pass = 1;
+        } else {
+            println("Test 7 FAIL: expected " + increments + ", got " + counterValue);
+        }
+
+        Actor.close(counterActor);
+
+        println("=== Test 8: Message Count Verification ===");
+        // Use messageCount() to verify all messages were tracked
+        Int actor8 = Actor.create(500);
+
+        // Send 500 messages
+        i = 0;
+        while (i < 500) {
+            Actor.send(actor8, i);
+            i = i + 1;
+        }
+
+        Int trackedCount = Actor.messageCount(actor8);
+        println("Tracked message count: " + trackedCount);
+
+        // Drain all
+        Int drained = 0;
+        i = 0;
+        while (i < 500) {
+            Int val = Actor.recv(actor8);
+            if (val >= 0) {
+                drained = drained + 1;
+            }
+            i = i + 1;
+        }
+        println("Drained count: " + drained);
+
+        Int test8Pass = 0;
+        if (trackedCount == 500) {
+            if (drained == 500) {
+                println("Test 8 (message count): PASS");
+                test8Pass = 1;
+            }
+        }
+        if (test8Pass == 0) {
+            println("Test 8 FAIL");
+        }
+
+        Actor.close(actor8);
+
+        // Summary
+        println("=== Summary ===");
+        Int totalPassed = test1Pass + test2Pass + test3Pass + test4Pass +
+                          test5Pass + test6Pass + test7Pass + test8Pass;
+        println("Tests passed: " + totalPassed + "/8");
+
+        if (totalPassed == 8) {
+            println("=== C13: PASSED - Actor state isolation verified ===");
+        } else {
+            println("=== C13: FAILED ===");
+        }
+    }
+}

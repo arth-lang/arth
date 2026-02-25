@@ -1,0 +1,27 @@
+package demo.errors;
+
+import net.http.*;
+import log.*;
+
+module RetryFetch {
+  public async Response fetchWithRetry(String url, int retries) throws (HttpError, TimeoutError) {
+    Logger log = Logger.get("demo.retry");
+    int attempts = 0;
+    while (true) {
+      attempts = attempts + 1;
+      try {
+        Request req = Request.get(url);
+        return await Http.fetch(req);
+      } catch (TimeoutError e) {
+        if (attempts > retries) throw e;
+        log.warn("retry.timeout", "timeout, retrying", Fields.of("attempt", attempts));
+        await backoff(attempts);
+      }
+    }
+  }
+
+  public async void backoff(int attempt) {
+    // Pseudo backoff: await a timer in real code.
+    // Here it is a no-op placeholder.
+  }
+}

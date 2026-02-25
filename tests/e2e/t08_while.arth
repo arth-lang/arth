@@ -1,0 +1,21 @@
+package test;
+
+// Test: while loop
+// Expected output:
+//   0
+//   1
+//   2
+//   3
+//   4
+//   done
+
+module Main {
+    public static void main() {
+        Int i = 0;
+        while (i < 5) {
+            println(i);
+            i = i + 1;
+        }
+        println("done");
+    }
+}

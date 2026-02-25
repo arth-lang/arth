@@ -1,0 +1,35 @@
+package test;
+
+// Test: Structured provider instantiation and instance-based field access.
+// Verifies that multiple instances of the same provider type have isolated state.
+// Expected output:
+//   c1 id: 1, count: 10
+//   c2 id: 2, count: 20
+//   c1 count updated: 100
+//   c2 count remains: 20
+
+provider Counter {
+    shared Int count;
+    Int id;
+}
+
+module Main {
+    public static void main() {
+        // Create first instance
+        Counter c1 = Counter { id: 1, count: 10 };
+        
+        // Create second instance
+        Counter c2 = Counter { id: 2, count: 20 };
+        
+        // Verify initial state
+        println("c1 id: " + c1.id + ", count: " + c1.count);
+        println("c2 id: " + c2.id + ", count: " + c2.count);
+        
+        // Update shared field of c1
+        c1.count = 100;
+        
+        // Verify c1 change doesn't affect c2
+        println("c1 count updated: " + c1.count);
+        println("c2 count remains: " + c2.count);
+    }
+}

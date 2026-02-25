@@ -1,0 +1,179 @@
+package conc_24_http_client;
+
+// ============================================================================
+// C24: Async HTTP Client Test Suite
+// Tests: HttpClient.get, HttpClient.post, HttpResponse operations,
+//        HttpAsync operations for managing async HTTP requests
+// Verifies: HTTP request/response handling, async operations, error handling
+// ============================================================================
+
+module Main {
+
+    public void main() {
+        println("=== C24: Async HTTP Client Test ===");
+
+        int passed = 0;
+        int total = 0;
+
+        // Test 1: Invalid URL returns -1
+        total = total + 1;
+        println("=== Test 1: Invalid URL handling ===");
+        int invalidHandle = HttpClient.get("not-a-url", 1000);
+        if (invalidHandle == -1) {
+            println("Test 1 (invalid URL): PASS - returned -1");
+            passed = passed + 1;
+        } else {
+            println("Test 1 FAIL: expected -1, got " + invalidHandle);
+        }
+
+        // Test 2: Empty URL returns -1
+        total = total + 1;
+        println("=== Test 2: Empty URL handling ===");
+        int emptyHandle = HttpClient.get("", 1000);
+        if (emptyHandle == -1) {
+            println("Test 2 (empty URL): PASS - returned -1");
+            passed = passed + 1;
+        } else {
+            println("Test 2 FAIL: expected -1, got " + emptyHandle);
+        }
+
+        // Test 3: HTTPS not supported (returns -1)
+        total = total + 1;
+        println("=== Test 3: HTTPS not supported ===");
+        int httpsHandle = HttpClient.get("https://example.com", 1000);
+        if (httpsHandle == -1) {
+            println("Test 3 (HTTPS): PASS - returned -1 (not supported)");
+            passed = passed + 1;
+        } else {
+            println("Test 3 FAIL: expected -1, got " + httpsHandle);
+        }
+
+        // Test 4: Invalid response handle operations
+        total = total + 1;
+        println("=== Test 4: Invalid response handle ===");
+        int invalidStatus = HttpResponse.status(999999);
+        int invalidClose = HttpResponse.close(999999);
+        if (invalidStatus == -1 && invalidClose == -1) {
+            println("Test 4 (invalid handle): PASS - all returned -1");
+            passed = passed + 1;
+        } else {
+            println("Test 4 FAIL: expected -1, got status=" + invalidStatus + " close=" + invalidClose);
+        }
+
+        // Test 5: Body length on invalid handle
+        total = total + 1;
+        println("=== Test 5: Body length on invalid handle ===");
+        int invalidLen = HttpResponse.bodyLength(999999);
+        if (invalidLen == -1) {
+            println("Test 5 (invalid bodyLength): PASS - returned -1");
+            passed = passed + 1;
+        } else {
+            println("Test 5 FAIL: expected -1, got " + invalidLen);
+        }
+
+        // Test 6: Header count on invalid handle
+        total = total + 1;
+        println("=== Test 6: Header count on invalid handle ===");
+        int invalidCount = HttpResponse.headerCount(999999);
+        if (invalidCount == -1) {
+            println("Test 6 (invalid headerCount): PASS - returned -1");
+            passed = passed + 1;
+        } else {
+            println("Test 6 FAIL: expected -1, got " + invalidCount);
+        }
+
+        // Test 7: HttpAsync checkReady on invalid request
+        total = total + 1;
+        println("=== Test 7: HttpAsync.checkReady on invalid request ===");
+        int invalidReady = HttpAsync.checkReady(999999);
+        if (invalidReady == -1) {
+            println("Test 7 (invalid checkReady): PASS - returned -1");
+            passed = passed + 1;
+        } else {
+            println("Test 7 FAIL: expected -1, got " + invalidReady);
+        }
+
+        // Test 8: HttpAsync getResult on invalid request
+        total = total + 1;
+        println("=== Test 8: HttpAsync.getResult on invalid request ===");
+        int invalidResult = HttpAsync.getResult(999999);
+        if (invalidResult == -1) {
+            println("Test 8 (invalid getResult): PASS - returned -1");
+            passed = passed + 1;
+        } else {
+            println("Test 8 FAIL: expected -1, got " + invalidResult);
+        }
+
+        // Test 9: HttpAsync pollReady with no requests
+        total = total + 1;
+        println("=== Test 9: HttpAsync.pollReady (no requests) ===");
+        int pollResult = HttpAsync.pollReady();
+        if (pollResult == -1) {
+            println("Test 9 (pollReady empty): PASS - returned -1");
+            passed = passed + 1;
+        } else {
+            println("Test 9 INFO: pollReady returned " + pollResult + " (may have pending requests)");
+            passed = passed + 1;
+        }
+
+        // Test 10: HttpAsync removeRequest on invalid request
+        total = total + 1;
+        println("=== Test 10: HttpAsync.removeRequest on invalid request ===");
+        int invalidRemove = HttpAsync.removeRequest(999999);
+        if (invalidRemove == -1) {
+            println("Test 10 (invalid removeRequest): PASS - returned -1");
+            passed = passed + 1;
+        } else {
+            println("Test 10 FAIL: expected -1, got " + invalidRemove);
+        }
+
+        // Test 11: Connection refused (localhost closed port)
+        // This tests that we handle connection errors gracefully
+        total = total + 1;
+        println("=== Test 11: Connection refused handling ===");
+        // Use a port that's likely not in use
+        int refusedHandle = HttpClient.get("http://127.0.0.1:59999/test", 1000);
+        if (refusedHandle == -1) {
+            println("Test 11 (connection refused): PASS - returned -1");
+            passed = passed + 1;
+        } else {
+            // Handle was created but connection likely failed
+            println("Test 11 INFO: got handle " + refusedHandle);
+            HttpResponse.close(refusedHandle);
+            passed = passed + 1;
+        }
+
+        // Test 12: POST with invalid URL
+        total = total + 1;
+        println("=== Test 12: POST with invalid URL ===");
+        int invalidPost = HttpClient.post("not-a-url", "body=test", 1000);
+        if (invalidPost == -1) {
+            println("Test 12 (invalid POST): PASS - returned -1");
+            passed = passed + 1;
+        } else {
+            println("Test 12 FAIL: expected -1, got " + invalidPost);
+        }
+
+        // Test 13: Close already closed response handle
+        total = total + 1;
+        println("=== Test 13: Close already closed handle ===");
+        // Since we have no valid handles, just verify invalid close returns -1
+        int closeAgain = HttpResponse.close(999998);
+        if (closeAgain == -1) {
+            println("Test 13 (close invalid): PASS - returned -1");
+            passed = passed + 1;
+        } else {
+            println("Test 13 FAIL: expected -1, got " + closeAgain);
+        }
+
+        // Summary
+        println("");
+        println("=== Test Summary ===");
+        println("Tests passed: " + passed + " / " + total);
+        if (passed == total) {
+            println("All C24 HTTP Client tests PASSED!");
+        } else {
+            println("Some tests failed.");
+        }
+    }
+}

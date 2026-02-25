@@ -1,0 +1,52 @@
+package test;
+
+// Simplified C06 test to debug MPMC channel issues
+
+module Executor {
+}
+
+module MpmcChan {
+}
+
+module Main {
+    public static void main() {
+        println("=== C06 Simple Test ===");
+
+        // Initialize executor
+        Int init = Executor.init(4);
+        println("Executor initialized: " + init);
+
+        // Create channel
+        Int ch = MpmcChan.create(10);
+        println("Channel created: handle=" + ch);
+
+        // Test send
+        Int s1 = MpmcChan.send(ch, 42);
+        println("Send status: " + s1);
+
+        // Test len
+        Int len = MpmcChan.len(ch);
+        println("Channel length: " + len);
+
+        // Test recv
+        Int r1 = MpmcChan.recv(ch);
+        println("Received: " + r1);
+
+        // Test empty
+        Int empty = MpmcChan.empty(ch);
+        println("empty result: " + empty);
+
+        // Simple comparison
+        if (empty == 1) {
+            println("Channel is empty (comparison worked)");
+        } else {
+            println("Channel has items or comparison issue");
+        }
+
+        // Test close
+        Int closeStatus = MpmcChan.close(ch);
+        println("Close status: " + closeStatus);
+
+        println("=== Test Complete ===");
+    }
+}

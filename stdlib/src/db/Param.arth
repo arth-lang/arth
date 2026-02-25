@@ -1,0 +1,293 @@
+package db;
+
+/**
+ * Query parameter for prepared statements.
+ *
+ * Param represents a value bound to a query placeholder. It supports both
+ * positional parameters (using index) and named parameters (using name).
+ *
+ * Positional parameters:
+ * - SQLite uses `?` placeholders, bound by index (1-based)
+ * - PostgreSQL uses `$1, $2, ...` placeholders
+ *
+ * Named parameters:
+ * - SQLite supports `:name`, `@name`, `$name` syntax
+ * - PostgreSQL named parameters require driver-level translation
+ *
+ * Example usage:
+ * ```arth
+ * // Positional parameter
+ * Param p1 = Param.positional(1, ValueBoxFns.fromInt(42));
+ *
+ * // Named parameter
+ * Param p2 = Param.named("user_id", ValueBoxFns.fromInt(42));
+ * ```
+ *
+ * @see db.Statement for binding parameters to prepared statements
+ * @see db.ValueBox for the value types that can be bound
+ */
+
+/**
+ * Enumeration of parameter binding styles.
+ *
+ * Variants:
+ * - POSITIONAL: Positional parameter bound by index (1-based)
+ * - NAMED: Named parameter bound by name string
+ */
+public enum ParamStyle {
+    POSITIONAL,
+    NAMED
+}
+
+/**
+ * Module providing utilities for ParamStyle enumeration.
+ */
+module ParamStyle {
+    /// Returns the ordinal value (0=POSITIONAL, 1=NAMED).
+    public static int ordinal(ParamStyle s) {
+        match s {
+            ParamStyle.POSITIONAL => { return 0; }
+            ParamStyle.NAMED => { return 1; }
+        }
+    }
+}
+
+/**
+ * Query parameter with value and binding information.
+ *
+ * A Param holds a ValueBox along with binding metadata (index or name).
+ * Use the factory functions in the Param module to create instances.
+ */
+public struct Param {
+    /// The binding style (positional or named)
+    public final ParamStyle style;
+    /// The parameter index (1-based) for positional parameters, 0 for named
+    public final int index;
+    /// The parameter name for named parameters, empty for positional
+    public final String name;
+    /// The value to bind
+    public final ValueBox value;
+}
+
+/**
+ * Module providing factory functions and utilities for Param instances.
+ *
+ * Factory functions:
+ * - positional(index, value): Create a positional parameter
+ * - named(name, value): Create a named parameter
+ *
+ * Convenience factory functions for common types:
+ * - intParam(index, value): Create a positional int parameter
+ * - textParam(index, value): Create a positional text parameter
+ * - etc.
+ */
+module Param {
+    /// Creates a positional parameter with the given 1-based index.
+    public static Param positional(int index, ValueBox value) {
+        return Param {
+            style: ParamStyle.POSITIONAL,
+            index: index,
+            name: "",
+            value: value
+        };
+    }
+
+    /// Creates a named parameter with the given name.
+    public static Param named(String name, ValueBox value) {
+        return Param {
+            style: ParamStyle.NAMED,
+            index: 0,
+            name: name,
+            value: value
+        };
+    }
+
+    /// Returns true if this is a positional parameter.
+    public static bool isPositional(Param p) {
+        return ParamStyle.ordinal(p.style) == 0;
+    }
+
+    /// Returns true if this is a named parameter.
+    public static bool isNamed(Param p) {
+        return ParamStyle.ordinal(p.style) == 1;
+    }
+
+    /// Returns the parameter index (1-based). Returns 0 for named parameters.
+    public static int getIndex(Param p) {
+        return p.index;
+    }
+
+    /// Returns the parameter name. Returns empty string for positional parameters.
+    public static String getName(Param p) {
+        return p.name;
+    }
+
+    /// Returns the parameter value.
+    public static ValueBox getValue(Param p) {
+        return p.value;
+    }
+
+    // Convenience factory functions for positional parameters
+
+    /// Creates a positional parameter with a 32-bit integer value.
+    public static Param intParam(int index, int value) {
+        return Param {
+            style: ParamStyle.POSITIONAL,
+            index: index,
+            name: "",
+            value: ValueBoxFns.fromInt(value)
+        };
+    }
+
+    /// Creates a positional parameter with a 64-bit integer value.
+    public static Param int64Param(int index, int64 value) {
+        return Param {
+            style: ParamStyle.POSITIONAL,
+            index: index,
+            name: "",
+            value: ValueBoxFns.fromInt64(value)
+        };
+    }
+
+    /// Creates a positional parameter with a float value.
+    public static Param floatParam(int index, float value) {
+        return Param {
+            style: ParamStyle.POSITIONAL,
+            index: index,
+            name: "",
+            value: ValueBoxFns.fromFloat(value)
+        };
+    }
+
+    /// Creates a positional parameter with a double value.
+    public static Param doubleParam(int index, double value) {
+        return Param {
+            style: ParamStyle.POSITIONAL,
+            index: index,
+            name: "",
+            value: ValueBoxFns.fromDouble(value)
+        };
+    }
+
+    /// Creates a positional parameter with a boolean value.
+    public static Param boolParam(int index, bool value) {
+        return Param {
+            style: ParamStyle.POSITIONAL,
+            index: index,
+            name: "",
+            value: ValueBoxFns.fromBool(value)
+        };
+    }
+
+    /// Creates a positional parameter with a text value.
+    public static Param textParam(int index, String value) {
+        return Param {
+            style: ParamStyle.POSITIONAL,
+            index: index,
+            name: "",
+            value: ValueBoxFns.fromText(value)
+        };
+    }
+
+    /// Creates a positional parameter with a blob value.
+    public static Param blobParam(int index, bytes value) {
+        return Param {
+            style: ParamStyle.POSITIONAL,
+            index: index,
+            name: "",
+            value: ValueBoxFns.fromBlob(value)
+        };
+    }
+
+    /// Creates a positional parameter with a NULL value.
+    public static Param nullParam(int index) {
+        return Param {
+            style: ParamStyle.POSITIONAL,
+            index: index,
+            name: "",
+            value: ValueBoxFns.null()
+        };
+    }
+
+    // Convenience factory functions for named parameters
+
+    /// Creates a named parameter with a 32-bit integer value.
+    public static Param namedInt(String name, int value) {
+        return Param {
+            style: ParamStyle.NAMED,
+            index: 0,
+            name: name,
+            value: ValueBoxFns.fromInt(value)
+        };
+    }
+
+    /// Creates a named parameter with a 64-bit integer value.
+    public static Param namedInt64(String name, int64 value) {
+        return Param {
+            style: ParamStyle.NAMED,
+            index: 0,
+            name: name,
+            value: ValueBoxFns.fromInt64(value)
+        };
+    }
+
+    /// Creates a named parameter with a float value.
+    public static Param namedFloat(String name, float value) {
+        return Param {
+            style: ParamStyle.NAMED,
+            index: 0,
+            name: name,
+            value: ValueBoxFns.fromFloat(value)
+        };
+    }
+
+    /// Creates a named parameter with a double value.
+    public static Param namedDouble(String name, double value) {
+        return Param {
+            style: ParamStyle.NAMED,
+            index: 0,
+            name: name,
+            value: ValueBoxFns.fromDouble(value)
+        };
+    }
+
+    /// Creates a named parameter with a boolean value.
+    public static Param namedBool(String name, bool value) {
+        return Param {
+            style: ParamStyle.NAMED,
+            index: 0,
+            name: name,
+            value: ValueBoxFns.fromBool(value)
+        };
+    }
+
+    /// Creates a named parameter with a text value.
+    public static Param namedText(String name, String value) {
+        return Param {
+            style: ParamStyle.NAMED,
+            index: 0,
+            name: name,
+            value: ValueBoxFns.fromText(value)
+        };
+    }
+
+    /// Creates a named parameter with a blob value.
+    public static Param namedBlob(String name, bytes value) {
+        return Param {
+            style: ParamStyle.NAMED,
+            index: 0,
+            name: name,
+            value: ValueBoxFns.fromBlob(value)
+        };
+    }
+
+    /// Creates a named parameter with a NULL value.
+    public static Param namedNull(String name) {
+        return Param {
+            style: ParamStyle.NAMED,
+            index: 0,
+            name: name,
+            value: ValueBoxFns.null()
+        };
+    }
+}

@@ -1,0 +1,156 @@
+package io;
+
+/**
+ * Path manipulation utilities for working with file system paths.
+ *
+ * All operations are pure string manipulation - no file system access required.
+ * Uses "/" as the path separator (Unix-style, works on all platforms in Arth).
+ *
+ * Example usage:
+ * ```
+ * import io.*;
+ *
+ * module Main {
+ *     public static void main() {
+ *         String full = Path.join("/home/user", "documents/file.txt");
+ *         // -> "/home/user/documents/file.txt"
+ *
+ *         String parent = Path.parent(full);
+ *         // -> "/home/user/documents"
+ *
+ *         String name = Path.fileName(full);
+ *         // -> "file.txt"
+ *
+ *         String ext = Path.extension(full);
+ *         // -> "txt"
+ *     }
+ * }
+ * ```
+ */
+module Path {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Path Construction
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Joins two path components with the appropriate separator.
+    ///
+    /// Handles trailing/leading separators correctly.
+    ///
+    /// @param base The base path
+    /// @param component The component to append
+    /// @return The joined path
+    public static String join(String base, String component) {
+        if (base.length() == 0) {
+            return component;
+        }
+        if (component.length() == 0) {
+            return base;
+        }
+
+        // Check if base ends with separator
+        Bool baseEnds = base.endsWith("/");
+        // Check if component starts with separator
+        Bool compStarts = component.startsWith("/");
+
+        if (baseEnds && compStarts) {
+            // Both have separator - remove one
+            return base + component.substring(1);
+        } else if (baseEnds || compStarts) {
+            // One has separator - just concatenate
+            return base + component;
+        } else {
+            // Neither has separator - add one
+            return base + "/" + component;
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Path Decomposition
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns the parent directory of a path.
+    ///
+    /// @param path The path to get the parent of
+    /// @return The parent directory path, or empty string if none
+    public static String parent(String path) {
+        if (path.length() == 0) {
+            return "";
+        }
+
+        // Remove trailing slash if present (unless it's root)
+        String p = path;
+        if (p.length() > 1 && p.endsWith("/")) {
+            p = p.substring(0, p.length() - 1);
+        }
+
+        // Find last separator
+        Int lastSep = p.lastIndexOf("/");
+        if (lastSep < 0) {
+            return "";
+        }
+        if (lastSep == 0) {
+            // Root directory case
+            return "/";
+        }
+        return p.substring(0, lastSep);
+    }
+
+    /// Returns the file name component of a path.
+    ///
+    /// @param path The path to extract the file name from
+    /// @return The file name (last component), or empty string if none
+    public static String fileName(String path) {
+        if (path.length() == 0) {
+            return "";
+        }
+
+        // Remove trailing slash if present
+        String p = path;
+        if (p.endsWith("/")) {
+            p = p.substring(0, p.length() - 1);
+        }
+
+        // Find last separator
+        Int lastSep = p.lastIndexOf("/");
+        if (lastSep < 0) {
+            return p;
+        }
+        return p.substring(lastSep + 1);
+    }
+
+    /// Returns the extension of a file path.
+    ///
+    /// @param path The path to extract the extension from
+    /// @return The extension without the dot, or empty string if none
+    public static String extension(String path) {
+        String name = Path.fileName(path);
+        if (name.length() == 0) {
+            return "";
+        }
+
+        // Find last dot in file name
+        Int lastDot = name.lastIndexOf(".");
+        if (lastDot < 0 || lastDot == 0 || lastDot == name.length() - 1) {
+            // No dot, hidden file (.foo), or trailing dot
+            return "";
+        }
+        return name.substring(lastDot + 1);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Path Normalization
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns the absolute path for a relative path.
+    ///
+    /// Resolves relative to the current working directory.
+    /// NOTE: This requires VM support to get the current working directory.
+    ///
+    /// @param path The path to make absolute
+    /// @return The absolute path
+    @intrinsic("io.path_absolute")
+    public static String absolute(String path) {
+        // Intrinsic needed: requires current working directory from OS
+        return "";
+    }
+}

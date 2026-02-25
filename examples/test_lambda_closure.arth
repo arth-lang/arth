@@ -1,0 +1,28 @@
+package test;
+
+// Test 2: Closure with captured variables
+module ClosureTest {
+    public void testClosure() {
+        int multiplier = 5;
+        int offset = 10;
+
+        // Lambda that captures 'multiplier' and 'offset'
+        fn(int x) {
+            return x * multiplier + offset;
+        }
+    }
+
+    public void testNestedCapture() {
+        int outer = 100;
+
+        // Outer lambda captures 'outer'
+        fn(int x) {
+            int inner = 50;
+
+            // Inner lambda captures both 'outer' and 'inner'
+            fn(int y) {
+                return x + y + outer + inner;
+            }
+        }
+    }
+}

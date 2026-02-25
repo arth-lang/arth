@@ -1,0 +1,45 @@
+package conformance;
+
+// @spec: spec.md §8 - Ownership model with moves
+// @expect: pass
+// @description: Validates ownership transfer via move semantics
+
+public struct Resource {
+    public Int id;
+}
+
+module ResourceFns {
+    public Resource new(Int id) {
+        return Resource { id: id };
+    }
+
+    public void consume(Resource r) {
+        // r is consumed here
+    }
+
+    public Int getId(Resource r) {
+        return r.id;
+    }
+}
+
+module Main {
+    public static void main() {
+        // Create a resource
+        Resource r1 = ResourceFns.new(1);
+
+        // Move to another variable
+        Resource r2 = r1;
+        // r1 is now moved, cannot be used
+
+        // Pass by value moves ownership
+        ResourceFns.consume(r2);
+        // r2 is now moved
+
+        // Fresh resource for further tests
+        Resource r3 = ResourceFns.new(3);
+        Int id = ResourceFns.getId(r3);
+        // r3 is consumed by getId
+
+        println("moves: pass");
+    }
+}

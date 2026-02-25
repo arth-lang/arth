@@ -1,0 +1,12 @@
+package test;
+
+struct User {
+    public String id;
+    public String name;
+}
+
+module Test {
+    public void main() {
+        User u = User { id: "u1", name: "Alice" };
+    }
+}

@@ -1,0 +1,436 @@
+package test;
+
+// Test: C15 - Actor Crash Handling
+//
+// This test verifies actor crash/failure handling:
+// - Actor.markFailed() transitions actor to Failed state
+// - Failed state (3) is distinct from Stopped state (2)
+// - Send to failed actor returns error 4 (not 2)
+// - Recv from failed actor returns -4 (not -3)
+// - Actor.isFailed() correctly detects failed actors
+// - Failure of one actor doesn't affect others
+//
+// Error codes:
+// - Send: 0=success, 1=full, 2=stopped/stopping, 3=not found, 4=failed
+// - Recv: value>=0 success, -2=empty, -3=closed, -4=failed
+
+module Executor {
+    // Executor intrinsics mapped to __arth_executor_* VM calls
+}
+
+module Actor {
+    // Actor intrinsics mapped to __arth_actor_* VM calls
+}
+
+module Instants {
+    // Time measurement intrinsics
+}
+
+module Main {
+    public static void main() {
+        println("=== C15: Actor Crash Handling ===");
+
+        // Initialize thread pool
+        println("Initializing pool with 4 threads...");
+        Int initResult = Executor.init(4);
+        println("Pool initialized: " + initResult);
+
+        Int resetResult = Executor.resetStats();
+
+        println("=== Test 1: Basic Mark Failed ===");
+        // Create an actor and mark it as failed
+        Int actor1 = Actor.create(10);
+        println("Created actor: " + actor1);
+
+        Int stateBefore = Actor.getState(actor1);
+        println("State before fail: " + stateBefore + " (expected 0 = Running)");
+
+        Int failResult = Actor.markFailed(actor1);
+        println("markFailed result: " + failResult);
+
+        Int stateAfter = Actor.getState(actor1);
+        println("State after fail: " + stateAfter + " (expected 3 = Failed)");
+
+        Int test1Pass = 0;
+        if (stateBefore == 0) {
+            if (failResult == 0) {
+                if (stateAfter == 3) {
+                    println("Test 1 (basic mark failed): PASS");
+                    test1Pass = 1;
+                }
+            }
+        }
+        if (test1Pass == 0) {
+            println("Test 1 FAIL: expected state transition 0 -> 3");
+        }
+
+        println("=== Test 2: isFailed Detection ===");
+        // Check isFailed returns correct values
+        Int actor2 = Actor.create(10);
+        Int failedBefore = Actor.isFailed(actor2);
+        println("isFailed before: " + failedBefore + " (expected 0)");
+
+        Actor.markFailed(actor2);
+        Int failedAfter = Actor.isFailed(actor2);
+        println("isFailed after: " + failedAfter + " (expected 1)");
+
+        Int test2Pass = 0;
+        if (failedBefore == 0) {
+            if (failedAfter == 1) {
+                println("Test 2 (isFailed detection): PASS");
+                test2Pass = 1;
+            }
+        }
+        if (test2Pass == 0) {
+            println("Test 2 FAIL");
+        }
+
+        println("=== Test 3: Send to Failed Actor Returns 4 ===");
+        // Send to failed actor should return error code 4
+        Int actor3 = Actor.create(10);
+        Actor.markFailed(actor3);
+
+        Int sendResult = Actor.send(actor3, 100);
+        println("Send to failed actor: " + sendResult + " (expected 4)");
+
+        Int sendBlockingResult = Actor.sendBlocking(actor3, 200);
+        println("SendBlocking to failed actor: " + sendBlockingResult + " (expected 4)");
+
+        Int test3Pass = 0;
+        if (sendResult == 4) {
+            if (sendBlockingResult == 4) {
+                println("Test 3 (send to failed returns 4): PASS");
+                test3Pass = 1;
+            }
+        }
+        if (test3Pass == 0) {
+            println("Test 3 FAIL: expected error code 4");
+        }
+
+        println("=== Test 4: Recv from Failed Actor Returns -4 ===");
+        // Recv from failed actor should return -4
+        Int actor4 = Actor.create(10);
+        // Send a message before failing
+        Actor.send(actor4, 42);
+        // Now fail the actor
+        Actor.markFailed(actor4);
+
+        Int recvResult = Actor.recv(actor4);
+        println("Recv from failed actor: " + recvResult + " (expected -4)");
+
+        Int test4Pass = 0;
+        if (recvResult == -4) {
+            println("Test 4 (recv from failed returns -4): PASS");
+            test4Pass = 1;
+        } else {
+            println("Test 4 FAIL: expected -4, got " + recvResult);
+        }
+
+        println("=== Test 5: Failed vs Stopped Distinction ===");
+        // Verify Failed (3) is distinct from Stopped (2)
+        Int actorStopped = Actor.create(10);
+        Int actorFailed = Actor.create(10);
+
+        Actor.stop(actorStopped);
+        Actor.markStopped(actorStopped);
+        Int stoppedState = Actor.getState(actorStopped);
+
+        Actor.markFailed(actorFailed);
+        Int failedState = Actor.getState(actorFailed);
+
+        println("Stopped actor state: " + stoppedState + " (expected 2)");
+        println("Failed actor state: " + failedState + " (expected 3)");
+
+        // Send to stopped returns 2, send to failed returns 4
+        Int sendToStopped = Actor.send(actorStopped, 1);
+        Int sendToFailed = Actor.send(actorFailed, 1);
+        println("Send to stopped: " + sendToStopped + " (expected 2)");
+        println("Send to failed: " + sendToFailed + " (expected 4)");
+
+        Int test5Pass = 0;
+        if (stoppedState == 2) {
+            if (failedState == 3) {
+                if (sendToStopped == 2) {
+                    if (sendToFailed == 4) {
+                        println("Test 5 (failed vs stopped): PASS");
+                        test5Pass = 1;
+                    }
+                }
+            }
+        }
+        if (test5Pass == 0) {
+            println("Test 5 FAIL: states or error codes incorrect");
+        }
+
+        println("=== Test 6: Multiple Actors Independence ===");
+        // Failing one actor shouldn't affect others
+        Int actorA = Actor.create(10);
+        Int actorB = Actor.create(10);
+        Int actorC = Actor.create(10);
+
+        // Send to all
+        Actor.send(actorA, 100);
+        Actor.send(actorB, 200);
+        Actor.send(actorC, 300);
+
+        // Fail only actorB
+        Actor.markFailed(actorB);
+
+        // A and C should still work normally
+        Int sendA = Actor.send(actorA, 101);
+        Int sendB = Actor.send(actorB, 201);
+        Int sendC = Actor.send(actorC, 301);
+
+        println("Send to A after B failed: " + sendA);
+        println("Send to B after B failed: " + sendB);
+        println("Send to C after B failed: " + sendC);
+
+        // Recv from A and C should work
+        Int recvA1 = Actor.recv(actorA);
+        Int recvA2 = Actor.recv(actorA);
+        Int recvB = Actor.recv(actorB);
+        Int recvC1 = Actor.recv(actorC);
+        Int recvC2 = Actor.recv(actorC);
+
+        println("A received: " + recvA1 + ", " + recvA2);
+        println("B received: " + recvB);
+        println("C received: " + recvC1 + ", " + recvC2);
+
+        Int test6Pass = 0;
+        if (sendA == 0) {
+            if (sendB == 4) {
+                if (sendC == 0) {
+                    if (recvA1 == 100) {
+                        if (recvA2 == 101) {
+                            if (recvB == -4) {
+                                if (recvC1 == 300) {
+                                    if (recvC2 == 301) {
+                                        println("Test 6 (multiple actors independence): PASS");
+                                        test6Pass = 1;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (test6Pass == 0) {
+            println("Test 6 FAIL: actors not independent");
+        }
+
+        Actor.close(actorA);
+        Actor.close(actorC);
+
+        println("=== Test 7: Simulated Crash During Processing ===");
+        // Simulate: process messages, then crash on special "crash signal" (value 999)
+        Int actor7 = Actor.create(20);
+
+        // Send messages: 1, 2, 3, 999 (crash signal), 4, 5
+        Actor.send(actor7, 1);
+        Actor.send(actor7, 2);
+        Actor.send(actor7, 3);
+        Actor.send(actor7, 999);  // crash signal
+        Actor.send(actor7, 4);
+        Actor.send(actor7, 5);
+        println("Sent 6 messages including crash signal (999)");
+
+        // Process messages until crash signal
+        Int processedSum = 0;
+        Int processedCount = 0;
+        Int crashed = 0;
+        Int i = 0;
+
+        while (i < 6) {
+            if (crashed == 0) {
+                Int msg = Actor.recv(actor7);
+                if (msg >= 0) {
+                    if (msg == 999) {
+                        // Simulate crash
+                        println("Received crash signal, marking failed");
+                        Actor.markFailed(actor7);
+                        crashed = 1;
+                    } else {
+                        processedSum = processedSum + msg;
+                        processedCount = processedCount + 1;
+                    }
+                }
+            } else {
+                // After crash, try to recv (should get -4)
+                Int msg = Actor.recv(actor7);
+                if (msg != -4) {
+                    println("ERROR: expected -4 after crash, got " + msg);
+                }
+            }
+            i = i + 1;
+        }
+
+        println("Processed " + processedCount + " messages before crash, sum = " + processedSum);
+        // Expected: 1 + 2 + 3 = 6
+        Int expectedSum = 6;
+
+        Int test7Pass = 0;
+        if (crashed == 1) {
+            if (processedCount == 3) {
+                if (processedSum == expectedSum) {
+                    println("Test 7 (simulated crash): PASS");
+                    test7Pass = 1;
+                }
+            }
+        }
+        if (test7Pass == 0) {
+            println("Test 7 FAIL: expected 3 messages processed, sum=6");
+        }
+
+        println("=== Test 8: Message Count After Failure ===");
+        // Message count should be preserved after failure
+        Int actor8 = Actor.create(50);
+
+        // Send 25 messages
+        i = 0;
+        while (i < 25) {
+            Actor.send(actor8, i);
+            i = i + 1;
+        }
+
+        Int countBefore = Actor.messageCount(actor8);
+        println("Message count before fail: " + countBefore);
+
+        Actor.markFailed(actor8);
+
+        Int countAfter = Actor.messageCount(actor8);
+        println("Message count after fail: " + countAfter);
+
+        Int test8Pass = 0;
+        if (countBefore == 25) {
+            if (countAfter == 25) {
+                println("Test 8 (message count preserved): PASS");
+                test8Pass = 1;
+            }
+        }
+        if (test8Pass == 0) {
+            println("Test 8 FAIL");
+        }
+
+        println("=== Test 9: Double markFailed Idempotent ===");
+        // Calling markFailed twice should be safe
+        Int actor9 = Actor.create(10);
+
+        Int fail1 = Actor.markFailed(actor9);
+        Int state9a = Actor.getState(actor9);
+
+        Int fail2 = Actor.markFailed(actor9);
+        Int state9b = Actor.getState(actor9);
+
+        println("First markFailed: result=" + fail1 + ", state=" + state9a);
+        println("Second markFailed: result=" + fail2 + ", state=" + state9b);
+
+        Int test9Pass = 0;
+        if (fail1 == 0) {
+            if (fail2 == 0) {
+                if (state9a == 3) {
+                    if (state9b == 3) {
+                        println("Test 9 (double fail idempotent): PASS");
+                        test9Pass = 1;
+                    }
+                }
+            }
+        }
+        if (test9Pass == 0) {
+            println("Test 9 FAIL");
+        }
+
+        println("=== Test 10: isRunning After Failure ===");
+        // isRunning should return 0 for failed actors
+        Int actor10 = Actor.create(10);
+        Int runningBefore = Actor.isRunning(actor10);
+        println("isRunning before fail: " + runningBefore);
+
+        Actor.markFailed(actor10);
+        Int runningAfter = Actor.isRunning(actor10);
+        println("isRunning after fail: " + runningAfter);
+
+        Int test10Pass = 0;
+        if (runningBefore == 1) {
+            if (runningAfter == 0) {
+                println("Test 10 (isRunning after failure): PASS");
+                test10Pass = 1;
+            }
+        }
+        if (test10Pass == 0) {
+            println("Test 10 FAIL");
+        }
+
+        println("=== Test 11: Blocking Recv from Failed Actor ===");
+        // Blocking recv from failed actor should return -4, not block
+        Int actor11 = Actor.create(10);
+        Actor.send(actor11, 42);  // Send before fail
+        Actor.markFailed(actor11);
+
+        Int startTime = Instants.now();
+        Int blockingRecv = Actor.recvBlocking(actor11);
+        Int elapsed = Instants.elapsed(startTime);
+        println("Blocking recv from failed: " + blockingRecv + " (expected -4)");
+        println("Time elapsed: " + elapsed + " ms (should be near 0, not blocking)");
+
+        Int test11Pass = 0;
+        if (blockingRecv == -4) {
+            if (elapsed < 100) {  // Should return immediately
+                println("Test 11 (blocking recv from failed): PASS");
+                test11Pass = 1;
+            }
+        }
+        if (test11Pass == 0) {
+            println("Test 11 FAIL");
+        }
+
+        println("=== Test 12: Fail While Stopping ===");
+        // Can transition from Stopping to Failed
+        Int actor12 = Actor.create(10);
+        Actor.send(actor12, 100);
+
+        // Stop first
+        Actor.stop(actor12);
+        Int stateAfterStop = Actor.getState(actor12);
+        println("State after stop: " + stateAfterStop + " (expected 1 = Stopping)");
+
+        // Now fail
+        Actor.markFailed(actor12);
+        Int stateAfterFail = Actor.getState(actor12);
+        println("State after fail: " + stateAfterFail + " (expected 3 = Failed)");
+
+        // Should behave as failed, not stopped
+        Int sendResult12 = Actor.send(actor12, 200);
+        Int recvResult12 = Actor.recv(actor12);
+        println("Send result: " + sendResult12 + " (expected 4)");
+        println("Recv result: " + recvResult12 + " (expected -4)");
+
+        Int test12Pass = 0;
+        if (stateAfterStop == 1) {
+            if (stateAfterFail == 3) {
+                if (sendResult12 == 4) {
+                    if (recvResult12 == -4) {
+                        println("Test 12 (fail while stopping): PASS");
+                        test12Pass = 1;
+                    }
+                }
+            }
+        }
+        if (test12Pass == 0) {
+            println("Test 12 FAIL");
+        }
+
+        // Summary
+        println("=== Summary ===");
+        Int totalPassed = test1Pass + test2Pass + test3Pass + test4Pass + test5Pass +
+                          test6Pass + test7Pass + test8Pass + test9Pass + test10Pass +
+                          test11Pass + test12Pass;
+        println("Tests passed: " + totalPassed + "/12");
+
+        if (totalPassed == 12) {
+            println("=== C15: PASSED - Actor crash handling works correctly ===");
+        } else {
+            println("=== C15: FAILED ===");
+        }
+    }
+}

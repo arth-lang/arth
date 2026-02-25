@@ -1,0 +1,26 @@
+package test;
+
+// Test: Struct construction
+// Expected output:
+//   point created
+//   person created
+
+public struct Point {
+    public Int x;
+    public Int y;
+}
+
+public struct Person {
+    public String name;
+    public Int age;
+}
+
+module Main {
+    public static void main() {
+        Point p = Point { x: 10, y: 20 };
+        println("point created");
+
+        Person person = Person { name: "Alice", age: 30 };
+        println("person created");
+    }
+}

@@ -1,0 +1,223 @@
+package db;
+
+/**
+ * Transaction scope management helpers.
+ *
+ * This module provides high-level transaction management utilities that
+ * handle commit/rollback automatically based on success or exception.
+ *
+ * ## Features
+ *
+ * - Automatic commit on success
+ * - Automatic rollback on exception
+ * - Nested transaction support via savepoints
+ * - Scoped transaction helpers
+ *
+ * ## Implementation Status
+ *
+ * This module is a placeholder for Phase 6 implementation.
+ *
+ * @see docs/stdlib-database.md Phase 6 for implementation plan
+ */
+
+/**
+ * Transaction isolation levels.
+ *
+ * Note: SQLite only supports SERIALIZABLE. PostgreSQL supports all levels.
+ */
+public enum IsolationLevel {
+    /// Transactions can see uncommitted changes from other transactions
+    READ_UNCOMMITTED,
+    /// Transactions only see committed changes (PostgreSQL default)
+    READ_COMMITTED,
+    /// Transactions see a consistent snapshot from start of transaction
+    REPEATABLE_READ,
+    /// Transactions are completely isolated (SQLite default)
+    SERIALIZABLE
+}
+
+/**
+ * Transaction options for configuring transaction behavior.
+ */
+public struct TransactionOptions {
+    /// The isolation level for the transaction
+    public final IsolationLevel isolationLevel;
+    /// Whether the transaction is read-only
+    public final bool readOnly;
+    /// Transaction timeout in milliseconds (0 = no timeout)
+    public final int timeoutMs;
+}
+
+/**
+ * Module providing factory functions for TransactionOptions.
+ */
+module TransactionOptions {
+    /// Creates default transaction options.
+    ///
+    /// Defaults:
+    /// - isolationLevel: SERIALIZABLE
+    /// - readOnly: false
+    /// - timeoutMs: 0 (no timeout)
+    public static TransactionOptions defaults() {
+        return TransactionOptions {
+            isolationLevel: IsolationLevel.SERIALIZABLE,
+            readOnly: false,
+            timeoutMs: 0
+        };
+    }
+
+    /// Creates read-only transaction options.
+    public static TransactionOptions readOnly() {
+        return TransactionOptions {
+            isolationLevel: IsolationLevel.SERIALIZABLE,
+            readOnly: true,
+            timeoutMs: 0
+        };
+    }
+
+    /// Creates transaction options with specific isolation level.
+    public static TransactionOptions withIsolation(IsolationLevel level) {
+        return TransactionOptions {
+            isolationLevel: level,
+            readOnly: false,
+            timeoutMs: 0
+        };
+    }
+
+    /// Creates transaction options with timeout.
+    public static TransactionOptions withTimeout(int timeoutMs) {
+        return TransactionOptions {
+            isolationLevel: IsolationLevel.SERIALIZABLE,
+            readOnly: false,
+            timeoutMs: timeoutMs
+        };
+    }
+
+    /// Creates fully customized transaction options.
+    public static TransactionOptions custom(IsolationLevel isolationLevel, bool readOnly, int timeoutMs) {
+        return TransactionOptions {
+            isolationLevel: isolationLevel,
+            readOnly: readOnly,
+            timeoutMs: timeoutMs
+        };
+    }
+}
+
+/**
+ * Represents an active transaction scope.
+ *
+ * Transaction instances are created by Transaction module functions and
+ * track the transaction state including nesting depth via savepoints.
+ */
+public struct Transaction {
+    /// The connection this transaction belongs to
+    public final Connection connection;
+    /// Transaction options
+    public final TransactionOptions options;
+    /// Nesting depth (0 = top-level, >0 = savepoint)
+    public final int depth;
+    /// Savepoint name for nested transactions
+    public final String savepointName;
+}
+
+/**
+ * Module providing transaction management functions.
+ *
+ * Note: This is a placeholder. Actual implementation requires
+ * closures/callbacks for the withTransaction pattern.
+ */
+module Transaction {
+    /// Creates a new transaction on the connection.
+    ///
+    /// @param conn The connection to use
+    /// @returns A Transaction representing the active transaction
+    /// @throws (TransactionError) if begin fails
+    public static Transaction begin(Connection conn) throws (TransactionError) {
+        return Transaction.beginWithOptions(conn, TransactionOptions.defaults());
+    }
+
+    /// Creates a new transaction with specific options.
+    ///
+    /// @param conn The connection to use
+    /// @param options Transaction options
+    /// @returns A Transaction representing the active transaction
+    /// @throws (TransactionError) if begin fails
+    @intrinsic("db.tx_begin")
+    public static Transaction beginWithOptions(Connection conn, TransactionOptions options) throws (TransactionError) {
+        // Intrinsic: begins transaction with options
+        return Transaction {
+            connection: conn,
+            options: options,
+            depth: 0,
+            savepointName: ""
+        };
+    }
+
+    /// Commits the transaction.
+    ///
+    /// @param tx The transaction to commit
+    /// @throws (TransactionError) if commit fails
+    @intrinsic("db.tx_commit")
+    public static void commit(Transaction tx) throws (TransactionError) {
+        // Intrinsic: commits transaction
+    }
+
+    /// Rolls back the transaction.
+    ///
+    /// @param tx The transaction to rollback
+    /// @throws (TransactionError) if rollback fails
+    @intrinsic("db.tx_rollback")
+    public static void rollback(Transaction tx) throws (TransactionError) {
+        // Intrinsic: rolls back transaction
+    }
+
+    /// Creates a nested transaction (savepoint).
+    ///
+    /// @param tx The parent transaction
+    /// @param name Savepoint name
+    /// @returns A Transaction representing the savepoint
+    /// @throws (TransactionError) if savepoint creation fails
+    @intrinsic("db.tx_savepoint")
+    public static Transaction savepoint(Transaction tx, String name) throws (TransactionError) {
+        // Intrinsic: creates savepoint
+        return Transaction {
+            connection: tx.connection,
+            options: tx.options,
+            depth: tx.depth + 1,
+            savepointName: name
+        };
+    }
+
+    /// Releases a savepoint (commits the nested transaction).
+    ///
+    /// @param tx The savepoint transaction
+    /// @throws (TransactionError) if release fails
+    @intrinsic("db.tx_release")
+    public static void release(Transaction tx) throws (TransactionError) {
+        // Intrinsic: releases savepoint
+    }
+
+    /// Rolls back to a savepoint.
+    ///
+    /// @param tx The savepoint transaction
+    /// @throws (TransactionError) if rollback fails
+    @intrinsic("db.tx_rollback_to")
+    public static void rollbackTo(Transaction tx) throws (TransactionError) {
+        // Intrinsic: rolls back to savepoint
+    }
+
+    /// Returns true if this is a nested transaction (savepoint).
+    public static bool isNested(Transaction tx) {
+        return tx.depth > 0;
+    }
+
+    /// Returns the nesting depth.
+    public static int getDepth(Transaction tx) {
+        return tx.depth;
+    }
+
+    /// Returns the connection for this transaction.
+    public static Connection getConnection(Transaction tx) {
+        return tx.connection;
+    }
+}

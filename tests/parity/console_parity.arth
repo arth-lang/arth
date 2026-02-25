@@ -1,0 +1,16 @@
+package test;
+
+/**
+ * Console output parity test.
+ * Tests that print/println work identically in VM and native modes.
+ */
+module Main {
+    public static void main() {
+        print("Hello");
+        print(" ");
+        print("World");
+        println("!");
+        println("Line 2");
+        println("Line 3");
+    }
+}

@@ -1,0 +1,258 @@
+package crypto;
+
+/**
+ * Cryptographic hash result type.
+ *
+ * A Hash represents the output of a cryptographic hash function. It contains:
+ * - The hash bytes (digest)
+ * - The algorithm used to produce the hash
+ *
+ * Hash values are immutable and can be safely shared across threads.
+ *
+ * Example usage:
+ * ```arth
+ * import crypto.*;
+ *
+ * module Example {
+ *     public void hashData() {
+ *         bytes data = "Hello, World!".toBytes();
+ *
+ *         // One-shot hash
+ *         Hash h = Hash.hash(HashAlgorithm.SHA256, data);
+ *         String hex = Encoding.toHex(Hash.toBytes(h));
+ *         Console.println("SHA-256: " + hex);
+ *
+ *         // Verify hash
+ *         Bool matches = Hash.verify(h, data);
+ *     }
+ * }
+ * ```
+ *
+ * @see crypto.HashAlgorithm for available algorithms
+ * @see crypto.Encoding for hex/base64 encoding
+ */
+
+/**
+ * A cryptographic hash digest with algorithm tag.
+ *
+ * The hash bytes are stored in a fixed-size buffer. The actual digest
+ * length depends on the algorithm (e.g., 32 bytes for SHA-256).
+ */
+public struct Hash {
+    /// The algorithm used to produce this hash
+    public final HashAlgorithm algorithm;
+    /// The hash digest bytes
+    public final bytes data;
+}
+
+/**
+ * Incremental hasher state for streaming hash computation.
+ *
+ * Use this for hashing large data or data that arrives in chunks.
+ * The handle is managed by the runtime and must not be copied.
+ */
+public struct Hasher {
+    /// The algorithm being used
+    public final HashAlgorithm algorithm;
+    /// Internal handle to the hasher state (managed by runtime)
+    final Int handle;
+}
+
+/**
+ * Module for Hash providing hashing operations.
+ *
+ * NOTE: This file is an INTRINSIC-BACKED STUB for IDE/tooling support.
+ * The function bodies are placeholders - actual implementation is provided
+ * by the compiler via intrinsic lowering to C FFI runtime functions.
+ */
+module Hash {
+    // =========================================================================
+    // One-Shot Hashing
+    // =========================================================================
+
+    /**
+     * Computes a cryptographic hash of the given data.
+     *
+     * This is the most common way to hash data when all data is available
+     * at once. For streaming or incremental hashing, use newHasher().
+     *
+     * @param algorithm The hash algorithm to use
+     * @param data The data to hash
+     * @return The computed hash digest
+     */
+    @intrinsic("crypto.hash")
+    public static Hash hash(HashAlgorithm algorithm, bytes data) {
+        // Intrinsic: computes hash using C FFI
+        return Hash {
+            algorithm: algorithm,
+            data: bytes.allocate(0)
+        };
+    }
+
+    /**
+     * Computes a cryptographic hash of a string.
+     *
+     * Convenience method that converts the string to UTF-8 bytes first.
+     *
+     * @param algorithm The hash algorithm to use
+     * @param str The string to hash
+     * @return The computed hash digest
+     */
+    public static Hash hashString(HashAlgorithm algorithm, String str) {
+        return Hash.hash(algorithm, str.toBytes());
+    }
+
+    // =========================================================================
+    // Incremental Hashing
+    // =========================================================================
+
+    /**
+     * Creates a new incremental hasher for the given algorithm.
+     *
+     * Use this when you need to hash data that arrives in chunks,
+     * or when the full data is too large to hold in memory at once.
+     *
+     * @param algorithm The hash algorithm to use
+     * @return A new Hasher instance
+     */
+    @intrinsic("crypto.hash_new")
+    public static Hasher newHasher(HashAlgorithm algorithm) {
+        // Intrinsic: creates new hasher state
+        return Hasher {
+            algorithm: algorithm,
+            handle: 0
+        };
+    }
+
+    /**
+     * Feeds data into the hasher.
+     *
+     * Can be called multiple times to process data incrementally.
+     * After all data has been fed, call finalize() to get the hash.
+     *
+     * @param hasher The hasher to update
+     * @param data The data to add to the hash computation
+     */
+    @intrinsic("crypto.hash_update")
+    public static void update(Hasher hasher, bytes data) {
+        // Intrinsic: updates hasher state with data
+    }
+
+    /**
+     * Completes the hash computation and returns the result.
+     *
+     * After calling finalize(), the hasher is consumed and should not
+     * be used again. Create a new hasher if you need to compute another hash.
+     *
+     * @param hasher The hasher to finalize
+     * @return The computed hash digest
+     */
+    @intrinsic("crypto.hash_finalize")
+    public static Hash finalize(Hasher hasher) {
+        // Intrinsic: finalizes hasher and returns digest
+        return Hash {
+            algorithm: hasher.algorithm,
+            data: bytes.allocate(0)
+        };
+    }
+
+    // =========================================================================
+    // Verification
+    // =========================================================================
+
+    /**
+     * Verifies that a hash matches the given data.
+     *
+     * This recomputes the hash of the data using the same algorithm
+     * and compares it to the expected hash using constant-time comparison
+     * to prevent timing attacks.
+     *
+     * @param expected The expected hash value
+     * @param data The data to verify
+     * @return true if the data hashes to the expected value
+     */
+    @intrinsic("crypto.hash_verify")
+    public static Bool verify(Hash expected, bytes data) {
+        // Intrinsic: constant-time hash verification
+        return false;
+    }
+
+    // =========================================================================
+    // Conversion
+    // =========================================================================
+
+    /**
+     * Returns the raw hash bytes.
+     *
+     * @param hash The hash to convert
+     * @return The raw digest bytes
+     */
+    public static bytes toBytes(Hash hash) {
+        return hash.data;
+    }
+
+    /**
+     * Creates a Hash from raw bytes and algorithm.
+     *
+     * The provided bytes must be the correct length for the algorithm.
+     *
+     * @param algorithm The hash algorithm
+     * @param data The hash bytes
+     * @return A Hash instance
+     * @throws InvalidKeyError if the byte length is wrong for the algorithm
+     */
+    public static Hash fromBytes(HashAlgorithm algorithm, bytes data) throws InvalidKeyError {
+        int expectedSize = HashAlgorithm.outputSize(algorithm);
+        if (data.length() != expectedSize) {
+            throw InvalidKeyError.withSize(
+                "Hash size mismatch for " + HashAlgorithm.name(algorithm),
+                expectedSize,
+                data.length()
+            );
+        }
+        return Hash {
+            algorithm: algorithm,
+            data: data
+        };
+    }
+
+    /**
+     * Returns the algorithm used to compute this hash.
+     *
+     * @param hash The hash to query
+     * @return The hash algorithm
+     */
+    public static HashAlgorithm algorithm(Hash hash) {
+        return hash.algorithm;
+    }
+
+    /**
+     * Returns the length of the hash in bytes.
+     *
+     * @param hash The hash to query
+     * @return The hash length in bytes
+     */
+    public static int length(Hash hash) {
+        return hash.data.length();
+    }
+
+    // =========================================================================
+    // Comparison
+    // =========================================================================
+
+    /**
+     * Compares two hashes for equality using constant-time comparison.
+     *
+     * This prevents timing attacks by taking the same amount of time
+     * regardless of where the hashes differ.
+     *
+     * @param a The first hash
+     * @param b The second hash
+     * @return true if the hashes are equal
+     */
+    @intrinsic("crypto.hash_equals")
+    public static Bool equals(Hash a, Hash b) {
+        // Intrinsic: constant-time comparison
+        return false;
+    }
+}

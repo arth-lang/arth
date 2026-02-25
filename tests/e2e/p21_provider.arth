@@ -1,0 +1,102 @@
+package test;
+
+// Test: Provider fields - basic provider instantiation and field access
+// This tests the core provider functionality required for P21.
+//
+// Expected output:
+//   === Test 1: Basic Provider Creation ===
+//   Counter id: 42
+//   Counter count: 100
+//   Test 1: PASS
+//   === Test 2: Multiple Instances ===
+//   c1.id: 1, c1.count: 10
+//   c2.id: 2, c2.count: 20
+//   Test 2: PASS
+//   === Test 3: Field Mutation ===
+//   Before: count=50
+//   After: count=75
+//   Test 3: PASS
+//   === Test 4: Final Fields ===
+//   Config name: MyApp
+//   Config version: 1
+//   Test 4: PASS
+//   === Summary ===
+//   Tests passed: 4/4
+//   === P21: PASSED ===
+
+// Provider with regular and shared fields
+provider Counter {
+    Int id;
+    shared Int count;
+}
+
+// Provider with final fields
+provider Config {
+    final String name;
+    final Int version;
+}
+
+module Main {
+    public static void main() {
+        Int passed = 0;
+
+        // Test 1: Basic provider creation with field initialization
+        println("=== Test 1: Basic Provider Creation ===");
+        Counter c = Counter { id: 42, count: 100 };
+        println("Counter id: " + c.id);
+        println("Counter count: " + c.count);
+        if (c.id == 42 && c.count == 100) {
+            println("Test 1: PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 1: FAIL - expected id=42, count=100");
+        }
+
+        // Test 2: Multiple instances have isolated state
+        println("=== Test 2: Multiple Instances ===");
+        Counter c1 = Counter { id: 1, count: 10 };
+        Counter c2 = Counter { id: 2, count: 20 };
+        println("c1.id: " + c1.id + ", c1.count: " + c1.count);
+        println("c2.id: " + c2.id + ", c2.count: " + c2.count);
+        if (c1.id == 1 && c1.count == 10 && c2.id == 2 && c2.count == 20) {
+            println("Test 2: PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 2: FAIL - instances not isolated");
+        }
+
+        // Test 3: Field mutation
+        println("=== Test 3: Field Mutation ===");
+        Counter c3 = Counter { id: 3, count: 50 };
+        println("Before: count=" + c3.count);
+        c3.count = 75;
+        println("After: count=" + c3.count);
+        if (c3.count == 75) {
+            println("Test 3: PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 3: FAIL - mutation didn't work");
+        }
+
+        // Test 4: Final fields
+        println("=== Test 4: Final Fields ===");
+        Config cfg = Config { name: "MyApp", version: 1 };
+        println("Config name: " + cfg.name);
+        println("Config version: " + cfg.version);
+        if (cfg.version == 1) {
+            println("Test 4: PASS");
+            passed = passed + 1;
+        } else {
+            println("Test 4: FAIL");
+        }
+
+        // Summary
+        println("=== Summary ===");
+        println("Tests passed: " + passed + "/4");
+        if (passed == 4) {
+            println("=== P21: PASSED ===");
+        } else {
+            println("=== P21: FAILED ===");
+        }
+    }
+}

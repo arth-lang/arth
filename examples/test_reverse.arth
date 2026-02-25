@@ -1,0 +1,18 @@
+package demo;
+
+module Main {
+    public void main() {
+        int list1 = List.new();
+        List.push(list1, 1);
+        List.push(list1, 2);
+        List.push(list1, 3);
+
+        print(List.get(list1, 0));  // Should print 1
+        print(List.get(list1, 2));  // Should print 3
+
+        List.reverse(list1);
+
+        print(List.get(list1, 0));  // Should print 3
+        print(List.get(list1, 2));  // Should print 1
+    }
+}

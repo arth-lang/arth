@@ -1,0 +1,14 @@
+package demo.session;
+
+import service.auth.*;
+
+module SessionDemo {
+    public void main() {
+        // Construct a simple session value and derive a key.
+        Session s = SessionFns.new("alice", 0);
+        String k = SessionFns.key(s);
+        // In a real program, k would be used as a cache key;
+        // here we just ensure the code typechecks and lowers.
+    }
+}
+

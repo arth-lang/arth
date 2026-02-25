@@ -1,0 +1,22 @@
+package demo.ffi;
+
+// These functions live in an external shared library loaded via ARTH_EXTERN_LIBS.
+extern "C" fn arth_demo_add_i64(int a, int b) -> int;
+extern "C" fn arth_demo_mul_f64(float a, float b) -> float;
+
+module DemoLib {
+  public int add(int a, int b) {
+    unsafe { return arth_demo_add_i64(a, b); }
+  }
+
+  public float mul(float a, float b) {
+    unsafe { return arth_demo_mul_f64(a, b); }
+  }
+}
+
+module Main {
+  public void main() {
+    println(DemoLib.add(2, 3));
+    println(DemoLib.mul(1.5, 2.0));
+  }
+}

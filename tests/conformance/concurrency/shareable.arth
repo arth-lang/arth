@@ -1,0 +1,38 @@
+package conformance;
+
+// @spec: spec.md §9 - Shareable marker for cross-thread shared access
+// @expect: pass
+// @description: Validates Shareable concept for thread-safe shared references
+
+// Immutable data is automatically Shareable
+public struct ReadOnlyConfig {
+    public final String host;
+    public final Int port;
+}
+
+module ReadOnlyConfigFns {
+    public ReadOnlyConfig new(String host, Int port) {
+        return ReadOnlyConfig { host: host, port: port };
+    }
+
+    public String getHost(ReadOnlyConfig c) {
+        return c.host;
+    }
+
+    public Int getPort(ReadOnlyConfig c) {
+        return c.port;
+    }
+}
+
+module Main {
+    public static void main() {
+        // Create immutable config (shareable by nature)
+        ReadOnlyConfig config = ReadOnlyConfigFns.new("localhost", 8080);
+
+        // Can be accessed safely
+        String host = ReadOnlyConfigFns.getHost(config);
+        Int port = ReadOnlyConfigFns.getPort(config);
+
+        println("shareable: pass");
+    }
+}

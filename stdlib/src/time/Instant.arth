@@ -1,0 +1,55 @@
+package time;
+
+/**
+ * Instant for high-precision monotonic time measurement.
+ *
+ * NOTE: This file is an INTRINSIC-BACKED STUB for IDE/tooling support.
+ * The function bodies are placeholders - actual implementation is provided
+ * by the compiler via intrinsic lowering to VM runtime functions.
+ *
+ * Instant represents a point in monotonic time, useful for measuring elapsed
+ * time without being affected by system clock adjustments. Unlike DateTime,
+ * Instant is not tied to wall-clock time and cannot be converted to a date.
+ *
+ * Example usage:
+ * ```
+ * import time.*;
+ *
+ * module Main {
+ *     public static void main() {
+ *         Instant start = Instant.now();
+ *         // ... do some work ...
+ *         Int elapsedMs = Instant.elapsed(start);
+ *         Console.print("Elapsed: " + elapsedMs + "ms");
+ *     }
+ * }
+ * ```
+ *
+ * @see src/compiler/intrinsics.rs for intrinsic registry
+ * @see crates/arth-vm/src/runtime.rs for VM implementation
+ */
+
+/// Represents a point in monotonic time.
+/// Used for measuring elapsed time with high precision.
+public struct Instant {
+    /// Internal handle to the instant value
+    public final Int handle;
+}
+
+module Instant {
+    /// Returns the current instant from a monotonic clock.
+    ///
+    /// This is unaffected by system clock adjustments and is ideal
+    /// for measuring elapsed time.
+    ///
+    /// @return The current Instant
+    @intrinsic("instant.now")
+    public static Instant now() { return Instant { handle: 0 }; }
+
+    /// Returns the number of milliseconds elapsed since this instant.
+    ///
+    /// @param self The starting Instant
+    /// @return Milliseconds elapsed since the instant was captured
+    @intrinsic("instant.elapsed")
+    public static Int elapsed(Instant self) { return 0; }
+}

@@ -1,0 +1,183 @@
+package demo;
+
+// Demonstrates interface inheritance and implementation per spec §4, §5
+
+// Base interfaces
+public interface Named {
+    String getName();
+}
+
+public interface Describable {
+    String describe();
+}
+
+// Interface extending another interface
+public interface Entity extends Named {
+    String getId();
+}
+
+// Interface with multiple parent interfaces
+public interface FullyDescribable extends Named, Describable {
+    // Inherits getName() from Named and describe() from Describable
+}
+
+// Interface with default methods (abstract and optional to override)
+public interface Comparable {
+    Int compareTo(Int other);
+
+    // If default methods are supported:
+    // default Bool lessThan(Self other) { return compareTo(other) < 0; }
+}
+
+// Concrete structs
+public struct User {
+    public final String id;
+    public final String name;
+    public final String email;
+}
+
+public struct Product {
+    public final String sku;
+    public final String name;
+    public final Int price;
+}
+
+public struct Order {
+    public final String orderId;
+    public final String userId;
+    public final Int total;
+}
+
+// Implement interfaces via modules
+
+// User implements Entity (which extends Named)
+module UserEntity implements Entity {
+    public String getId(User u) {
+        return u.id;
+    }
+
+    public String getName(User u) {
+        return u.name;
+    }
+}
+
+// User also implements Describable
+module UserDescribable implements Describable {
+    public String describe(User u) {
+        return "User: " + u.name + " (" + u.email + ")";
+    }
+}
+
+// Product implements Named
+module ProductNamed implements Named {
+    public String getName(Product p) {
+        return p.name;
+    }
+}
+
+// Product implements Describable
+module ProductDescribable implements Describable {
+    public String describe(Product p) {
+        return "Product: " + p.name + " @ $" + p.price;
+    }
+}
+
+// Order implements multiple interfaces
+module OrderFull implements Entity, Describable {
+    public String getId(Order o) {
+        return o.orderId;
+    }
+
+    public String getName(Order o) {
+        return "Order #" + o.orderId;
+    }
+
+    public String describe(Order o) {
+        return "Order " + o.orderId + " for user " + o.userId + " total: $" + o.total;
+    }
+}
+
+// Factory modules with companion naming convention
+module UserFns {
+    public User new(String id, String name, String email) {
+        return User { id: id, name: name, email: email };
+    }
+}
+
+module ProductFns {
+    public Product new(String sku, String name, Int price) {
+        return Product { sku: sku, name: name, price: price };
+    }
+}
+
+module OrderFns {
+    public Order new(String orderId, String userId, Int total) {
+        return Order { orderId: orderId, userId: userId, total: total };
+    }
+}
+
+// Generic interface with type parameter
+public interface Repository<T> {
+    T findById(String id);
+    void save(T entity);
+    void delete(String id);
+}
+
+// Implement Repository for User
+module UserRepository implements Repository {
+    public User findById(String id) {
+        // Would query database
+        return UserFns.new(id, "Unknown", "unknown@example.com");
+    }
+
+    public void save(User u) {
+        // Would persist to database
+    }
+
+    public void delete(String id) {
+        // Would delete from database
+    }
+}
+
+// Demonstrate polymorphic behavior
+module Demo {
+    // Accept anything implementing Named
+    public void printName(String name) {
+        println("Name: " + name);
+    }
+
+    // Accept anything implementing Describable
+    public void printDescription(String desc) {
+        println("Description: " + desc);
+    }
+
+    public void demonstrate() {
+        User user = UserFns.new("u1", "Alice", "alice@example.com");
+        Product product = ProductFns.new("SKU001", "Widget", 999);
+        Order order = OrderFns.new("ORD123", "u1", 4999);
+
+        // Use interface implementations
+        String userName = UserEntity.getName(user);
+        String userDesc = UserDescribable.describe(user);
+        printName(userName);
+        printDescription(userDesc);
+
+        String productName = ProductNamed.getName(product);
+        String productDesc = ProductDescribable.describe(product);
+        printName(productName);
+        printDescription(productDesc);
+
+        String orderId = OrderFull.getId(order);
+        String orderName = OrderFull.getName(order);
+        String orderDesc = OrderFull.describe(order);
+        printName(orderName);
+        printDescription(orderDesc);
+    }
+}
+
+module Main {
+    public static void main() {
+        Demo.demonstrate();
+        println("InterfaceInheritance demo complete");
+    }
+}

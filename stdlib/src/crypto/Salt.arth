@@ -1,0 +1,117 @@
+package crypto;
+
+/**
+ * Cryptographic salt for key derivation and password hashing.
+ *
+ * A salt is random data used as additional input to:
+ * - Key derivation functions (HKDF, PBKDF2, Argon2)
+ * - Password hashing (Argon2id, bcrypt)
+ *
+ * Salts prevent rainbow table attacks and ensure that identical passwords
+ * produce different hashes.
+ *
+ * Example usage:
+ * ```arth
+ * import crypto.*;
+ *
+ * module Example {
+ *     public void deriveKey() throws RandomError {
+ *         // Generate a random salt
+ *         Salt salt = Salt.random(16);
+ *
+ *         // Use with password hashing
+ *         String hash = Password.hash("mypassword", salt);
+ *     }
+ * }
+ * ```
+ *
+ * @see crypto.Kdf for key derivation
+ * @see crypto.Password for password hashing
+ */
+
+/**
+ * A cryptographic salt.
+ */
+public struct Salt {
+    /// The salt bytes
+    public final bytes data;
+}
+
+/**
+ * Module for Salt operations.
+ */
+module Salt {
+    /// Default salt size for password hashing (16 bytes = 128 bits)
+    public static final int DEFAULT_SIZE = 16;
+
+    /// Recommended salt size for HKDF (32 bytes = 256 bits)
+    public static final int HKDF_SIZE = 32;
+
+    // =========================================================================
+    // Generation
+    // =========================================================================
+
+    /**
+     * Generates a random salt of the given size.
+     *
+     * @param size The salt size in bytes (typically 16 or 32)
+     * @return A new random salt
+     * @throws RandomError if the CSPRNG fails
+     */
+    @intrinsic("crypto.salt_random")
+    public static Salt random(int size) throws RandomError {
+        return Salt {
+            data: bytes.allocate(size)
+        };
+    }
+
+    /**
+     * Generates a random salt of the default size (16 bytes).
+     *
+     * @return A new random salt
+     * @throws RandomError if the CSPRNG fails
+     */
+    public static Salt randomDefault() throws RandomError {
+        return Salt.random(DEFAULT_SIZE);
+    }
+
+    // =========================================================================
+    // Import/Export
+    // =========================================================================
+
+    /**
+     * Creates a Salt from raw bytes.
+     *
+     * @param data The salt bytes
+     * @return A new Salt
+     */
+    public static Salt fromBytes(bytes data) {
+        return Salt {
+            data: data
+        };
+    }
+
+    /**
+     * Returns the raw salt bytes.
+     *
+     * @param self The salt
+     * @return The salt bytes
+     */
+    public static bytes toBytes(Salt self) {
+        return self.data;
+    }
+
+    // =========================================================================
+    // Properties
+    // =========================================================================
+
+    /**
+     * Returns the salt size in bytes.
+     *
+     * @param self The salt
+     * @return The size
+     */
+    public static int size(Salt self) {
+        return self.data.length();
+    }
+}

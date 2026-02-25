@@ -1,0 +1,319 @@
+package crypto;
+
+/**
+ * HMAC (Keyed-Hash Message Authentication Code) implementation.
+ *
+ * HMAC provides message authentication using a cryptographic hash function
+ * combined with a secret key. It is defined in RFC 2104 and NIST FIPS 198-1.
+ *
+ * HMAC provides:
+ * - Message integrity: Detects if the message has been modified
+ * - Message authentication: Verifies the sender knew the secret key
+ *
+ * Important security notes:
+ * - Always use a cryptographically random key
+ * - Minimum recommended key size: Same as hash output size
+ * - Keys should be at least as long as the hash output for full security
+ * - Use constant-time comparison (verify()) to prevent timing attacks
+ *
+ * Supported algorithms:
+ * - HMAC-SHA-256 (recommended for most use cases)
+ * - HMAC-SHA-384
+ * - HMAC-SHA-512 (recommended for high security)
+ * - HMAC-SHA3-256
+ * - HMAC-SHA3-512
+ *
+ * Note: BLAKE3 is NOT supported for HMAC as it has its own built-in
+ * keyed hashing mode. Use Blake3.keyedHash() instead.
+ *
+ * Example usage:
+ * ```arth
+ * import crypto.*;
+ *
+ * module Example {
+ *     public void authenticateMessage() {
+ *         bytes key = Encoding.fromHex("0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b");
+ *         bytes message = "Hello, World!".toBytes();
+ *
+ *         // One-shot MAC
+ *         Mac mac = Hmac.mac(HashAlgorithm.SHA256, key, message);
+ *         String hex = Encoding.toHex(Mac.toBytes(mac));
+ *         Console.println("HMAC-SHA256: " + hex);
+ *
+ *         // Verify MAC (constant-time)
+ *         Bool valid = Hmac.verify(mac, key, message);
+ *     }
+ * }
+ * ```
+ *
+ * @see crypto.HashAlgorithm for available hash algorithms
+ * @see crypto.Hash for non-keyed hashing
+ * @see crypto.Encoding for hex/base64 encoding
+ */
+
+/**
+ * A message authentication code (MAC) result with algorithm tag.
+ *
+ * The MAC bytes are stored in a fixed-size buffer. The actual MAC
+ * length depends on the underlying hash algorithm.
+ */
+public struct Mac {
+    /// The hash algorithm used for HMAC
+    public final HashAlgorithm algorithm;
+    /// The MAC bytes
+    public final bytes data;
+}
+
+/**
+ * Incremental HMAC state for streaming MAC computation.
+ *
+ * Use this for computing MACs on large data or data that arrives in chunks.
+ * The handle is managed by the runtime and must not be copied.
+ */
+public struct MacState {
+    /// The algorithm being used
+    public final HashAlgorithm algorithm;
+    /// Internal handle to the HMAC state (managed by runtime)
+    final Int handle;
+}
+
+/**
+ * Module for HMAC providing message authentication operations.
+ *
+ * NOTE: This file is an INTRINSIC-BACKED STUB for IDE/tooling support.
+ * The function bodies are placeholders - actual implementation is provided
+ * by the compiler via intrinsic lowering to C FFI runtime functions.
+ */
+module Hmac {
+    // =========================================================================
+    // One-Shot MAC
+    // =========================================================================
+
+    /**
+     * Computes an HMAC of the given data.
+     *
+     * This is the most common way to compute a MAC when all data is available
+     * at once. For streaming or incremental MAC computation, use newMac().
+     *
+     * @param algorithm The hash algorithm to use (BLAKE3 not supported)
+     * @param key The secret key (minimum: hash output size bytes recommended)
+     * @param data The data to authenticate
+     * @return The computed MAC
+     * @throws UnsupportedAlgorithmError if BLAKE3 is specified
+     */
+    @intrinsic("crypto.hmac")
+    public static Mac mac(HashAlgorithm algorithm, bytes key, bytes data) throws UnsupportedAlgorithmError {
+        // Intrinsic: computes HMAC using C FFI
+        return Mac {
+            algorithm: algorithm,
+            data: bytes.allocate(0)
+        };
+    }
+
+    /**
+     * Computes an HMAC of a string.
+     *
+     * Convenience method that converts the string to UTF-8 bytes first.
+     *
+     * @param algorithm The hash algorithm to use
+     * @param key The secret key
+     * @param str The string to authenticate
+     * @return The computed MAC
+     * @throws UnsupportedAlgorithmError if BLAKE3 is specified
+     */
+    public static Mac macString(HashAlgorithm algorithm, bytes key, String str) throws UnsupportedAlgorithmError {
+        return Hmac.mac(algorithm, key, str.toBytes());
+    }
+
+    // =========================================================================
+    // Incremental MAC
+    // =========================================================================
+
+    /**
+     * Creates a new incremental HMAC state for the given algorithm and key.
+     *
+     * Use this when you need to authenticate data that arrives in chunks,
+     * or when the full data is too large to hold in memory at once.
+     *
+     * @param algorithm The hash algorithm to use (BLAKE3 not supported)
+     * @param key The secret key
+     * @return A new MacState instance
+     * @throws UnsupportedAlgorithmError if BLAKE3 is specified
+     */
+    @intrinsic("crypto.hmac_new")
+    public static MacState newMac(HashAlgorithm algorithm, bytes key) throws UnsupportedAlgorithmError {
+        // Intrinsic: creates new HMAC state
+        return MacState {
+            algorithm: algorithm,
+            handle: 0
+        };
+    }
+
+    /**
+     * Feeds data into the HMAC state.
+     *
+     * Can be called multiple times to process data incrementally.
+     * After all data has been fed, call finalize() to get the MAC.
+     *
+     * @param state The MAC state to update
+     * @param data The data to add to the MAC computation
+     */
+    @intrinsic("crypto.hmac_update")
+    public static void update(MacState state, bytes data) {
+        // Intrinsic: updates HMAC state with data
+    }
+
+    /**
+     * Completes the HMAC computation and returns the result.
+     *
+     * After calling finalize(), the state is consumed and should not
+     * be used again. Create a new state if you need to compute another MAC.
+     *
+     * @param state The MAC state to finalize
+     * @return The computed MAC
+     */
+    @intrinsic("crypto.hmac_finalize")
+    public static Mac finalize(MacState state) {
+        // Intrinsic: finalizes HMAC and returns MAC
+        return Mac {
+            algorithm: state.algorithm,
+            data: bytes.allocate(0)
+        };
+    }
+
+    // =========================================================================
+    // Verification
+    // =========================================================================
+
+    /**
+     * Verifies that a MAC matches the given data and key.
+     *
+     * This recomputes the MAC of the data using the same algorithm and key,
+     * then compares it to the expected MAC using constant-time comparison
+     * to prevent timing attacks.
+     *
+     * @param expected The expected MAC value
+     * @param key The secret key
+     * @param data The data to verify
+     * @return true if the data authenticates correctly
+     */
+    @intrinsic("crypto.hmac_verify")
+    public static Bool verify(Mac expected, bytes key, bytes data) {
+        // Intrinsic: constant-time MAC verification
+        return false;
+    }
+
+    // =========================================================================
+    // Conversion
+    // =========================================================================
+
+    /**
+     * Returns the raw MAC bytes.
+     *
+     * @param mac The MAC to convert
+     * @return The raw MAC bytes
+     */
+    public static bytes toBytes(Mac mac) {
+        return mac.data;
+    }
+
+    /**
+     * Creates a Mac from raw bytes and algorithm.
+     *
+     * The provided bytes must be the correct length for the algorithm.
+     *
+     * @param algorithm The hash algorithm used
+     * @param data The MAC bytes
+     * @return A Mac instance
+     * @throws InvalidKeyError if the byte length is wrong for the algorithm
+     */
+    public static Mac fromBytes(HashAlgorithm algorithm, bytes data) throws InvalidKeyError {
+        int expectedSize = HashAlgorithm.outputSize(algorithm);
+        if (data.length() != expectedSize) {
+            throw InvalidKeyError.withSize(
+                "MAC size mismatch for HMAC-" + HashAlgorithm.name(algorithm),
+                expectedSize,
+                data.length()
+            );
+        }
+        return Mac {
+            algorithm: algorithm,
+            data: data
+        };
+    }
+
+    /**
+     * Returns the algorithm used to compute this MAC.
+     *
+     * @param mac The MAC to query
+     * @return The hash algorithm
+     */
+    public static HashAlgorithm algorithm(Mac mac) {
+        return mac.algorithm;
+    }
+
+    /**
+     * Returns the length of the MAC in bytes.
+     *
+     * @param mac The MAC to query
+     * @return The MAC length in bytes
+     */
+    public static int length(Mac mac) {
+        return mac.data.length();
+    }
+
+    // =========================================================================
+    // Comparison
+    // =========================================================================
+
+    /**
+     * Compares two MACs for equality using constant-time comparison.
+     *
+     * This prevents timing attacks by taking the same amount of time
+     * regardless of where the MACs differ.
+     *
+     * @param a The first MAC
+     * @param b The second MAC
+     * @return true if the MACs are equal
+     */
+    @intrinsic("crypto.hmac_equals")
+    public static Bool equals(Mac a, Mac b) {
+        // Intrinsic: constant-time comparison
+        return false;
+    }
+}
+
+/**
+ * Module for Mac type providing convenience methods.
+ */
+module Mac {
+    /**
+     * Returns the raw MAC bytes.
+     *
+     * @param self The MAC
+     * @return The raw MAC bytes
+     */
+    public static bytes toBytes(Mac self) {
+        return self.data;
+    }
+
+    /**
+     * Returns the algorithm used to compute this MAC.
+     *
+     * @param self The MAC
+     * @return The hash algorithm
+     */
+    public static HashAlgorithm algorithm(Mac self) {
+        return self.algorithm;
+    }
+
+    /**
+     * Returns the length of the MAC in bytes.
+     *
+     * @param self The MAC
+     * @return The MAC length
+     */
+    public static int length(Mac self) {
+        return self.data.length();
+    }
+}

@@ -1,0 +1,275 @@
+package concurrent.atomics;
+
+/// Atomics Example
+///
+/// Demonstrates atomic operations for lock-free shared state:
+/// - Atomic integers and booleans
+/// - Memory orderings (Relaxed, Acquire, Release, AcqRel, SeqCst)
+/// - Compare-and-swap patterns
+/// - Atomic counters and flags
+
+import concurrent.*;
+import log.*;
+
+/// Memory ordering constants
+/// These correspond to the runtime ordering values
+module Ordering {
+  public final int Relaxed = 0;
+  public final int Acquire = 1;
+  public final int Release = 2;
+  public final int AcqRel = 3;
+  public final int SeqCst = 4;
+}
+
+module Atomics {
+  /// Basic atomic counter
+  public async void atomicCounter() throws (CancelledError) {
+    Logger log = Logger.get("concurrent.atomics");
+
+    Atomic<int> counter = Atomic.of(0);
+
+    // Spawn multiple incrementers
+    List<Task<void>> tasks = [];
+    for (int i = 0; i < 10; i++) {
+      tasks.add(async {
+        for (int j = 0; j < 100; j++) {
+          counter.fetchAdd(1, Ordering.SeqCst);
+        }
+      });
+    }
+
+    // Wait for all
+    for (Task<void> t : tasks) {
+      await t;
+    }
+
+    int finalValue = counter.load(Ordering.SeqCst);
+    log.info("counter", "Final count", Fields.of("value", finalValue));
+    // Expected: 1000 (10 tasks * 100 increments)
+  }
+
+  /// Compare-and-swap loop pattern
+  public async void casLoop() throws (CancelledError) {
+    Logger log = Logger.get("concurrent.atomics");
+
+    Atomic<int> value = Atomic.of(0);
+
+    // CAS to set value to 42 if currently 0
+    int expected = 0;
+    int desired = 42;
+
+    boolean success = value.compareExchange(expected, desired, Ordering.AcqRel);
+    log.info("cas", "First CAS", Fields.of("success", success, "value", value.load(Ordering.Relaxed)));
+
+    // Try again - should fail since value is now 42
+    success = value.compareExchange(expected, desired, Ordering.AcqRel);
+    log.info("cas", "Second CAS", Fields.of("success", success, "value", value.load(Ordering.Relaxed)));
+  }
+
+  /// Lock-free stack using CAS
+  public async void lockFreeIncrement() throws (CancelledError) {
+    Logger log = Logger.get("concurrent.atomics");
+
+    Atomic<int> counter = Atomic.of(100);
+
+    // Multiple tasks trying to increment atomically
+    List<Task<void>> tasks = [];
+    for (int i = 0; i < 5; i++) {
+      int taskId = i;
+      tasks.add(async {
+        // Retry loop for CAS
+        while (true) {
+          int current = counter.load(Ordering.Acquire);
+          int next = current + 1;
+          if (counter.compareExchange(current, next, Ordering.AcqRel)) {
+            log.info("inc", "Incremented",
+              Fields.of("task", taskId, "from", current, "to", next));
+            break;
+          }
+          // CAS failed, retry
+        }
+      });
+    }
+
+    for (Task<void> t : tasks) {
+      await t;
+    }
+
+    log.info("final", "Final value", Fields.of("value", counter.load(Ordering.SeqCst)));
+  }
+
+  /// Atomic boolean as a spinlock
+  public async void spinlock() throws (CancelledError) {
+    Logger log = Logger.get("concurrent.atomics");
+
+    Atomic<boolean> lock = Atomic.of(false);
+    Atomic<int> protectedData = Atomic.of(0);
+
+    // Multiple tasks competing for the lock
+    List<Task<void>> tasks = [];
+    for (int i = 0; i < 3; i++) {
+      int taskId = i;
+      tasks.add(async {
+        // Acquire lock (spin until successful)
+        while (!lock.compareExchange(false, true, Ordering.Acquire)) {
+          // Spin
+        }
+
+        log.info("locked", "Acquired lock", Fields.of("task", taskId));
+
+        // Critical section - modify protected data
+        int current = protectedData.load(Ordering.Relaxed);
+        protectedData.store(current + 10, Ordering.Relaxed);
+
+        log.info("modified", "Modified data", Fields.of("task", taskId, "value", current + 10));
+
+        // Release lock
+        lock.store(false, Ordering.Release);
+        log.info("unlocked", "Released lock", Fields.of("task", taskId));
+      });
+    }
+
+    for (Task<void> t : tasks) {
+      await t;
+    }
+
+    log.info("final", "Final data", Fields.of("value", protectedData.load(Ordering.SeqCst)));
+  }
+
+  /// Once flag pattern - initialization that runs exactly once
+  public async void onceFlag() throws (CancelledError) {
+    Logger log = Logger.get("concurrent.atomics");
+
+    Atomic<boolean> initialized = Atomic.of(false);
+    Atomic<int> sharedValue = Atomic.of(0);
+
+    // Multiple tasks try to initialize
+    List<Task<void>> tasks = [];
+    for (int i = 0; i < 5; i++) {
+      int taskId = i;
+      tasks.add(async {
+        // Try to be the one to initialize
+        if (initialized.compareExchange(false, true, Ordering.AcqRel)) {
+          // This task wins - do initialization
+          sharedValue.store(42, Ordering.Release);
+          log.info("init", "Initialized by task", Fields.of("task", taskId));
+        } else {
+          // Another task already initialized
+          log.info("skip", "Already initialized", Fields.of("task", taskId));
+        }
+
+        // Use the value (all tasks see the initialized value)
+        int value = sharedValue.load(Ordering.Acquire);
+        log.info("use", "Using value", Fields.of("task", taskId, "value", value));
+      });
+    }
+
+    for (Task<void> t : tasks) {
+      await t;
+    }
+  }
+
+  /// Fetch-and-add for statistics
+  public async void statisticsCounter() throws (CancelledError) {
+    Logger log = Logger.get("concurrent.atomics");
+
+    Atomic<int> successCount = Atomic.of(0);
+    Atomic<int> failureCount = Atomic.of(0);
+    Atomic<int> totalBytes = Atomic.of(0);
+
+    // Simulate multiple workers updating stats
+    List<Task<void>> workers = [];
+    for (int i = 0; i < 4; i++) {
+      workers.add(async {
+        for (int j = 0; j < 25; j++) {
+          // Simulate work with random success/failure
+          if (j % 3 == 0) {
+            failureCount.fetchAdd(1, Ordering.Relaxed);
+          } else {
+            successCount.fetchAdd(1, Ordering.Relaxed);
+            totalBytes.fetchAdd(1024, Ordering.Relaxed);
+          }
+        }
+      });
+    }
+
+    for (Task<void> w : workers) {
+      await w;
+    }
+
+    log.info("stats", "Final statistics",
+      Fields.of(
+        "success", successCount.load(Ordering.SeqCst),
+        "failure", failureCount.load(Ordering.SeqCst),
+        "bytes", totalBytes.load(Ordering.SeqCst)
+      ));
+  }
+
+  /// Atomic swap for ownership transfer
+  public async void atomicSwap() throws (CancelledError) {
+    Logger log = Logger.get("concurrent.atomics");
+
+    Atomic<int> slot = Atomic.of(-1);  // -1 means empty
+
+    // Producer swaps in a value
+    int oldValue = slot.swap(42, Ordering.AcqRel);
+    log.info("swap", "Producer swapped", Fields.of("old", oldValue, "new", 42));
+
+    // Consumer swaps out the value
+    int consumed = slot.swap(-1, Ordering.AcqRel);
+    log.info("swap", "Consumer swapped", Fields.of("consumed", consumed));
+  }
+
+  /// Fetch operations for bitwise flags
+  public async void atomicFlags() throws (CancelledError) {
+    Logger log = Logger.get("concurrent.atomics");
+
+    // Flags: bit 0 = ready, bit 1 = running, bit 2 = error
+    Atomic<int> flags = Atomic.of(0);
+
+    // Set ready flag
+    int oldFlags = flags.fetchOr(1, Ordering.SeqCst);
+    log.info("flags", "Set ready", Fields.of("old", oldFlags, "new", flags.load(Ordering.Relaxed)));
+
+    // Set running flag
+    oldFlags = flags.fetchOr(2, Ordering.SeqCst);
+    log.info("flags", "Set running", Fields.of("old", oldFlags, "new", flags.load(Ordering.Relaxed)));
+
+    // Clear ready flag using AND with complement
+    oldFlags = flags.fetchAnd(0xFFFFFFFE, Ordering.SeqCst);  // ~1
+    log.info("flags", "Clear ready", Fields.of("old", oldFlags, "new", flags.load(Ordering.Relaxed)));
+
+    // Toggle error flag using XOR
+    oldFlags = flags.fetchXor(4, Ordering.SeqCst);
+    log.info("flags", "Toggle error", Fields.of("old", oldFlags, "new", flags.load(Ordering.Relaxed)));
+  }
+
+  /// Max/min operations for tracking extremes
+  public async void atomicMaxMin() throws (CancelledError) {
+    Logger log = Logger.get("concurrent.atomics");
+
+    Atomic<int> maxSeen = Atomic.of(0);
+    Atomic<int> minSeen = Atomic.of(999999);
+
+    // Multiple tasks update max/min
+    List<Task<void>> tasks = [];
+    for (int i = 0; i < 5; i++) {
+      int base = i * 100;
+      tasks.add(async {
+        for (int j = 0; j < 10; j++) {
+          int value = base + j;
+          maxSeen.fetchMax(value, Ordering.SeqCst);
+          minSeen.fetchMin(value, Ordering.SeqCst);
+        }
+      });
+    }
+
+    for (Task<void> t : tasks) {
+      await t;
+    }
+
+    log.info("range", "Tracked range",
+      Fields.of("min", minSeen.load(Ordering.SeqCst),
+                "max", maxSeen.load(Ordering.SeqCst)));
+  }
+}

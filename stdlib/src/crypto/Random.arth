@@ -1,0 +1,275 @@
+package crypto;
+
+/**
+ * Cryptographically Secure Pseudo-Random Number Generator (CSPRNG).
+ *
+ * This module provides access to the platform's cryptographically secure
+ * random number generator. On each platform, it uses the appropriate
+ * system-level CSPRNG:
+ *
+ * - **Linux**: `getrandom()` syscall
+ * - **macOS**: `SecRandomCopyBytes` (Security.framework)
+ * - **Windows**: `BCryptGenRandom`
+ *
+ * The random bytes produced are suitable for cryptographic purposes:
+ * - Generating secret keys
+ * - Generating nonces and IVs
+ * - Creating random tokens and session IDs
+ * - Generating UUIDs
+ *
+ * Security properties:
+ * - Unpredictable: Cannot be predicted from previous outputs
+ * - Uniform: All byte values are equally likely
+ * - Non-repeating: Extremely low probability of collision
+ *
+ * Example usage:
+ * ```arth
+ * import crypto.*;
+ *
+ * module Example {
+ *     public void generateSecrets() throws RandomError {
+ *         // Generate random bytes for a key
+ *         bytes keyMaterial = Random.randomBytes(32);
+ *
+ *         // Generate a random integer in a range
+ *         int diceRoll = Random.randomInt(1, 7);  // 1-6 inclusive
+ *
+ *         // Generate a UUID
+ *         String uuid = Random.randomUuid();
+ *         Console.println("Generated UUID: " + uuid);
+ *     }
+ * }
+ * ```
+ *
+ * @see crypto.RandomError for error handling
+ * @see crypto.SecretKey for generating cryptographic keys
+ */
+
+/**
+ * Module for cryptographically secure random number generation.
+ *
+ * NOTE: This file is an INTRINSIC-BACKED STUB for IDE/tooling support.
+ * The function bodies are placeholders - actual implementation is provided
+ * by the compiler via intrinsic lowering to C FFI runtime functions.
+ */
+module Random {
+    // =========================================================================
+    // Byte Generation
+    // =========================================================================
+
+    /**
+     * Generates cryptographically secure random bytes.
+     *
+     * The returned bytes are suitable for use as key material, nonces,
+     * or any other cryptographic purpose requiring random data.
+     *
+     * @param length The number of random bytes to generate
+     * @return A new byte array filled with random data
+     * @throws RandomError if the CSPRNG fails
+     */
+    @intrinsic("crypto.random_bytes")
+    public static bytes randomBytes(int length) throws RandomError {
+        // Intrinsic: generates random bytes via C FFI
+        return bytes.allocate(length);
+    }
+
+    /**
+     * Fills an existing byte array with cryptographically secure random data.
+     *
+     * This is useful when you want to reuse a buffer or avoid allocation.
+     *
+     * @param buffer The buffer to fill with random bytes
+     * @throws RandomError if the CSPRNG fails
+     */
+    @intrinsic("crypto.random_fill")
+    public static void fillRandom(bytes buffer) throws RandomError {
+        // Intrinsic: fills buffer with random bytes via C FFI
+    }
+
+    // =========================================================================
+    // Integer Generation
+    // =========================================================================
+
+    /**
+     * Generates a random integer in the range [min, max).
+     *
+     * The integer is uniformly distributed in the specified range.
+     * This function uses rejection sampling to avoid modulo bias,
+     * ensuring all values in the range are equally likely.
+     *
+     * @param min The inclusive lower bound
+     * @param max The exclusive upper bound (must be > min)
+     * @return A random integer in [min, max)
+     * @throws RandomError if the CSPRNG fails or range is invalid
+     */
+    @intrinsic("crypto.random_int_range")
+    public static int randomInt(int min, int max) throws RandomError {
+        // Intrinsic: generates random int in range via C FFI
+        if (min >= max) {
+            throw RandomError.new("Invalid range: min must be less than max");
+        }
+        return min;
+    }
+
+    /**
+     * Generates a random integer in the range [0, max).
+     *
+     * Convenience method equivalent to randomInt(0, max).
+     *
+     * @param max The exclusive upper bound (must be > 0)
+     * @return A random integer in [0, max)
+     * @throws RandomError if the CSPRNG fails or max <= 0
+     */
+    public static int randomIntBelow(int max) throws RandomError {
+        return Random.randomInt(0, max);
+    }
+
+    /**
+     * Generates a random boolean value.
+     *
+     * Returns true or false with equal probability.
+     *
+     * @return A random boolean
+     * @throws RandomError if the CSPRNG fails
+     */
+    public static Bool randomBool() throws RandomError {
+        return Random.randomInt(0, 2) == 1;
+    }
+
+    // =========================================================================
+    // UUID Generation
+    // =========================================================================
+
+    /**
+     * Generates a random UUID v4 (RFC 4122).
+     *
+     * The UUID is returned in the standard string format:
+     * `xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx`
+     *
+     * Where:
+     * - `x` is a random hex digit
+     * - `4` indicates version 4 (random)
+     * - `y` is 8, 9, a, or b (variant bits)
+     *
+     * Example: "550e8400-e29b-41d4-a716-446655440000"
+     *
+     * @return A random UUID v4 string (36 characters)
+     * @throws RandomError if the CSPRNG fails
+     */
+    @intrinsic("crypto.random_uuid")
+    public static String randomUuid() throws RandomError {
+        // Intrinsic: generates UUID v4 via C FFI
+        return "";
+    }
+
+    // =========================================================================
+    // Availability Check
+    // =========================================================================
+
+    /**
+     * Checks if the CSPRNG is available and functioning.
+     *
+     * This can be used to verify that secure random generation will
+     * work before attempting operations that require it.
+     *
+     * On modern systems, this should always return true. It may return
+     * false on:
+     * - Early boot before entropy is available
+     * - Sandboxed environments without random device access
+     * - Virtual machines with limited entropy sources
+     *
+     * @return true if secure random is available
+     */
+    @intrinsic("crypto.random_available")
+    public static Bool isAvailable() {
+        // Intrinsic: checks CSPRNG availability via C FFI
+        return true;
+    }
+
+    // =========================================================================
+    // Utility Functions
+    // =========================================================================
+
+    /**
+     * Generates a random hexadecimal string.
+     *
+     * The string contains `length` hex characters (lowercase), which
+     * represents `length / 2` random bytes.
+     *
+     * @param length The number of hex characters (must be even)
+     * @return A random hex string
+     * @throws RandomError if the CSPRNG fails or length is odd
+     */
+    public static String randomHex(int length) throws RandomError {
+        if (length % 2 != 0) {
+            throw RandomError.new("Hex string length must be even");
+        }
+        int byteLen = length / 2;
+        bytes data = Random.randomBytes(byteLen);
+        return Encoding.toHex(data);
+    }
+
+    /**
+     * Generates a random base64 string.
+     *
+     * The string represents `byteLength` random bytes encoded in base64.
+     * The resulting string will be approximately 4/3 * byteLength characters.
+     *
+     * @param byteLength The number of random bytes to encode
+     * @return A random base64 string (standard alphabet with padding)
+     * @throws RandomError if the CSPRNG fails
+     */
+    public static String randomBase64(int byteLength) throws RandomError {
+        bytes data = Random.randomBytes(byteLength);
+        return Encoding.toBase64(data);
+    }
+
+    /**
+     * Generates a random URL-safe base64 string.
+     *
+     * The string represents `byteLength` random bytes encoded in URL-safe
+     * base64 (using `-` and `_` instead of `+` and `/`).
+     *
+     * @param byteLength The number of random bytes to encode
+     * @return A random URL-safe base64 string (no padding)
+     * @throws RandomError if the CSPRNG fails
+     */
+    public static String randomBase64Url(int byteLength) throws RandomError {
+        bytes data = Random.randomBytes(byteLength);
+        return Encoding.toBase64Url(data);
+    }
+
+    /**
+     * Shuffles an array randomly using Fisher-Yates algorithm.
+     *
+     * The shuffle is performed in-place using cryptographically secure
+     * random numbers to ensure uniform distribution.
+     *
+     * @param array The array to shuffle (modified in-place)
+     * @throws RandomError if the CSPRNG fails
+     */
+    public static void shuffle(int[] array) throws RandomError {
+        for (int i = array.length - 1; i > 0; i = i - 1) {
+            int j = Random.randomInt(0, i + 1);
+            // Swap array[i] and array[j]
+            int temp = array[i];
+            array[i] = array[j];
+            array[j] = temp;
+        }
+    }
+
+    /**
+     * Picks a random element from an array.
+     *
+     * @param array The array to pick from
+     * @return A randomly selected element
+     * @throws RandomError if the CSPRNG fails or array is empty
+     */
+    public static int pick(int[] array) throws RandomError {
+        if (array.length == 0) {
+            throw RandomError.new("Cannot pick from empty array");
+        }
+        int index = Random.randomInt(0, array.length);
+        return array[index];
+    }
+}

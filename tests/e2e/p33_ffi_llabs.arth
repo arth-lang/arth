@@ -1,0 +1,16 @@
+package test;
+
+// P33: C ABI FFI (VM)
+// Calls a libc function via `extern "C"` from within an unsafe context.
+
+extern "C" fn llabs(int x) -> int;
+
+module Main {
+    public static void main() {
+        unsafe {
+            int v = llabs(-42);
+            println("llabs(-42) = " + v);
+        }
+    }
+}
+

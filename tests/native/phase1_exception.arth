@@ -1,0 +1,36 @@
+package test.native;
+
+public struct Err {
+    public Int code;
+}
+
+module Worker {
+    public Int run(Bool fail) throws (Err) {
+        if (fail) {
+            throw Err { code: 7 };
+        }
+        return 1;
+    }
+}
+
+module Main {
+    public static void main() {
+        Int state = 0;
+        try {
+            Int x = Worker.run(true);
+            state = x;
+        } catch (Err e) {
+            if (e.code == 7) {
+                state = 2;
+            } else {
+                state = 3;
+            }
+        }
+
+        if (state == 2) {
+            println("PHASE1_EXCEPTION_OK");
+        } else {
+            println("PHASE1_EXCEPTION_BAD");
+        }
+    }
+}

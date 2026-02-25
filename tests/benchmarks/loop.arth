@@ -1,0 +1,26 @@
+package benchmark;
+
+/**
+ * Loop benchmark.
+ * Tests nested loop iteration performance.
+ * Uses while loops (not for loops) to avoid region_enter/exit.
+ */
+module Main {
+    public static void main() {
+        Int outer = 500;
+        Int inner = 500;
+        Int sum = 0;
+        Int i = 0;
+
+        while (i < outer) {
+            Int j = 0;
+            while (j < inner) {
+                sum = sum + (i * j) % 97;
+                j = j + 1;
+            }
+            i = i + 1;
+        }
+
+        println("done");
+    }
+}

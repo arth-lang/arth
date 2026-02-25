@@ -1,0 +1,203 @@
+package log;
+
+/// Structured key-value fields for log messages.
+/// Fields are immutable and built using the factory methods.
+///
+/// Example:
+///   Fields f = Fields.of("user", "alice", "count", 42);
+///   logger.info("login", "User logged in", f);
+public struct Fields {
+    /// Internal string representation of fields in "key=value key2=value2" format.
+    /// This is used by the logging intrinsic.
+    final String data;
+    /// Number of key-value pairs in this Fields instance.
+    final int count;
+}
+
+module Fields {
+    /// Creates an empty Fields instance.
+    public static Fields empty() {
+        return Fields { data: "", count: 0 };
+    }
+
+    // --- Single key factories ---
+
+    /// Creates Fields with a single String key (value is empty).
+    public static Fields of(String key) {
+        return Fields { data: key + "=", count: 1 };
+    }
+
+    /// Creates Fields with a single String key-value pair.
+    public static Fields of(String key, String value) {
+        return Fields { data: key + "=" + value, count: 1 };
+    }
+
+    /// Creates Fields with a single String key and int value.
+    public static Fields of(String key, int value) {
+        // Value converted by compiler intrinsic lowering
+        return Fields { data: key + "=" + value, count: 1 };
+    }
+
+    /// Creates Fields with a single String key and long value.
+    public static Fields of(String key, long value) {
+        return Fields { data: key + "=" + value, count: 1 };
+    }
+
+    /// Creates Fields with a single String key and float value.
+    public static Fields of(String key, float value) {
+        return Fields { data: key + "=" + value, count: 1 };
+    }
+
+    /// Creates Fields with a single String key and double value.
+    public static Fields of(String key, double value) {
+        return Fields { data: key + "=" + value, count: 1 };
+    }
+
+    /// Creates Fields with a single String key and bool value.
+    public static Fields of(String key, bool value) {
+        return Fields { data: key + "=" + value, count: 1 };
+    }
+
+    // --- Two key-value pair factories ---
+
+    /// Creates Fields with two String key-value pairs.
+    public static Fields of(String k1, String v1, String k2, String v2) {
+        return Fields { data: k1 + "=" + v1 + " " + k2 + "=" + v2, count: 2 };
+    }
+
+    /// Creates Fields with first int value, second String value.
+    public static Fields of(String k1, int v1, String k2, String v2) {
+        return Fields { data: k1 + "=" + v1 + " " + k2 + "=" + v2, count: 2 };
+    }
+
+    /// Creates Fields with first String value, second int value.
+    public static Fields of(String k1, String v1, String k2, int v2) {
+        return Fields { data: k1 + "=" + v1 + " " + k2 + "=" + v2, count: 2 };
+    }
+
+    /// Creates Fields with two int values.
+    public static Fields of(String k1, int v1, String k2, int v2) {
+        return Fields { data: k1 + "=" + v1 + " " + k2 + "=" + v2, count: 2 };
+    }
+
+    /// Creates Fields with first long value, second String value.
+    public static Fields of(String k1, long v1, String k2, String v2) {
+        return Fields { data: k1 + "=" + v1 + " " + k2 + "=" + v2, count: 2 };
+    }
+
+    /// Creates Fields with first String value, second long value.
+    public static Fields of(String k1, String v1, String k2, long v2) {
+        return Fields { data: k1 + "=" + v1 + " " + k2 + "=" + v2, count: 2 };
+    }
+
+    // --- Three key-value pair factories ---
+
+    /// Creates Fields with three String key-value pairs.
+    public static Fields of(String k1, String v1, String k2, String v2, String k3, String v3) {
+        return Fields { data: k1 + "=" + v1 + " " + k2 + "=" + v2 + " " + k3 + "=" + v3, count: 3 };
+    }
+
+    /// Creates Fields with mixed types: String, int, String.
+    public static Fields of(String k1, String v1, String k2, int v2, String k3, String v3) {
+        return Fields { data: k1 + "=" + v1 + " " + k2 + "=" + v2 + " " + k3 + "=" + v3, count: 3 };
+    }
+
+    // --- Four key-value pair factories ---
+
+    /// Creates Fields with four String key-value pairs.
+    public static Fields of(String k1, String v1, String k2, String v2, String k3, String v3, String k4, String v4) {
+        return Fields {
+            data: k1 + "=" + v1 + " " + k2 + "=" + v2 + " " + k3 + "=" + v3 + " " + k4 + "=" + v4,
+            count: 4
+        };
+    }
+
+    // --- Builder-style methods for chaining ---
+
+    /// Adds a String key-value pair to this Fields, returning a new Fields instance.
+    public static Fields add(Fields self, String key, String value) {
+        if self.data == "" {
+            return Fields { data: key + "=" + value, count: self.count + 1 };
+        }
+        return Fields { data: self.data + " " + key + "=" + value, count: self.count + 1 };
+    }
+
+    /// Adds a String key and int value to this Fields, returning a new Fields instance.
+    public static Fields addInt(Fields self, String key, int value) {
+        if self.data == "" {
+            return Fields { data: key + "=" + value, count: self.count + 1 };
+        }
+        return Fields { data: self.data + " " + key + "=" + value, count: self.count + 1 };
+    }
+
+    /// Adds a String key and long value to this Fields, returning a new Fields instance.
+    public static Fields addLong(Fields self, String key, long value) {
+        if self.data == "" {
+            return Fields { data: key + "=" + value, count: self.count + 1 };
+        }
+        return Fields { data: self.data + " " + key + "=" + value, count: self.count + 1 };
+    }
+
+    /// Adds a String key and float value to this Fields, returning a new Fields instance.
+    public static Fields addFloat(Fields self, String key, float value) {
+        if self.data == "" {
+            return Fields { data: key + "=" + value, count: self.count + 1 };
+        }
+        return Fields { data: self.data + " " + key + "=" + value, count: self.count + 1 };
+    }
+
+    /// Adds a String key and double value to this Fields, returning a new Fields instance.
+    public static Fields addDouble(Fields self, String key, double value) {
+        if self.data == "" {
+            return Fields { data: key + "=" + value, count: self.count + 1 };
+        }
+        return Fields { data: self.data + " " + key + "=" + value, count: self.count + 1 };
+    }
+
+    /// Adds a String key and bool value to this Fields, returning a new Fields instance.
+    public static Fields addBool(Fields self, String key, bool value) {
+        if self.data == "" {
+            return Fields { data: key + "=" + value, count: self.count + 1 };
+        }
+        return Fields { data: self.data + " " + key + "=" + value, count: self.count + 1 };
+    }
+
+    /// Merges another Fields into this one, returning a new Fields instance.
+    public static Fields merge(Fields self, Fields other) {
+        if self.data == "" {
+            return other;
+        }
+        if other.data == "" {
+            return self;
+        }
+        return Fields { data: self.data + " " + other.data, count: self.count + other.count };
+    }
+
+    // --- Accessors ---
+
+    /// Returns the number of key-value pairs in this Fields.
+    public static int size(Fields self) {
+        return self.count;
+    }
+
+    /// Returns true if this Fields has no key-value pairs.
+    public static bool isEmpty(Fields self) {
+        return self.count == 0;
+    }
+
+    /// Returns the string representation of this Fields in "key=value key2=value2" format.
+    public static String toString(Fields self) {
+        return self.data;
+    }
+
+    /// Returns a JSON object representation of this Fields.
+    /// Note: This is a simplified implementation that assumes no special characters in values.
+    public static String toJson(Fields self) {
+        if self.data == "" {
+            return "{}";
+        }
+        // Simple conversion: split by space, then by =
+        // In a real implementation, this would properly escape JSON strings
+        return "{" + self.data + "}";
+    }
+}

@@ -1,0 +1,88 @@
+package string;
+
+/**
+ * String operations module.
+ *
+ * This file contains intrinsic-backed string operations.
+ *
+ * Core intrinsics (18):
+ * - len, substring, indexOf, lastIndexOf, startsWith, endsWith
+ * - split, trim, toLower, toUpper, replace, charAt
+ * - contains, repeat, parseInt, parseFloat, fromInt, fromFloat
+ *
+ * @see crates/arth-vm/src/runtime.rs for VM implementation
+ */
+
+module Strings {
+    /// Returns the length of the string in characters.
+    @intrinsic("string.len")
+    public static int len(String s) { return 0; }
+
+    /// Returns a substring from start (inclusive) to end (exclusive).
+    @intrinsic("string.substring")
+    public static String substring(String s, int start, int end) { return ""; }
+
+    /// Returns the index of the first occurrence of search, or -1 if not found.
+    @intrinsic("string.indexOf")
+    public static int indexOf(String s, String search) { return 0; }
+
+    /// Returns the index of the last occurrence of search, or -1 if not found.
+    @intrinsic("string.lastIndexOf")
+    public static int lastIndexOf(String s, String search) { return 0; }
+
+    /// Returns 1 if the string starts with the prefix, 0 otherwise.
+    @intrinsic("string.startsWith")
+    public static int startsWith(String s, String prefix) { return 0; }
+
+    /// Returns 1 if the string ends with the suffix, 0 otherwise.
+    @intrinsic("string.endsWith")
+    public static int endsWith(String s, String suffix) { return 0; }
+
+    /// Splits the string by the delimiter and returns a list handle of strings.
+    @intrinsic("string.split")
+    public static int split(String s, String delimiter) { return 0; }
+
+    /// Returns the string with leading and trailing whitespace removed.
+    @intrinsic("string.trim")
+    public static String trim(String s) { return ""; }
+
+    /// Returns the string converted to lowercase.
+    @intrinsic("string.toLower")
+    public static String toLower(String s) { return ""; }
+
+    /// Returns the string converted to uppercase.
+    @intrinsic("string.toUpper")
+    public static String toUpper(String s) { return ""; }
+
+    /// Returns a new string with all occurrences of old replaced with new.
+    @intrinsic("string.replace")
+    public static String replace(String s, String old, String new) { return ""; }
+
+    /// Returns the character code at the given index, or 0 if out of bounds.
+    @intrinsic("string.charAt")
+    public static int charAt(String s, int index) { return 0; }
+
+    /// Returns 1 if the string contains the search string, 0 otherwise.
+    @intrinsic("string.contains")
+    public static int contains(String s, String search) { return 0; }
+
+    /// Returns the string repeated count times.
+    @intrinsic("string.repeat")
+    public static String repeat(String s, int count) { return ""; }
+
+    /// Parses the string as an integer. Returns 0 on parse failure.
+    @intrinsic("string.parseInt")
+    public static int parseInt(String s) { return 0; }
+
+    /// Parses the string as a float. Returns 0.0 on parse failure.
+    @intrinsic("string.parseFloat")
+    public static float parseFloat(String s) { return 0.0; }
+
+    /// Converts an integer to its string representation.
+    @intrinsic("string.fromInt")
+    public static String fromInt(int n) { return ""; }
+
+    /// Converts a float to its string representation.
+    @intrinsic("string.fromFloat")
+    public static String fromFloat(float f) { return ""; }
+}

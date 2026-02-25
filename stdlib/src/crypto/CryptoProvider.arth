@@ -1,0 +1,235 @@
+package crypto;
+
+/**
+ * Cryptographic Provider.
+ *
+ * CryptoProvider is a provider that manages cryptographic resources for
+ * an application. It encapsulates:
+ *
+ * - A secure random number generator
+ * - An in-memory key store for runtime key management
+ *
+ * Using a provider for crypto operations ensures:
+ * - Consistent random source across all crypto operations
+ * - Centralized key management
+ * - Proper cleanup of sensitive material on shutdown
+ *
+ * Example usage:
+ * ```arth
+ * import crypto.*;
+ *
+ * // Application entry point
+ * module Main {
+ *     public void main() throws (RandomError, KeyStoreError) {
+ *         // Initialize crypto provider
+ *         using CryptoProvider crypto = CryptoProvider.new();
+ *
+ *         // Use the provider for crypto operations
+ *         bytes randomBytes = CryptoProvider.randomBytes(crypto, 32);
+ *
+ *         // Store keys in the provider's key store
+ *         SecretKey key = SecretKey.generate(AeadAlgorithm.AES_256_GCM);
+ *         KeyStore.store(crypto.keyStore, "session-key", key);
+ *
+ *         // Keys are automatically cleared when provider goes out of scope
+ *     }
+ * }
+ * ```
+ *
+ * @see crypto.KeyStore for key management
+ * @see crypto.Random for random number generation
+ */
+
+/**
+ * Provider for cryptographic operations.
+ *
+ * This provider holds shared cryptographic state:
+ * - keyStore: Thread-safe in-memory storage for secret keys
+ *
+ * The key store is automatically cleared when the provider is deinitialized.
+ */
+public provider CryptoProvider {
+    /// In-memory key store for runtime key management
+    public shared KeyStore keyStore;
+}
+
+/**
+ * Module for CryptoProvider providing lifecycle and convenience operations.
+ */
+module CryptoProvider {
+    // =========================================================================
+    // Lifecycle
+    // =========================================================================
+
+    /**
+     * Creates a new CryptoProvider with default settings.
+     *
+     * Initializes:
+     * - System random source
+     * - Empty in-memory key store
+     *
+     * @return A new crypto provider
+     * @throws KeyStoreError if key store creation fails
+     */
+    public static CryptoProvider new() throws KeyStoreError {
+        return CryptoProvider {
+            keyStore: KeyStore.inMemory()
+        };
+    }
+
+    /**
+     * Deinitializes the crypto provider.
+     *
+     * Securely clears all keys from the key store and releases resources.
+     * This is automatically called when the provider goes out of scope.
+     *
+     * @param self The provider to deinitialize
+     */
+    public static void deinit(CryptoProvider self) {
+        KeyStore.clear(self.keyStore);
+        KeyStore.destroy(self.keyStore);
+    }
+
+    // =========================================================================
+    // Random Number Generation (Convenience)
+    // =========================================================================
+
+    /**
+     * Generates cryptographically secure random bytes.
+     *
+     * @param self The crypto provider
+     * @param length Number of random bytes to generate
+     * @return Random bytes
+     * @throws RandomError if the CSPRNG fails
+     */
+    public static bytes randomBytes(CryptoProvider self, int length) throws RandomError {
+        return Random.bytes(length);
+    }
+
+    /**
+     * Generates a cryptographically secure random integer in a range.
+     *
+     * @param self The crypto provider
+     * @param min Minimum value (inclusive)
+     * @param max Maximum value (exclusive)
+     * @return Random integer in [min, max)
+     * @throws RandomError if the CSPRNG fails
+     */
+    public static int randomInt(CryptoProvider self, int min, int max) throws RandomError {
+        return Random.intRange(min, max);
+    }
+
+    // =========================================================================
+    // Key Management (Convenience)
+    // =========================================================================
+
+    /**
+     * Generates and stores a new secret key.
+     *
+     * @param self The crypto provider
+     * @param keyId Unique identifier for the key
+     * @param algorithm The AEAD algorithm
+     * @return The generated key
+     * @throws KeyGenerationError if key generation fails
+     * @throws RandomError if the CSPRNG fails
+     * @throws KeyStoreError if storage fails
+     */
+    public static SecretKey generateAndStore(
+        CryptoProvider self,
+        String keyId,
+        AeadAlgorithm algorithm
+    ) throws (KeyGenerationError, RandomError, KeyStoreError) {
+        SecretKey key = SecretKey.generate(algorithm);
+        KeyStore.store(self.keyStore, keyId, key);
+        return key;
+    }
+
+    /**
+     * Loads a key from the provider's key store.
+     *
+     * @param self The crypto provider
+     * @param keyId The key identifier
+     * @return The key if found, or Optional.none()
+     */
+    public static Optional<SecretKey> loadKey(CryptoProvider self, String keyId) {
+        return KeyStore.load(self.keyStore, keyId);
+    }
+
+    /**
+     * Deletes a key from the provider's key store.
+     *
+     * @param self The crypto provider
+     * @param keyId The key identifier
+     * @return true if the key was deleted
+     */
+    public static Bool deleteKey(CryptoProvider self, String keyId) {
+        return KeyStore.delete(self.keyStore, keyId);
+    }
+
+    /**
+     * Lists all key IDs in the provider's key store.
+     *
+     * @param self The crypto provider
+     * @return Array of key identifiers
+     */
+    public static String[] listKeys(CryptoProvider self) {
+        return KeyStore.list(self.keyStore);
+    }
+
+    // =========================================================================
+    // Encryption (Convenience)
+    // =========================================================================
+
+    /**
+     * Encrypts data using a key from the key store.
+     *
+     * @param self The crypto provider
+     * @param keyId The key identifier
+     * @param plaintext The data to encrypt
+     * @return Tuple of (nonce, ciphertext)
+     * @throws KeyStoreError if the key is not found
+     * @throws RandomError if nonce generation fails
+     * @throws InvalidKeyError if the key is invalid
+     * @throws InvalidNonceError if the nonce is invalid
+     */
+    public static (bytes, bytes) encrypt(
+        CryptoProvider self,
+        String keyId,
+        bytes plaintext
+    ) throws (KeyStoreError, RandomError, InvalidKeyError, InvalidNonceError) {
+        SecretKey key = KeyStore.loadOrThrow(self.keyStore, keyId);
+        bytes keyBytes = SecretKey.toBytes(key);
+        AeadAlgorithm algorithm = SecretKey.algorithm(key);
+
+        bytes nonce = Aead.generateNonce(algorithm);
+        bytes ciphertext = Aead.encrypt(algorithm, keyBytes, nonce, plaintext);
+
+        return (nonce, ciphertext);
+    }
+
+    /**
+     * Decrypts data using a key from the key store.
+     *
+     * @param self The crypto provider
+     * @param keyId The key identifier
+     * @param nonce The nonce used for encryption
+     * @param ciphertext The encrypted data
+     * @return The decrypted plaintext
+     * @throws KeyStoreError if the key is not found
+     * @throws InvalidKeyError if the key is invalid
+     * @throws InvalidNonceError if the nonce is invalid
+     * @throws DecryptionError if decryption fails
+     */
+    public static bytes decrypt(
+        CryptoProvider self,
+        String keyId,
+        bytes nonce,
+        bytes ciphertext
+    ) throws (KeyStoreError, InvalidKeyError, InvalidNonceError, DecryptionError) {
+        SecretKey key = KeyStore.loadOrThrow(self.keyStore, keyId);
+        bytes keyBytes = SecretKey.toBytes(key);
+        AeadAlgorithm algorithm = SecretKey.algorithm(key);
+
+        return Aead.decrypt(algorithm, keyBytes, nonce, ciphertext);
+    }
+}

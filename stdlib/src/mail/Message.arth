@@ -1,0 +1,919 @@
+package mail;
+
+/**
+ * Email message types and construction.
+ *
+ * This module provides the core message types for creating and reading emails
+ * according to RFC 5322 (Internet Message Format) and RFC 2045-2049 (MIME).
+ *
+ * Message types:
+ * - Message: Base interface for all message types
+ * - MimeMessage: Full MIME message with headers, body, and attachments
+ * - MessageBuilder: Fluent builder for constructing messages
+ *
+ * Example usage:
+ * ```arth
+ * import mail.*;
+ *
+ * // Build a simple message
+ * MimeMessage msg = MessageBuilder.new()
+ *     .from(InternetAddress.of("sender@example.com", "Sender"))
+ *     .to(InternetAddress.of("recipient@example.com"))
+ *     .subject("Hello!")
+ *     .text("This is the message body.")
+ *     .build();
+ *
+ * // Build an HTML message with attachments
+ * MimeMessage msg = MessageBuilder.new()
+ *     .from(InternetAddress.of("sender@example.com"))
+ *     .to(InternetAddress.of("recipient@example.com"))
+ *     .subject("Report")
+ *     .html("<h1>Monthly Report</h1><p>See attached.</p>")
+ *     .attachment(Attachment.fromFile("/path/to/report.pdf"))
+ *     .build();
+ * ```
+ *
+ * @see mail.Transport for sending messages
+ * @see mail.Store for reading messages
+ */
+
+import time.DateTime;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Message Interface
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Base interface for email messages.
+ */
+public interface Message {
+    /// Returns the message subject.
+    String getSubject();
+
+    /// Returns the From addresses.
+    InternetAddress[] getFrom();
+
+    /// Returns the message content type.
+    ContentType getContentType();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Message Flags
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Flags that can be set on messages (primarily for received messages).
+ */
+public struct MessageFlags {
+    /// Message has been read
+    public final bool seen;
+    /// Message has been answered/replied to
+    public final bool answered;
+    /// Message is flagged/starred
+    public final bool flagged;
+    /// Message is marked for deletion
+    public final bool deleted;
+    /// Message is a draft
+    public final bool draft;
+    /// Message is recent (first session to see it)
+    public final bool recent;
+}
+
+module MessageFlags {
+    /// Creates default flags (all false).
+    public static MessageFlags none() {
+        return MessageFlags {
+            seen: false,
+            answered: false,
+            flagged: false,
+            deleted: false,
+            draft: false,
+            recent: false
+        };
+    }
+
+    /// Creates flags for a draft message.
+    public static MessageFlags forDraft() {
+        return MessageFlags {
+            seen: false,
+            answered: false,
+            flagged: false,
+            deleted: false,
+            draft: true,
+            recent: false
+        };
+    }
+
+    /// Returns a new MessageFlags with the seen flag set.
+    public static MessageFlags withSeen(MessageFlags self, bool seen) {
+        return MessageFlags {
+            seen: seen,
+            answered: self.answered,
+            flagged: self.flagged,
+            deleted: self.deleted,
+            draft: self.draft,
+            recent: self.recent
+        };
+    }
+
+    /// Returns a new MessageFlags with the flagged flag set.
+    public static MessageFlags withFlagged(MessageFlags self, bool flagged) {
+        return MessageFlags {
+            seen: self.seen,
+            answered: self.answered,
+            flagged: flagged,
+            deleted: self.deleted,
+            draft: self.draft,
+            recent: self.recent
+        };
+    }
+
+    /// Returns a new MessageFlags with the deleted flag set.
+    public static MessageFlags withDeleted(MessageFlags self, bool deleted) {
+        return MessageFlags {
+            seen: self.seen,
+            answered: self.answered,
+            flagged: self.flagged,
+            deleted: deleted,
+            draft: self.draft,
+            recent: self.recent
+        };
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MIME Message
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Represents a full MIME email message.
+ *
+ * A MimeMessage contains:
+ * - Headers (From, To, Subject, Date, etc.)
+ * - Content (text, HTML, multipart, or attachments)
+ * - Flags (for received messages)
+ */
+public struct MimeMessage {
+    /// Message headers
+    public final Headers headers;
+    /// Message content (body)
+    public final MimePart content;
+    /// Message flags (for received messages)
+    public final MessageFlags flags;
+    /// Unique message ID (Message-ID header)
+    public final String messageId;
+    /// Message UID (from IMAP/POP3, 0 if not from server)
+    public final int64 uid;
+    /// Message sequence number (from IMAP, 0 if not applicable)
+    public final int seqNum;
+}
+
+module MimeMessage implements Message {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Factory Methods
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Creates an empty MimeMessage.
+    public static MimeMessage empty() {
+        return MimeMessage {
+            headers: Headers.empty(),
+            content: MimePart.text(""),
+            flags: MessageFlags.none(),
+            messageId: "",
+            uid: 0,
+            seqNum: 0
+        };
+    }
+
+    /// Creates a simple text message.
+    public static MimeMessage text(InternetAddress from, InternetAddress to, String subject, String body) {
+        Headers h = Headers.empty();
+        h = Headers.set(h, "From", InternetAddress.toString(from));
+        h = Headers.set(h, "To", InternetAddress.toString(to));
+        h = Headers.set(h, "Subject", subject);
+        h = Headers.set(h, "MIME-Version", "1.0");
+        h = Headers.set(h, "Content-Type", "text/plain; charset=utf-8");
+        h = Headers.set(h, "Date", formatDate(now()));
+        h = Headers.set(h, "Message-ID", generateMessageId());
+
+        return MimeMessage {
+            headers: h,
+            content: MimePart.textWithCharset(body, "utf-8"),
+            flags: MessageFlags.none(),
+            messageId: Headers.get(h, "Message-ID"),
+            uid: 0,
+            seqNum: 0
+        };
+    }
+
+    /// Parses a MimeMessage from raw bytes.
+    @intrinsic("mail.message.parse")
+    public static MimeMessage parse(bytes raw) throws (MessageError) {
+        // Intrinsic implementation - placeholder
+        return MimeMessage.empty();
+    }
+
+    /// Parses a MimeMessage from a raw string.
+    public static MimeMessage parseString(String raw) throws (MessageError) {
+        return parse(stringToBytes(raw));
+    }
+
+    /// Creates a MimeMessage from headers and content.
+    public static MimeMessage fromParts(Headers headers, MimePart content) {
+        return MimeMessage {
+            headers: headers,
+            content: content,
+            flags: MessageFlags.none(),
+            messageId: Headers.get(headers, "Message-ID"),
+            uid: 0,
+            seqNum: 0
+        };
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Message Interface Implementation
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public String getSubject(MimeMessage self) {
+        return Headers.getSubject(self.headers);
+    }
+
+    public InternetAddress[] getFrom(MimeMessage self) {
+        String fromStr = Headers.getFrom(self.headers);
+        if (fromStr == "") {
+            InternetAddress[] empty;
+            return empty;
+        }
+        try {
+            return InternetAddress.parseList(fromStr);
+        } catch (AddressError e) {
+            InternetAddress[] empty;
+            return empty;
+        }
+    }
+
+    public ContentType getContentType(MimeMessage self) {
+        return MimePart.getContentType(self.content);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Header Accessors
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns all headers.
+    public static Headers getHeaders(MimeMessage self) {
+        return self.headers;
+    }
+
+    /// Returns a specific header value.
+    public static String getHeader(MimeMessage self, String name) {
+        return Headers.get(self.headers, name);
+    }
+
+    /// Returns all values for a multi-value header.
+    public static String[] getHeaderValues(MimeMessage self, String name) {
+        return Headers.getAll(self.headers, name);
+    }
+
+    /// Returns the Message-ID.
+    public static String getMessageId(MimeMessage self) {
+        return self.messageId;
+    }
+
+    /// Returns the Date header parsed as DateTime.
+    @intrinsic("mail.message.get_date")
+    public static DateTime getDate(MimeMessage self) {
+        // Intrinsic implementation - placeholder
+        return now();
+    }
+
+    /// Returns the sent date (same as getDate).
+    public static DateTime getSentDate(MimeMessage self) {
+        return getDate(self);
+    }
+
+    /// Returns the received date (from Received headers).
+    @intrinsic("mail.message.get_received_date")
+    public static DateTime getReceivedDate(MimeMessage self) {
+        // Intrinsic implementation - placeholder
+        return now();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Address Accessors
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns the To recipients.
+    public static InternetAddress[] getTo(MimeMessage self) {
+        String toStr = Headers.getTo(self.headers);
+        if (toStr == "") {
+            InternetAddress[] empty;
+            return empty;
+        }
+        try {
+            return InternetAddress.parseList(toStr);
+        } catch (AddressError e) {
+            InternetAddress[] empty;
+            return empty;
+        }
+    }
+
+    /// Returns the Cc recipients.
+    public static InternetAddress[] getCc(MimeMessage self) {
+        String ccStr = Headers.getCc(self.headers);
+        if (ccStr == "") {
+            InternetAddress[] empty;
+            return empty;
+        }
+        try {
+            return InternetAddress.parseList(ccStr);
+        } catch (AddressError e) {
+            InternetAddress[] empty;
+            return empty;
+        }
+    }
+
+    /// Returns the Bcc recipients.
+    public static InternetAddress[] getBcc(MimeMessage self) {
+        String bccStr = Headers.getBcc(self.headers);
+        if (bccStr == "") {
+            InternetAddress[] empty;
+            return empty;
+        }
+        try {
+            return InternetAddress.parseList(bccStr);
+        } catch (AddressError e) {
+            InternetAddress[] empty;
+            return empty;
+        }
+    }
+
+    /// Returns the Reply-To addresses.
+    public static InternetAddress[] getReplyTo(MimeMessage self) {
+        String replyToStr = Headers.getReplyTo(self.headers);
+        if (replyToStr == "") {
+            // Default to From if no Reply-To
+            return getFrom(self);
+        }
+        try {
+            return InternetAddress.parseList(replyToStr);
+        } catch (AddressError e) {
+            return getFrom(self);
+        }
+    }
+
+    /// Returns all recipients (To + Cc + Bcc).
+    public static InternetAddress[] getAllRecipients(MimeMessage self) {
+        InternetAddress[] to = getTo(self);
+        InternetAddress[] cc = getCc(self);
+        InternetAddress[] bcc = getBcc(self);
+
+        int total = length(to) + length(cc) + length(bcc);
+        InternetAddress[] result = new InternetAddress[total];
+
+        int idx = 0;
+        for (int i = 0; i < length(to); i = i + 1) {
+            result[idx] = to[i];
+            idx = idx + 1;
+        }
+        for (int i = 0; i < length(cc); i = i + 1) {
+            result[idx] = cc[i];
+            idx = idx + 1;
+        }
+        for (int i = 0; i < length(bcc); i = i + 1) {
+            result[idx] = bcc[i];
+            idx = idx + 1;
+        }
+
+        return result;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Content Accessors
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns the message content.
+    public static MimePart getContent(MimeMessage self) {
+        return self.content;
+    }
+
+    /// Returns the text content (for simple text messages).
+    public static String getText(MimeMessage self) {
+        return MimePart.getText(self.content);
+    }
+
+    /// Returns the message size in bytes.
+    public static int getSize(MimeMessage self) {
+        return MimePart.getSize(self.content);
+    }
+
+    /// Returns true if this is a multipart message.
+    public static bool isMultipart(MimeMessage self) {
+        return MimePart.isMultipart(self.content);
+    }
+
+    /// Returns the Multipart container (if multipart).
+    public static Multipart getMultipart(MimeMessage self) throws (MessageError) {
+        return MimePart.getMultipart(self.content);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Flag Accessors
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns the message flags.
+    public static MessageFlags getFlags(MimeMessage self) {
+        return self.flags;
+    }
+
+    /// Returns true if the message has been read.
+    public static bool isSeen(MimeMessage self) {
+        return self.flags.seen;
+    }
+
+    /// Returns true if the message has been read (alias for isSeen).
+    public static bool isRead(MimeMessage self) {
+        return self.flags.seen;
+    }
+
+    /// Returns true if the message is flagged/starred.
+    public static bool isFlagged(MimeMessage self) {
+        return self.flags.flagged;
+    }
+
+    /// Returns true if the message is marked for deletion.
+    public static bool isDeleted(MimeMessage self) {
+        return self.flags.deleted;
+    }
+
+    /// Returns true if the message is a draft.
+    public static bool isDraft(MimeMessage self) {
+        return self.flags.draft;
+    }
+
+    /// Returns true if the message has been answered.
+    public static bool isAnswered(MimeMessage self) {
+        return self.flags.answered;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Server Identifiers
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns the IMAP/POP3 UID (0 if not from server).
+    public static int64 getUid(MimeMessage self) {
+        return self.uid;
+    }
+
+    /// Returns the IMAP sequence number (0 if not applicable).
+    public static int getSeqNum(MimeMessage self) {
+        return self.seqNum;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Encoding
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Encodes the message as bytes for transmission.
+    @intrinsic("mail.message.encode")
+    public static bytes encode(MimeMessage self) {
+        // Intrinsic implementation - placeholder
+        bytes result;
+        return result;
+    }
+
+    /// Returns the message as a raw string.
+    public static String toString(MimeMessage self) {
+        return bytesToString(encode(self));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Reply/Forward
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Creates a reply to this message.
+    public static MessageBuilder reply(MimeMessage self, bool replyAll) {
+        MessageBuilder b = MessageBuilder.new();
+
+        // Set In-Reply-To and References
+        b = MessageBuilder.setInReplyTo(b, self.messageId);
+        String refs = Headers.get(self.headers, "References");
+        if (refs != "") {
+            b = MessageBuilder.setReferences(b, refs + " " + self.messageId);
+        } else {
+            b = MessageBuilder.setReferences(b, self.messageId);
+        }
+
+        // Set To as the original From
+        InternetAddress[] from = getFrom(self);
+        if (length(from) > 0) {
+            b = MessageBuilder.to(b, from[0]);
+        }
+
+        // If reply-all, add original To and Cc (excluding self)
+        if (replyAll) {
+            InternetAddress[] to = getTo(self);
+            for (int i = 0; i < length(to); i = i + 1) {
+                b = MessageBuilder.cc(b, to[i]);
+            }
+            InternetAddress[] cc = getCc(self);
+            for (int i = 0; i < length(cc); i = i + 1) {
+                b = MessageBuilder.cc(b, cc[i]);
+            }
+        }
+
+        // Set subject with Re: prefix
+        String subject = getSubject(self);
+        if (!startsWith(toLowerCase(subject), "re:")) {
+            b = MessageBuilder.subject(b, "Re: " + subject);
+        } else {
+            b = MessageBuilder.subject(b, subject);
+        }
+
+        return b;
+    }
+
+    /// Creates a forward of this message.
+    public static MessageBuilder forward(MimeMessage self) {
+        MessageBuilder b = MessageBuilder.new();
+
+        // Set subject with Fwd: prefix
+        String subject = getSubject(self);
+        if (!startsWith(toLowerCase(subject), "fwd:")) {
+            b = MessageBuilder.subject(b, "Fwd: " + subject);
+        } else {
+            b = MessageBuilder.subject(b, subject);
+        }
+
+        // Attach original message
+        b = MessageBuilder.attachMessage(b, self);
+
+        return b;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Message Builder
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Fluent builder for constructing MimeMessage instances.
+ *
+ * Example:
+ * ```arth
+ * MimeMessage msg = MessageBuilder.new()
+ *     .from(InternetAddress.of("sender@example.com"))
+ *     .to(InternetAddress.of("recipient@example.com"))
+ *     .subject("Hello!")
+ *     .text("Message body")
+ *     .build();
+ * ```
+ */
+public struct MessageBuilder {
+    /// Headers being built
+    public final Headers headers;
+    /// From addresses
+    public final InternetAddress[] fromAddrs;
+    /// To addresses
+    public final InternetAddress[] toAddrs;
+    /// Cc addresses
+    public final InternetAddress[] ccAddrs;
+    /// Bcc addresses
+    public final InternetAddress[] bccAddrs;
+    /// Reply-To addresses
+    public final InternetAddress[] replyToAddrs;
+    /// Subject
+    public final String subject;
+    /// Text body (may be empty)
+    public final String textBody;
+    /// HTML body (may be empty)
+    public final String htmlBody;
+    /// Attachments
+    public final Attachment[] attachments;
+    /// Inline attachments (for multipart/related)
+    public final Attachment[] inlineAttachments;
+    /// In-Reply-To header
+    public final String inReplyTo;
+    /// References header
+    public final String references;
+    /// Custom headers
+    public final int customHeadersHandle;
+}
+
+module MessageBuilder {
+    /// Creates a new empty MessageBuilder.
+    public static MessageBuilder new() {
+        MessageBuilder b;
+        b.headers = Headers.empty();
+        b.subject = "";
+        b.textBody = "";
+        b.htmlBody = "";
+        b.inReplyTo = "";
+        b.references = "";
+        b.customHeadersHandle = 0;
+        return b;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Address Setters
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Sets the From address.
+    public static MessageBuilder from(MessageBuilder self, InternetAddress addr) {
+        InternetAddress[] addrs = new InternetAddress[1];
+        addrs[0] = addr;
+        return MessageBuilder {
+            headers: self.headers,
+            fromAddrs: addrs,
+            toAddrs: self.toAddrs,
+            ccAddrs: self.ccAddrs,
+            bccAddrs: self.bccAddrs,
+            replyToAddrs: self.replyToAddrs,
+            subject: self.subject,
+            textBody: self.textBody,
+            htmlBody: self.htmlBody,
+            attachments: self.attachments,
+            inlineAttachments: self.inlineAttachments,
+            inReplyTo: self.inReplyTo,
+            references: self.references,
+            customHeadersHandle: self.customHeadersHandle
+        };
+    }
+
+    /// Adds a To recipient.
+    @intrinsic("mail.builder.add_to")
+    public static MessageBuilder to(MessageBuilder self, InternetAddress addr) {
+        // Intrinsic implementation - placeholder
+        return self;
+    }
+
+    /// Adds a Cc recipient.
+    @intrinsic("mail.builder.add_cc")
+    public static MessageBuilder cc(MessageBuilder self, InternetAddress addr) {
+        // Intrinsic implementation - placeholder
+        return self;
+    }
+
+    /// Adds a Bcc recipient.
+    @intrinsic("mail.builder.add_bcc")
+    public static MessageBuilder bcc(MessageBuilder self, InternetAddress addr) {
+        // Intrinsic implementation - placeholder
+        return self;
+    }
+
+    /// Sets the Reply-To address.
+    @intrinsic("mail.builder.reply_to")
+    public static MessageBuilder replyTo(MessageBuilder self, InternetAddress addr) {
+        // Intrinsic implementation - placeholder
+        return self;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Content Setters
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Sets the subject.
+    public static MessageBuilder subject(MessageBuilder self, String subject) {
+        return MessageBuilder {
+            headers: self.headers,
+            fromAddrs: self.fromAddrs,
+            toAddrs: self.toAddrs,
+            ccAddrs: self.ccAddrs,
+            bccAddrs: self.bccAddrs,
+            replyToAddrs: self.replyToAddrs,
+            subject: subject,
+            textBody: self.textBody,
+            htmlBody: self.htmlBody,
+            attachments: self.attachments,
+            inlineAttachments: self.inlineAttachments,
+            inReplyTo: self.inReplyTo,
+            references: self.references,
+            customHeadersHandle: self.customHeadersHandle
+        };
+    }
+
+    /// Sets the text body.
+    public static MessageBuilder text(MessageBuilder self, String text) {
+        return MessageBuilder {
+            headers: self.headers,
+            fromAddrs: self.fromAddrs,
+            toAddrs: self.toAddrs,
+            ccAddrs: self.ccAddrs,
+            bccAddrs: self.bccAddrs,
+            replyToAddrs: self.replyToAddrs,
+            subject: self.subject,
+            textBody: text,
+            htmlBody: self.htmlBody,
+            attachments: self.attachments,
+            inlineAttachments: self.inlineAttachments,
+            inReplyTo: self.inReplyTo,
+            references: self.references,
+            customHeadersHandle: self.customHeadersHandle
+        };
+    }
+
+    /// Sets the HTML body.
+    public static MessageBuilder html(MessageBuilder self, String html) {
+        return MessageBuilder {
+            headers: self.headers,
+            fromAddrs: self.fromAddrs,
+            toAddrs: self.toAddrs,
+            ccAddrs: self.ccAddrs,
+            bccAddrs: self.bccAddrs,
+            replyToAddrs: self.replyToAddrs,
+            subject: self.subject,
+            textBody: self.textBody,
+            htmlBody: html,
+            attachments: self.attachments,
+            inlineAttachments: self.inlineAttachments,
+            inReplyTo: self.inReplyTo,
+            references: self.references,
+            customHeadersHandle: self.customHeadersHandle
+        };
+    }
+
+    /// Adds an attachment.
+    @intrinsic("mail.builder.add_attachment")
+    public static MessageBuilder attachment(MessageBuilder self, Attachment att) {
+        // Intrinsic implementation - placeholder
+        return self;
+    }
+
+    /// Adds an inline attachment (for multipart/related).
+    @intrinsic("mail.builder.add_inline")
+    public static MessageBuilder inline(MessageBuilder self, Attachment att) {
+        // Intrinsic implementation - placeholder
+        return self;
+    }
+
+    /// Attaches another message (for forwarding).
+    @intrinsic("mail.builder.attach_message")
+    public static MessageBuilder attachMessage(MessageBuilder self, MimeMessage msg) {
+        // Intrinsic implementation - placeholder
+        return self;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Header Setters
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Sets the In-Reply-To header.
+    public static MessageBuilder setInReplyTo(MessageBuilder self, String messageId) {
+        return MessageBuilder {
+            headers: self.headers,
+            fromAddrs: self.fromAddrs,
+            toAddrs: self.toAddrs,
+            ccAddrs: self.ccAddrs,
+            bccAddrs: self.bccAddrs,
+            replyToAddrs: self.replyToAddrs,
+            subject: self.subject,
+            textBody: self.textBody,
+            htmlBody: self.htmlBody,
+            attachments: self.attachments,
+            inlineAttachments: self.inlineAttachments,
+            inReplyTo: messageId,
+            references: self.references,
+            customHeadersHandle: self.customHeadersHandle
+        };
+    }
+
+    /// Sets the References header.
+    public static MessageBuilder setReferences(MessageBuilder self, String refs) {
+        return MessageBuilder {
+            headers: self.headers,
+            fromAddrs: self.fromAddrs,
+            toAddrs: self.toAddrs,
+            ccAddrs: self.ccAddrs,
+            bccAddrs: self.bccAddrs,
+            replyToAddrs: self.replyToAddrs,
+            subject: self.subject,
+            textBody: self.textBody,
+            htmlBody: self.htmlBody,
+            attachments: self.attachments,
+            inlineAttachments: self.inlineAttachments,
+            inReplyTo: self.inReplyTo,
+            references: refs,
+            customHeadersHandle: self.customHeadersHandle
+        };
+    }
+
+    /// Adds a custom header.
+    @intrinsic("mail.builder.add_header")
+    public static MessageBuilder header(MessageBuilder self, String name, String value) {
+        // Intrinsic implementation - placeholder
+        return self;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Build
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Builds the MimeMessage.
+    @intrinsic("mail.builder.build")
+    public static MimeMessage build(MessageBuilder self) throws (MessageError) {
+        // Intrinsic implementation - builds the final message
+        // Validates required fields (From, at least one recipient)
+        // Constructs appropriate MIME structure based on content:
+        // - text only: text/plain
+        // - html only: text/html
+        // - text + html: multipart/alternative
+        // - with attachments: multipart/mixed
+        // - html with inline images: multipart/related inside multipart/mixed
+
+        if (length(self.fromAddrs) == 0) {
+            throw MessageError.new("From address is required");
+        }
+        if (length(self.toAddrs) == 0 && length(self.ccAddrs) == 0 && length(self.bccAddrs) == 0) {
+            throw MessageError.new("At least one recipient is required");
+        }
+
+        // Build headers
+        Headers h = Headers.empty();
+        h = Headers.set(h, "From", AddressUtil.formatList(self.fromAddrs));
+        if (length(self.toAddrs) > 0) {
+            h = Headers.set(h, "To", AddressUtil.formatList(self.toAddrs));
+        }
+        if (length(self.ccAddrs) > 0) {
+            h = Headers.set(h, "Cc", AddressUtil.formatList(self.ccAddrs));
+        }
+        // Note: Bcc is not included in headers (handled at transport level)
+        h = Headers.set(h, "Subject", self.subject);
+        h = Headers.set(h, "Date", formatDate(now()));
+        h = Headers.set(h, "Message-ID", generateMessageId());
+        h = Headers.set(h, "MIME-Version", "1.0");
+
+        if (self.inReplyTo != "") {
+            h = Headers.set(h, "In-Reply-To", self.inReplyTo);
+        }
+        if (self.references != "") {
+            h = Headers.set(h, "References", self.references);
+        }
+
+        // Build content
+        MimePart content;
+        if (self.textBody != "" && self.htmlBody == "" && length(self.attachments) == 0) {
+            // Simple text message
+            content = MimePart.textWithCharset(self.textBody, "utf-8");
+        } else if (self.htmlBody != "" && self.textBody == "" && length(self.attachments) == 0) {
+            // Simple HTML message
+            content = MimePart.html(self.htmlBody);
+        } else {
+            // Complex message - need multipart
+            // This is a placeholder - actual implementation would build proper MIME structure
+            content = MimePart.textWithCharset(self.textBody, "utf-8");
+        }
+
+        return MimeMessage {
+            headers: h,
+            content: content,
+            flags: MessageFlags.none(),
+            messageId: Headers.get(h, "Message-ID"),
+            uid: 0,
+            seqNum: 0
+        };
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helper Functions
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Generates a unique Message-ID.
+@intrinsic("mail.generate_message_id")
+static String generateMessageId() {
+    return "<" + randomHex(16) + "@arth>";
+}
+
+/// Formats a DateTime for use in Date header.
+@intrinsic("mail.format_date")
+static String formatDate(DateTime dt) {
+    return "";
+}
+
+/// Returns the current date/time.
+@intrinsic("time.now")
+static DateTime now() {
+    DateTime dt;
+    return dt;
+}
+
+@intrinsic("string.to_bytes")
+static bytes stringToBytes(String s) { bytes b; return b; }
+
+@intrinsic("bytes.to_string")
+static String bytesToString(bytes b) { return ""; }
+
+@intrinsic("array.length")
+static int length(InternetAddress[] arr) { return 0; }
+
+@intrinsic("array.length")
+static int length(Attachment[] arr) { return 0; }
+
+@intrinsic("string.starts_with")
+static bool startsWith(String s, String prefix) { return false; }
+
+@intrinsic("string.to_lower_case")
+static String toLowerCase(String s) { return s; }
+
+@intrinsic("random.hex")
+static String randomHex(int length) { return ""; }

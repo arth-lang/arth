@@ -1,0 +1,632 @@
+package mail;
+
+/**
+ * Mailbox folder operations.
+ *
+ * A Folder represents a mailbox folder (INBOX, Sent, Drafts, etc.) on an
+ * IMAP or POP3 server.
+ *
+ * Example usage:
+ * ```arth
+ * import mail.*;
+ *
+ * // Open inbox and read messages
+ * Folder inbox = Store.getInbox(store);
+ * await Folder.open(inbox, FolderMode.READ_ONLY);
+ *
+ * int count = Folder.getMessageCount(inbox);
+ * Console.println("You have " + count + " messages");
+ *
+ * // Get recent messages
+ * Message[] messages = await Folder.getMessages(inbox, count - 10, count);
+ *
+ * // Search for unread messages
+ * Message[] unread = await Folder.search(inbox, SearchTerm.unread());
+ *
+ * Folder.close(inbox, false);
+ * ```
+ *
+ * @see mail.Store for connecting to mail stores
+ * @see mail.Message for working with messages
+ */
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Folder Mode
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Folder open mode.
+ */
+public enum FolderMode {
+    /// Read-only access (cannot modify messages)
+    READ_ONLY,
+    /// Read-write access (can modify messages, expunge)
+    READ_WRITE
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Folder State
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Folder state.
+ */
+public enum FolderState {
+    /// Folder is closed
+    CLOSED,
+    /// Folder is open for reading
+    OPEN_READ_ONLY,
+    /// Folder is open for reading and writing
+    OPEN_READ_WRITE
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Folder Type
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Well-known folder types.
+ */
+public enum FolderType {
+    /// Primary inbox
+    INBOX,
+    /// Sent messages
+    SENT,
+    /// Draft messages
+    DRAFTS,
+    /// Deleted messages (trash)
+    TRASH,
+    /// Spam/junk messages
+    SPAM,
+    /// Archived messages
+    ARCHIVE,
+    /// Custom user folder
+    CUSTOM
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Folder Structure
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Represents a mailbox folder.
+ */
+public struct Folder {
+    /// Opaque folder handle
+    public final int handle;
+    /// Parent store
+    public final Store store;
+    /// Folder name (short name, e.g., "INBOX")
+    public final String name;
+    /// Full folder path (e.g., "INBOX/Subfolder")
+    public final String fullName;
+    /// Folder type
+    public final FolderType folderType;
+    /// Current state
+    public final FolderState state;
+    /// Total message count (when open)
+    public final int messageCount;
+    /// Unread message count (when open)
+    public final int unreadCount;
+    /// Recent message count (when open)
+    public final int recentCount;
+}
+
+module Folder {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Open/Close
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Opens the folder for access.
+    @intrinsic("mail.folder.open")
+    public static async Folder open(Folder self, FolderMode mode)
+        throws (FolderError, TimeoutError) {
+        // Intrinsic implementation - placeholder
+        FolderState newState = mode == FolderMode.READ_ONLY ?
+            FolderState.OPEN_READ_ONLY : FolderState.OPEN_READ_WRITE;
+
+        return Folder {
+            handle: self.handle,
+            store: self.store,
+            name: self.name,
+            fullName: self.fullName,
+            folderType: self.folderType,
+            state: newState,
+            messageCount: 0,
+            unreadCount: 0,
+            recentCount: 0
+        };
+    }
+
+    /// Closes the folder.
+    ///
+    /// @param expunge If true, permanently removes messages marked for deletion
+    @intrinsic("mail.folder.close")
+    public static void close(Folder self, bool expunge) throws (FolderError) {
+        // Intrinsic implementation - placeholder
+    }
+
+    /// Returns true if the folder is open.
+    public static bool isOpen(Folder self) {
+        return self.state != FolderState.CLOSED;
+    }
+
+    /// Returns the folder state.
+    public static FolderState getState(Folder self) {
+        return self.state;
+    }
+
+    /// Returns the folder mode (if open).
+    public static FolderMode getMode(Folder self) {
+        if (self.state == FolderState.OPEN_READ_WRITE) {
+            return FolderMode.READ_WRITE;
+        }
+        return FolderMode.READ_ONLY;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Folder Properties
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns the folder name.
+    public static String getName(Folder self) {
+        return self.name;
+    }
+
+    /// Returns the full folder path.
+    public static String getFullName(Folder self) {
+        return self.fullName;
+    }
+
+    /// Returns the folder type.
+    public static FolderType getFolderType(Folder self) {
+        return self.folderType;
+    }
+
+    /// Returns the parent store.
+    public static Store getStore(Folder self) {
+        return self.store;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Message Counts
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns the total message count.
+    @intrinsic("mail.folder.get_message_count")
+    public static int getMessageCount(Folder self) throws (FolderError) {
+        return self.messageCount;
+    }
+
+    /// Returns the unread message count.
+    @intrinsic("mail.folder.get_unread_count")
+    public static int getUnreadCount(Folder self) throws (FolderError) {
+        return self.unreadCount;
+    }
+
+    /// Returns the recent message count (new since last session).
+    @intrinsic("mail.folder.get_recent_count")
+    public static int getRecentCount(Folder self) throws (FolderError) {
+        return self.recentCount;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Message Access
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Returns a message by sequence number (1-based).
+    @intrinsic("mail.folder.get_message")
+    public static async MimeMessage getMessage(Folder self, int msgNum)
+        throws (FolderError, TimeoutError) {
+        // Intrinsic implementation - placeholder
+        return MimeMessage.empty();
+    }
+
+    /// Returns a message by UID.
+    @intrinsic("mail.folder.get_message_by_uid")
+    public static async MimeMessage getMessageByUid(Folder self, int64 uid)
+        throws (FolderError, TimeoutError) {
+        // Intrinsic implementation - placeholder
+        return MimeMessage.empty();
+    }
+
+    /// Returns all messages in the folder.
+    @intrinsic("mail.folder.get_messages")
+    public static async MimeMessage[] getMessages(Folder self)
+        throws (FolderError, TimeoutError) {
+        // Intrinsic implementation - placeholder
+        return new MimeMessage[0];
+    }
+
+    /// Returns messages in a range (1-based, inclusive).
+    @intrinsic("mail.folder.get_messages_range")
+    public static async MimeMessage[] getMessagesRange(Folder self, int start, int end)
+        throws (FolderError, TimeoutError) {
+        // Intrinsic implementation - placeholder
+        return new MimeMessage[0];
+    }
+
+    /// Returns messages by UIDs.
+    @intrinsic("mail.folder.get_messages_by_uid")
+    public static async MimeMessage[] getMessagesByUid(Folder self, int64[] uids)
+        throws (FolderError, TimeoutError) {
+        // Intrinsic implementation - placeholder
+        return new MimeMessage[0];
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Search
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Searches for messages matching a search term.
+    @intrinsic("mail.folder.search")
+    public static async MimeMessage[] search(Folder self, SearchTerm term)
+        throws (FolderError, TimeoutError) {
+        // Intrinsic implementation - placeholder
+        return new MimeMessage[0];
+    }
+
+    /// Searches and returns only UIDs (more efficient).
+    @intrinsic("mail.folder.search_uids")
+    public static async int64[] searchUids(Folder self, SearchTerm term)
+        throws (FolderError, TimeoutError) {
+        // Intrinsic implementation - placeholder
+        return new int64[0];
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Message Modification
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Marks a message as read/seen.
+    @intrinsic("mail.folder.set_seen")
+    public static void setSeen(Folder self, MimeMessage msg, bool seen)
+        throws (FolderError) {
+        // Intrinsic implementation - placeholder
+    }
+
+    /// Marks a message as flagged/starred.
+    @intrinsic("mail.folder.set_flagged")
+    public static void setFlagged(Folder self, MimeMessage msg, bool flagged)
+        throws (FolderError) {
+        // Intrinsic implementation - placeholder
+    }
+
+    /// Marks a message as deleted.
+    @intrinsic("mail.folder.set_deleted")
+    public static void setDeleted(Folder self, MimeMessage msg, bool deleted)
+        throws (FolderError) {
+        // Intrinsic implementation - placeholder
+    }
+
+    /// Permanently removes messages marked for deletion.
+    @intrinsic("mail.folder.expunge")
+    public static async void expunge(Folder self) throws (FolderError, TimeoutError) {
+        // Intrinsic implementation - placeholder
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Message Operations
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Copies messages to another folder.
+    @intrinsic("mail.folder.copy_messages")
+    public static async void copyMessages(Folder self, MimeMessage[] messages, Folder destination)
+        throws (FolderError, TimeoutError) {
+        // Intrinsic implementation - placeholder
+    }
+
+    /// Moves messages to another folder (copy + delete).
+    @intrinsic("mail.folder.move_messages")
+    public static async void moveMessages(Folder self, MimeMessage[] messages, Folder destination)
+        throws (FolderError, TimeoutError) {
+        // Intrinsic implementation - placeholder
+    }
+
+    /// Appends a message to the folder.
+    @intrinsic("mail.folder.append_message")
+    public static async void appendMessage(Folder self, MimeMessage message)
+        throws (FolderError, TimeoutError) {
+        // Intrinsic implementation - placeholder
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Subfolder Operations
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Lists subfolders of this folder.
+    @intrinsic("mail.folder.list_subfolders")
+    public static Folder[] listSubfolders(Folder self) throws (FolderError) {
+        // Intrinsic implementation - placeholder
+        return new Folder[0];
+    }
+
+    /// Gets a subfolder by name.
+    @intrinsic("mail.folder.get_subfolder")
+    public static Folder getSubfolder(Folder self, String name) throws (FolderError) {
+        // Intrinsic implementation - placeholder
+        return Folder {
+            handle: 0,
+            store: self.store,
+            name: name,
+            fullName: self.fullName + "/" + name,
+            folderType: FolderType.CUSTOM,
+            state: FolderState.CLOSED,
+            messageCount: 0,
+            unreadCount: 0,
+            recentCount: 0
+        };
+    }
+
+    /// Creates a subfolder.
+    @intrinsic("mail.folder.create_subfolder")
+    public static Folder createSubfolder(Folder self, String name) throws (FolderError) {
+        // Intrinsic implementation - placeholder
+        return Folder {
+            handle: 0,
+            store: self.store,
+            name: name,
+            fullName: self.fullName + "/" + name,
+            folderType: FolderType.CUSTOM,
+            state: FolderState.CLOSED,
+            messageCount: 0,
+            unreadCount: 0,
+            recentCount: 0
+        };
+    }
+
+    /// Returns true if this folder can hold messages.
+    public static bool holdsMessages(Folder self) {
+        return true; // Simplified - would check IMAP attributes
+    }
+
+    /// Returns true if this folder can hold subfolders.
+    public static bool holdsFolders(Folder self) {
+        return true; // Simplified - would check IMAP attributes
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Search Terms
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Search term type.
+ */
+public enum SearchTermType {
+    /// All messages
+    ALL,
+    /// Messages matching all sub-terms
+    AND,
+    /// Messages matching any sub-term
+    OR,
+    /// Negation of a term
+    NOT,
+    /// Messages marked as seen/read
+    SEEN,
+    /// Messages not marked as seen
+    UNSEEN,
+    /// Messages marked as flagged
+    FLAGGED,
+    /// Messages marked as deleted
+    DELETED,
+    /// Messages from a specific sender
+    FROM,
+    /// Messages to a specific recipient
+    TO,
+    /// Messages with subject containing text
+    SUBJECT,
+    /// Messages with body containing text
+    BODY,
+    /// Messages with any text containing text
+    TEXT,
+    /// Messages before a date
+    BEFORE,
+    /// Messages on a date
+    ON,
+    /// Messages since a date
+    SINCE,
+    /// Messages larger than size
+    LARGER,
+    /// Messages smaller than size
+    SMALLER,
+    /// Messages with specific header
+    HEADER
+}
+
+/**
+ * Represents a search term for searching messages.
+ */
+public struct SearchTerm {
+    /// Term type
+    public final SearchTermType termType;
+    /// String value (for FROM, TO, SUBJECT, BODY, TEXT, HEADER)
+    public final String stringValue;
+    /// Header name (for HEADER)
+    public final String headerName;
+    /// Date value (for BEFORE, ON, SINCE)
+    public final String dateValue;
+    /// Size value (for LARGER, SMALLER)
+    public final int sizeValue;
+    /// Sub-terms (for AND, OR, NOT)
+    public final int subTermsHandle;
+}
+
+module SearchTerm {
+    /// Matches all messages.
+    public static SearchTerm all() {
+        return SearchTerm {
+            termType: SearchTermType.ALL,
+            stringValue: "",
+            headerName: "",
+            dateValue: "",
+            sizeValue: 0,
+            subTermsHandle: 0
+        };
+    }
+
+    /// Matches unread messages.
+    public static SearchTerm unread() {
+        return SearchTerm {
+            termType: SearchTermType.UNSEEN,
+            stringValue: "",
+            headerName: "",
+            dateValue: "",
+            sizeValue: 0,
+            subTermsHandle: 0
+        };
+    }
+
+    /// Matches read messages.
+    public static SearchTerm read() {
+        return SearchTerm {
+            termType: SearchTermType.SEEN,
+            stringValue: "",
+            headerName: "",
+            dateValue: "",
+            sizeValue: 0,
+            subTermsHandle: 0
+        };
+    }
+
+    /// Matches flagged messages.
+    public static SearchTerm flagged() {
+        return SearchTerm {
+            termType: SearchTermType.FLAGGED,
+            stringValue: "",
+            headerName: "",
+            dateValue: "",
+            sizeValue: 0,
+            subTermsHandle: 0
+        };
+    }
+
+    /// Matches deleted messages.
+    public static SearchTerm deleted() {
+        return SearchTerm {
+            termType: SearchTermType.DELETED,
+            stringValue: "",
+            headerName: "",
+            dateValue: "",
+            sizeValue: 0,
+            subTermsHandle: 0
+        };
+    }
+
+    /// Matches messages from a sender.
+    public static SearchTerm from(String address) {
+        return SearchTerm {
+            termType: SearchTermType.FROM,
+            stringValue: address,
+            headerName: "",
+            dateValue: "",
+            sizeValue: 0,
+            subTermsHandle: 0
+        };
+    }
+
+    /// Matches messages to a recipient.
+    public static SearchTerm to(String address) {
+        return SearchTerm {
+            termType: SearchTermType.TO,
+            stringValue: address,
+            headerName: "",
+            dateValue: "",
+            sizeValue: 0,
+            subTermsHandle: 0
+        };
+    }
+
+    /// Matches messages with subject containing text.
+    public static SearchTerm subject(String text) {
+        return SearchTerm {
+            termType: SearchTermType.SUBJECT,
+            stringValue: text,
+            headerName: "",
+            dateValue: "",
+            sizeValue: 0,
+            subTermsHandle: 0
+        };
+    }
+
+    /// Matches messages with body containing text.
+    public static SearchTerm body(String text) {
+        return SearchTerm {
+            termType: SearchTermType.BODY,
+            stringValue: text,
+            headerName: "",
+            dateValue: "",
+            sizeValue: 0,
+            subTermsHandle: 0
+        };
+    }
+
+    /// Matches messages with any part containing text.
+    public static SearchTerm text(String text) {
+        return SearchTerm {
+            termType: SearchTermType.TEXT,
+            stringValue: text,
+            headerName: "",
+            dateValue: "",
+            sizeValue: 0,
+            subTermsHandle: 0
+        };
+    }
+
+    /// Matches messages with a specific header value.
+    public static SearchTerm header(String name, String value) {
+        return SearchTerm {
+            termType: SearchTermType.HEADER,
+            stringValue: value,
+            headerName: name,
+            dateValue: "",
+            sizeValue: 0,
+            subTermsHandle: 0
+        };
+    }
+
+    /// Matches messages larger than size bytes.
+    public static SearchTerm larger(int size) {
+        return SearchTerm {
+            termType: SearchTermType.LARGER,
+            stringValue: "",
+            headerName: "",
+            dateValue: "",
+            sizeValue: size,
+            subTermsHandle: 0
+        };
+    }
+
+    /// Matches messages smaller than size bytes.
+    public static SearchTerm smaller(int size) {
+        return SearchTerm {
+            termType: SearchTermType.SMALLER,
+            stringValue: "",
+            headerName: "",
+            dateValue: "",
+            sizeValue: size,
+            subTermsHandle: 0
+        };
+    }
+
+    /// Combines terms with AND.
+    @intrinsic("mail.search.and")
+    public static SearchTerm and(SearchTerm a, SearchTerm b) {
+        // Intrinsic implementation - placeholder
+        return a;
+    }
+
+    /// Combines terms with OR.
+    @intrinsic("mail.search.or")
+    public static SearchTerm or(SearchTerm a, SearchTerm b) {
+        // Intrinsic implementation - placeholder
+        return a;
+    }
+
+    /// Negates a term.
+    @intrinsic("mail.search.not")
+    public static SearchTerm not(SearchTerm term) {
+        // Intrinsic implementation - placeholder
+        return term;
+    }
+}

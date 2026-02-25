@@ -1,0 +1,61 @@
+package service.auth;
+
+/**
+ * Session value type and helpers.
+ *
+ * NOTE: This file is a library-style stub for IDE/tooling support.
+ * It is designed to be kept in sync with the runtime Session helpers
+ * used in examples (see examples/arth-sample/src/service/auth/Session.arth).
+ *
+ * This file exists to provide:
+ * - Go-to-definition support in IDEs
+ * - Hover documentation and signature help
+ * - Autocomplete suggestions for Session-related APIs
+ *
+ * Runtime semantics are implemented by regular Arth code; no
+ * dedicated VM intrinsics are required for Session.
+ */
+
+/// Authenticated user session.
+public struct Session {
+    /// Logical user identifier (for example, username or user ID).
+    public final String user;
+    /// Timestamp in milliseconds when the session was issued.
+    public Int issuedAtMillis;
+}
+
+/// Error type used by Session helpers (placeholder for richer auth error data).
+public struct AuthError {
+    public final String message;
+}
+
+/// Simple cache-key interface for session-like values.
+public interface CacheKey<T> {
+    public String key(T self);
+}
+
+/**
+ * Helper functions for constructing and working with Session values.
+ *
+ * The current design intentionally keeps the surface minimal:
+ * - new(user, issuedAtMillis) creates a new Session
+ * - refresh(self, nowMillis) updates the issuedAtMillis timestamp
+ * - key(self) derives a cache key from the user field
+ */
+module SessionFns implements CacheKey<Session> {
+    /// Creates a new Session for the given user at the supplied timestamp.
+    public Session new(String user, Int issuedAtMillis) throws AuthError {
+        Session s = { user: user, issuedAtMillis: issuedAtMillis };
+        return s;
+    }
+
+    /// Updates the issuedAtMillis field to reflect a refreshed session.
+    public mut void refresh(Session self, Int nowMillis) {
+        self.issuedAtMillis = nowMillis;
+    }
+
+    /// Implements CacheKey<Session> by returning the user field.
+    public String key(Session self) {
+        return self.user;
+    }
+}

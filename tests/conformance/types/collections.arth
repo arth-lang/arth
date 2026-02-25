@@ -1,0 +1,36 @@
+package conformance;
+
+// @spec: spec.md §14 - Standard library collections (List, Map, Set)
+// @expect: pass
+// @description: Validates collection type usage per spec §14
+
+module Main {
+    public static void main() {
+        // List literal syntax
+        List<Int> numbers = [1, 2, 3, 4, 5];
+        List<String> words = ["hello", "world"];
+
+        // Empty list
+        List<Int> empty = [];
+
+        // List operations
+        Int first = numbers.get(0);
+        Int size = numbers.size();
+
+        // Map literal syntax
+        Map<String, Int> ages = {"alice": 30, "bob": 25};
+
+        // Empty map
+        Map<String, Int> emptyMap = {};
+
+        // Map operations
+        Optional<Int> age = ages.get("alice");
+        Bool hasKey = ages.containsKey("bob");
+
+        // Nested collections
+        List<List<Int>> matrix = [[1, 2], [3, 4], [5, 6]];
+        Map<String, List<Int>> grouped = {"evens": [2, 4], "odds": [1, 3]};
+
+        println("collections: pass");
+    }
+}

@@ -1,0 +1,30 @@
+package conformance;
+
+// @spec: spec.md §2 - No null, use Optional<T>
+// @expect: pass
+// @description: Validates Optional type usage instead of null
+
+module Main {
+    public static void main() {
+        // Optional wrapping a value
+        Optional<Int> some = Optional.some(42);
+        Optional<Int> none = Optional.none();
+
+        // Optional with different types
+        Optional<String> maybeString = Optional.some("hello");
+        Optional<Bool> maybeBool = Optional.some(true);
+
+        // Check for presence
+        if (some.isPresent()) {
+            Int value = some.get();
+        }
+
+        // Safe access with orElse
+        Int withDefault = none.orElse(0);
+
+        // Nested optionals
+        Optional<Optional<Int>> nested = Optional.some(Optional.some(1));
+
+        println("optional: pass");
+    }
+}

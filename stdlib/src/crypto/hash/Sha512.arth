@@ -1,0 +1,214 @@
+package crypto.hash;
+
+import crypto.*;
+
+/**
+ * SHA-512 cryptographic hash function.
+ *
+ * SHA-512 is part of the SHA-2 family defined in NIST FIPS 180-4.
+ * It produces a 512-bit (64-byte) hash digest.
+ *
+ * Properties:
+ * - Output size: 64 bytes (512 bits)
+ * - Block size: 128 bytes (1024 bits)
+ * - Security level: 256 bits (collision resistance)
+ *
+ * SHA-512 is preferred over SHA-256 when:
+ * - Higher security margins are needed
+ * - Running on 64-bit processors (often faster than SHA-256)
+ * - Larger hash outputs are required
+ *
+ * Example usage:
+ * ```arth
+ * import crypto.hash.Sha512;
+ *
+ * module Example {
+ *     public void hashData() {
+ *         bytes data = "Hello, World!".toBytes();
+ *
+ *         // One-shot hash
+ *         Hash h = Sha512.hash(data);
+ *         String hex = Encoding.toHex(Hash.toBytes(h));
+ *         Console.println("SHA-512: " + hex);
+ *
+ *         // Incremental hashing
+ *         Hasher hasher = Sha512.newHasher();
+ *         Sha512.update(hasher, "Hello, ".toBytes());
+ *         Sha512.update(hasher, "World!".toBytes());
+ *         Hash result = Sha512.finalize(hasher);
+ *     }
+ * }
+ * ```
+ *
+ * @see crypto.Hash for the Hash type
+ * @see crypto.hash.Sha384 for SHA-384 (truncated SHA-512)
+ */
+
+/**
+ * Module for SHA-512 hashing operations.
+ */
+module Sha512 {
+    /// SHA-512 output size in bytes (64)
+    public static final int OUTPUT_SIZE = 64;
+
+    /// SHA-512 block size in bytes (128)
+    public static final int BLOCK_SIZE = 128;
+
+    // =========================================================================
+    // One-Shot Hashing
+    // =========================================================================
+
+    /**
+     * Computes the SHA-512 hash of the given data.
+     *
+     * @param data The data to hash
+     * @return The SHA-512 hash digest
+     */
+    public static Hash hash(bytes data) {
+        return Hash.hash(HashAlgorithm.SHA512, data);
+    }
+
+    /**
+     * Computes the SHA-512 hash of a string.
+     *
+     * Convenience method that converts the string to UTF-8 bytes first.
+     *
+     * @param str The string to hash
+     * @return The SHA-512 hash digest
+     */
+    public static Hash hashString(String str) {
+        return Hash.hash(HashAlgorithm.SHA512, str.toBytes());
+    }
+
+    // =========================================================================
+    // Incremental Hashing
+    // =========================================================================
+
+    /**
+     * Creates a new SHA-512 hasher for incremental hashing.
+     *
+     * @return A new Hasher instance configured for SHA-512
+     */
+    public static Hasher newHasher() {
+        return Hash.newHasher(HashAlgorithm.SHA512);
+    }
+
+    /**
+     * Feeds data into a SHA-512 hasher.
+     *
+     * @param hasher The hasher to update
+     * @param data The data to add to the hash computation
+     */
+    public static void update(Hasher hasher, bytes data) {
+        Hash.update(hasher, data);
+    }
+
+    /**
+     * Completes the SHA-512 hash computation.
+     *
+     * @param hasher The hasher to finalize
+     * @return The computed SHA-512 hash digest
+     */
+    public static Hash finalize(Hasher hasher) {
+        return Hash.finalize(hasher);
+    }
+
+    // =========================================================================
+    // Verification
+    // =========================================================================
+
+    /**
+     * Verifies that data matches a SHA-512 hash.
+     *
+     * Uses constant-time comparison to prevent timing attacks.
+     *
+     * @param expected The expected hash value
+     * @param data The data to verify
+     * @return true if the data hashes to the expected value
+     */
+    public static Bool verify(Hash expected, bytes data) {
+        return Hash.verify(expected, data);
+    }
+}
+
+/**
+ * SHA-384 cryptographic hash function.
+ *
+ * SHA-384 is a truncated variant of SHA-512 defined in NIST FIPS 180-4.
+ * It uses different initial hash values and produces a 384-bit (48-byte) digest.
+ *
+ * Properties:
+ * - Output size: 48 bytes (384 bits)
+ * - Block size: 128 bytes (1024 bits)
+ * - Security level: 192 bits (collision resistance)
+ *
+ * SHA-384 is useful when a longer hash than SHA-256 is needed but
+ * SHA-512's full length is not required.
+ */
+module Sha384 {
+    /// SHA-384 output size in bytes (48)
+    public static final int OUTPUT_SIZE = 48;
+
+    /// SHA-384 block size in bytes (128)
+    public static final int BLOCK_SIZE = 128;
+
+    /**
+     * Computes the SHA-384 hash of the given data.
+     *
+     * @param data The data to hash
+     * @return The SHA-384 hash digest
+     */
+    public static Hash hash(bytes data) {
+        return Hash.hash(HashAlgorithm.SHA384, data);
+    }
+
+    /**
+     * Computes the SHA-384 hash of a string.
+     *
+     * @param str The string to hash
+     * @return The SHA-384 hash digest
+     */
+    public static Hash hashString(String str) {
+        return Hash.hash(HashAlgorithm.SHA384, str.toBytes());
+    }
+
+    /**
+     * Creates a new SHA-384 hasher for incremental hashing.
+     *
+     * @return A new Hasher instance configured for SHA-384
+     */
+    public static Hasher newHasher() {
+        return Hash.newHasher(HashAlgorithm.SHA384);
+    }
+
+    /**
+     * Feeds data into a SHA-384 hasher.
+     *
+     * @param hasher The hasher to update
+     * @param data The data to add to the hash computation
+     */
+    public static void update(Hasher hasher, bytes data) {
+        Hash.update(hasher, data);
+    }
+
+    /**
+     * Completes the SHA-384 hash computation.
+     *
+     * @param hasher The hasher to finalize
+     * @return The computed SHA-384 hash digest
+     */
+    public static Hash finalize(Hasher hasher) {
+        return Hash.finalize(hasher);
+    }
+
+    /**
+     * Verifies that data matches a SHA-384 hash.
+     *
+     * @param expected The expected hash value
+     * @param data The data to verify
+     * @return true if the data hashes to the expected value
+     */
+    public static Bool verify(Hash expected, bytes data) {
+        return Hash.verify(expected, data);
+    }
+}

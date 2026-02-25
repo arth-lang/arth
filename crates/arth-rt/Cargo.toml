@@ -1,0 +1,79 @@
+[package]
+name = "arth-rt"
+version = "0.1.0"
+edition = "2024"
+description = "Native runtime library for Arth - C FFI wrappers for stdlib"
+license = "MIT OR Apache-2.0"
+
+[lib]
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[dependencies]
+libc = "0.2"
+lazy_static = "1.4"
+
+# Cryptographic hash functions
+sha2 = { version = "0.10", optional = true }
+sha3 = { version = "0.10", optional = true }
+blake3 = { version = "1.5", optional = true }
+digest = { version = "0.10", optional = true }
+hmac = { version = "0.12", optional = true }
+
+# Cryptographically secure random number generation
+getrandom = { version = "0.2", optional = true }
+
+# AEAD (Authenticated Encryption with Associated Data)
+aes-gcm = { version = "0.10", optional = true }
+chacha20poly1305 = { version = "0.10", optional = true }
+
+# Digital signatures and key exchange
+ed25519-dalek = { version = "2.1", features = ["rand_core"], optional = true }
+x25519-dalek = { version = "2.0", features = ["static_secrets"], optional = true }
+p256 = { version = "0.13", features = ["ecdsa", "ecdh"], optional = true }
+p384 = { version = "0.13", features = ["ecdsa", "ecdh"], optional = true }
+rand_core = { version = "0.6", features = ["getrandom"], optional = true }
+elliptic-curve = { version = "0.13", optional = true }
+rsa = { version = "0.9", features = ["sha2"], optional = true }
+
+# Key Derivation Functions
+hkdf = { version = "0.12", optional = true }
+pbkdf2 = { version = "0.12", optional = true }
+argon2 = { version = "0.5", optional = true }
+
+# Password Hashing
+bcrypt = { version = "0.15", optional = true }
+password-hash = { version = "0.5", optional = true }
+
+# OS Keyring/Keychain integration (macOS Keychain, Windows Credential Manager, Linux Secret Service)
+keyring = { version = "3", optional = true }
+
+# TLS support via native platform libraries (OpenSSL on Linux, Security.framework on macOS, SChannel on Windows)
+native-tls = { version = "0.2", optional = true }
+
+# HTML parsing and CSS selectors (html5ever + selectors)
+scraper = { version = "0.21", optional = true }
+
+[build-dependencies]
+cc = "1.0"
+pkg-config = "0.3"
+
+[features]
+default = ["io", "time", "async-rt", "net"]
+io = []
+time = []
+sqlite = []
+postgres = []
+net = []
+tls = ["native-tls", "net"]
+http = ["net"]
+html = ["scraper"]
+async-rt = []
+crypto = ["sha2", "sha3", "blake3", "digest", "hmac", "getrandom", "aes-gcm", "chacha20poly1305", "ed25519-dalek", "x25519-dalek", "p256", "p384", "rand_core", "elliptic-curve", "rsa", "hkdf", "pbkdf2", "argon2", "bcrypt", "password-hash"]
+keyring-store = ["keyring"]
+
+# Platform-specific linking
+[target.'cfg(target_os = "linux")'.dependencies]
+
+[target.'cfg(target_os = "macos")'.dependencies]
+
+[target.'cfg(target_os = "windows")'.dependencies]

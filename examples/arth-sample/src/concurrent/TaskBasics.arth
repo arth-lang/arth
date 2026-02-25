@@ -1,0 +1,143 @@
+package concurrent.tasks;
+
+/// Task Basics Example
+///
+/// Demonstrates the fundamental task operations in Arth:
+/// - Spawning async tasks
+/// - Awaiting task completion
+/// - Cancellation semantics
+/// - Nested tasks and propagation
+
+import concurrent.*;
+import log.*;
+
+module TaskBasics {
+  /// Simple async function that returns a computed value
+  public async int compute(int x) {
+    // Simulate work with multiple steps
+    int step1 = x * 2;
+    int step2 = step1 + 10;
+    return step2;
+  }
+
+  /// Demonstrates basic task spawning and await
+  public async void basicSpawnAwait() throws (CancelledError) {
+    Logger log = Logger.get("concurrent.tasks");
+
+    // Calling an async function returns a Task<T>
+    Task<int> task = compute(21);
+
+    // Do other work while task may be running...
+    log.info("spawned", "Task spawned, doing other work", Fields.of());
+
+    // Await suspends until task completes
+    int result = await task;
+    log.info("result", "Task completed", Fields.of("value", result));
+  }
+
+  /// Multiple concurrent tasks with fan-out
+  public async void multipleTasks() throws (CancelledError) {
+    Logger log = Logger.get("concurrent.tasks");
+
+    // Spawn multiple tasks concurrently
+    Task<int> t1 = compute(10);
+    Task<int> t2 = compute(20);
+    Task<int> t3 = compute(30);
+
+    // Await all of them
+    int r1 = await t1;
+    int r2 = await t2;
+    int r3 = await t3;
+
+    int sum = r1 + r2 + r3;
+    log.info("sum", "All tasks completed", Fields.of("total", sum));
+  }
+
+  /// Nested tasks - spawning tasks from within tasks
+  public async int outerTask(int x) throws (CancelledError) {
+    // Spawn a nested task
+    Task<int> inner = compute(x);
+    int innerResult = await inner;
+
+    // Do more work with the result
+    return innerResult * 2;
+  }
+
+  public async void nestedTaskDemo() throws (CancelledError) {
+    Logger log = Logger.get("concurrent.tasks");
+
+    Task<int> outer = outerTask(5);
+    int result = await outer;
+    log.info("nested", "Nested tasks completed", Fields.of("value", result));
+  }
+
+  /// Cancellation example
+  public async void cancellationDemo() throws (CancelledError) {
+    Logger log = Logger.get("concurrent.tasks");
+
+    Task<int> task = longRunningWork();
+
+    // Cancel the task before awaiting
+    Task.cancel(task);
+
+    try {
+      int result = await task;
+      log.info("unexpected", "Should not reach here", Fields.of());
+    } catch (CancelledError e) {
+      log.info("cancelled", "Task was cancelled as expected", Fields.of());
+    }
+  }
+
+  /// Long running work that can be cancelled
+  public async int longRunningWork() throws (CancelledError) {
+    int sum = 0;
+    for (int i = 0; i < 1000; i++) {
+      // Each await point checks for cancellation
+      Task<int> step = compute(i);
+      sum = sum + await step;
+    }
+    return sum;
+  }
+
+  /// Demonstrates join vs await
+  /// join() waits without unwrapping exceptions
+  public async void joinVsAwait() throws (Error) {
+    Logger log = Logger.get("concurrent.tasks");
+
+    Task<int> task = compute(42);
+
+    // join() returns a Result type, doesn't throw
+    TaskResult<int> result = Task.join(task);
+
+    if (result.isOk()) {
+      log.info("joined", "Task completed", Fields.of("value", result.get()));
+    } else if (result.isCancelled()) {
+      log.info("cancelled", "Task was cancelled", Fields.of());
+    } else if (result.isPanicked()) {
+      log.info("panicked", "Task panicked", Fields.of("error", result.error()));
+    }
+  }
+
+  /// Detached tasks run independently
+  public async void detachedTask() {
+    Logger log = Logger.get("concurrent.tasks");
+
+    Task<int> task = compute(100);
+
+    // Detach allows the task to run even if we don't await it
+    Task.detach(task);
+
+    log.info("detached", "Task is running independently", Fields.of());
+    // The task will complete in the background
+  }
+
+  /// Current task handle
+  public async void currentTaskDemo() throws (CancelledError) {
+    Logger log = Logger.get("concurrent.tasks");
+
+    // Get the current task's handle
+    Task<void> current = Task.current();
+
+    log.info("current", "Got current task handle", Fields.of());
+  }
+}

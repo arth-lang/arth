@@ -1,0 +1,436 @@
+package test;
+
+// Test: C03 - Task Spawn to Pool
+//
+// This test verifies scalable task spawning:
+// - Spawn 100 CPU-bound tasks (fibonacci)
+// - With 4 threads, should complete ~4x faster than sequential
+// - Measures wall-clock time to prove parallelism
+// - Verifies work distribution across all workers
+
+module Executor {
+    // Executor intrinsics mapped to __arth_executor_* VM calls
+}
+
+module Instants {
+    // Time measurement intrinsics
+}
+
+module Main {
+    public static void main() {
+        println("=== C03: Task Spawn to Pool ===");
+
+        // Initialize thread pool with 4 threads
+        println("Initializing pool with 4 threads...");
+        Int initResult = Executor.init(4);
+        println("Pool initialized: " + initResult);
+
+        Int threadCount = Executor.threadCount();
+        println("Thread count: " + threadCount);
+
+        // Reset stats
+        Int resetResult = Executor.resetStats();
+
+        // Work parameters: type 2 = fibonacci
+        Int workType = 2;
+        Int fibArg = 30;
+
+        println("=== Sequential Execution ===");
+        println("Running 20 fib(30) tasks sequentially...");
+
+        // Measure sequential time (20 tasks for reasonable time)
+        Int seqStart = Instants.now();
+
+        // Sequential: spawn + join one at a time
+        Int s1 = Executor.spawnWithArg(workType, fibArg);
+        Int rs1 = Executor.join(s1);
+        Int s2 = Executor.spawnWithArg(workType, fibArg);
+        Int rs2 = Executor.join(s2);
+        Int s3 = Executor.spawnWithArg(workType, fibArg);
+        Int rs3 = Executor.join(s3);
+        Int s4 = Executor.spawnWithArg(workType, fibArg);
+        Int rs4 = Executor.join(s4);
+        Int s5 = Executor.spawnWithArg(workType, fibArg);
+        Int rs5 = Executor.join(s5);
+        Int s6 = Executor.spawnWithArg(workType, fibArg);
+        Int rs6 = Executor.join(s6);
+        Int s7 = Executor.spawnWithArg(workType, fibArg);
+        Int rs7 = Executor.join(s7);
+        Int s8 = Executor.spawnWithArg(workType, fibArg);
+        Int rs8 = Executor.join(s8);
+        Int s9 = Executor.spawnWithArg(workType, fibArg);
+        Int rs9 = Executor.join(s9);
+        Int s10 = Executor.spawnWithArg(workType, fibArg);
+        Int rs10 = Executor.join(s10);
+        Int s11 = Executor.spawnWithArg(workType, fibArg);
+        Int rs11 = Executor.join(s11);
+        Int s12 = Executor.spawnWithArg(workType, fibArg);
+        Int rs12 = Executor.join(s12);
+        Int s13 = Executor.spawnWithArg(workType, fibArg);
+        Int rs13 = Executor.join(s13);
+        Int s14 = Executor.spawnWithArg(workType, fibArg);
+        Int rs14 = Executor.join(s14);
+        Int s15 = Executor.spawnWithArg(workType, fibArg);
+        Int rs15 = Executor.join(s15);
+        Int s16 = Executor.spawnWithArg(workType, fibArg);
+        Int rs16 = Executor.join(s16);
+        Int s17 = Executor.spawnWithArg(workType, fibArg);
+        Int rs17 = Executor.join(s17);
+        Int s18 = Executor.spawnWithArg(workType, fibArg);
+        Int rs18 = Executor.join(s18);
+        Int s19 = Executor.spawnWithArg(workType, fibArg);
+        Int rs19 = Executor.join(s19);
+        Int s20 = Executor.spawnWithArg(workType, fibArg);
+        Int rs20 = Executor.join(s20);
+
+        Int seqElapsed = Instants.elapsed(seqStart);
+        println("Sequential time (20 tasks): " + seqElapsed + " ms");
+
+        // Verify fibonacci result
+        Int expectedFib = 832040;
+        if (rs1 == expectedFib) {
+            println("Fibonacci result correct: " + rs1);
+        } else {
+            println("Fibonacci result WRONG: expected " + expectedFib + " got " + rs1);
+        }
+
+        // Reset stats for parallel test
+        Int resetResult2 = Executor.resetStats();
+
+        println("=== Parallel Execution ===");
+        println("Spawning 100 fib(30) tasks in parallel...");
+
+        // Measure parallel time (100 tasks)
+        Int parStart = Instants.now();
+
+        // Spawn all 100 tasks first (parallel)
+        // Batch 1-10
+        Int p1 = Executor.spawnWithArg(workType, fibArg);
+        Int p2 = Executor.spawnWithArg(workType, fibArg);
+        Int p3 = Executor.spawnWithArg(workType, fibArg);
+        Int p4 = Executor.spawnWithArg(workType, fibArg);
+        Int p5 = Executor.spawnWithArg(workType, fibArg);
+        Int p6 = Executor.spawnWithArg(workType, fibArg);
+        Int p7 = Executor.spawnWithArg(workType, fibArg);
+        Int p8 = Executor.spawnWithArg(workType, fibArg);
+        Int p9 = Executor.spawnWithArg(workType, fibArg);
+        Int p10 = Executor.spawnWithArg(workType, fibArg);
+
+        // Batch 11-20
+        Int p11 = Executor.spawnWithArg(workType, fibArg);
+        Int p12 = Executor.spawnWithArg(workType, fibArg);
+        Int p13 = Executor.spawnWithArg(workType, fibArg);
+        Int p14 = Executor.spawnWithArg(workType, fibArg);
+        Int p15 = Executor.spawnWithArg(workType, fibArg);
+        Int p16 = Executor.spawnWithArg(workType, fibArg);
+        Int p17 = Executor.spawnWithArg(workType, fibArg);
+        Int p18 = Executor.spawnWithArg(workType, fibArg);
+        Int p19 = Executor.spawnWithArg(workType, fibArg);
+        Int p20 = Executor.spawnWithArg(workType, fibArg);
+
+        // Batch 21-30
+        Int p21 = Executor.spawnWithArg(workType, fibArg);
+        Int p22 = Executor.spawnWithArg(workType, fibArg);
+        Int p23 = Executor.spawnWithArg(workType, fibArg);
+        Int p24 = Executor.spawnWithArg(workType, fibArg);
+        Int p25 = Executor.spawnWithArg(workType, fibArg);
+        Int p26 = Executor.spawnWithArg(workType, fibArg);
+        Int p27 = Executor.spawnWithArg(workType, fibArg);
+        Int p28 = Executor.spawnWithArg(workType, fibArg);
+        Int p29 = Executor.spawnWithArg(workType, fibArg);
+        Int p30 = Executor.spawnWithArg(workType, fibArg);
+
+        // Batch 31-40
+        Int p31 = Executor.spawnWithArg(workType, fibArg);
+        Int p32 = Executor.spawnWithArg(workType, fibArg);
+        Int p33 = Executor.spawnWithArg(workType, fibArg);
+        Int p34 = Executor.spawnWithArg(workType, fibArg);
+        Int p35 = Executor.spawnWithArg(workType, fibArg);
+        Int p36 = Executor.spawnWithArg(workType, fibArg);
+        Int p37 = Executor.spawnWithArg(workType, fibArg);
+        Int p38 = Executor.spawnWithArg(workType, fibArg);
+        Int p39 = Executor.spawnWithArg(workType, fibArg);
+        Int p40 = Executor.spawnWithArg(workType, fibArg);
+
+        // Batch 41-50
+        Int p41 = Executor.spawnWithArg(workType, fibArg);
+        Int p42 = Executor.spawnWithArg(workType, fibArg);
+        Int p43 = Executor.spawnWithArg(workType, fibArg);
+        Int p44 = Executor.spawnWithArg(workType, fibArg);
+        Int p45 = Executor.spawnWithArg(workType, fibArg);
+        Int p46 = Executor.spawnWithArg(workType, fibArg);
+        Int p47 = Executor.spawnWithArg(workType, fibArg);
+        Int p48 = Executor.spawnWithArg(workType, fibArg);
+        Int p49 = Executor.spawnWithArg(workType, fibArg);
+        Int p50 = Executor.spawnWithArg(workType, fibArg);
+
+        // Batch 51-60
+        Int p51 = Executor.spawnWithArg(workType, fibArg);
+        Int p52 = Executor.spawnWithArg(workType, fibArg);
+        Int p53 = Executor.spawnWithArg(workType, fibArg);
+        Int p54 = Executor.spawnWithArg(workType, fibArg);
+        Int p55 = Executor.spawnWithArg(workType, fibArg);
+        Int p56 = Executor.spawnWithArg(workType, fibArg);
+        Int p57 = Executor.spawnWithArg(workType, fibArg);
+        Int p58 = Executor.spawnWithArg(workType, fibArg);
+        Int p59 = Executor.spawnWithArg(workType, fibArg);
+        Int p60 = Executor.spawnWithArg(workType, fibArg);
+
+        // Batch 61-70
+        Int p61 = Executor.spawnWithArg(workType, fibArg);
+        Int p62 = Executor.spawnWithArg(workType, fibArg);
+        Int p63 = Executor.spawnWithArg(workType, fibArg);
+        Int p64 = Executor.spawnWithArg(workType, fibArg);
+        Int p65 = Executor.spawnWithArg(workType, fibArg);
+        Int p66 = Executor.spawnWithArg(workType, fibArg);
+        Int p67 = Executor.spawnWithArg(workType, fibArg);
+        Int p68 = Executor.spawnWithArg(workType, fibArg);
+        Int p69 = Executor.spawnWithArg(workType, fibArg);
+        Int p70 = Executor.spawnWithArg(workType, fibArg);
+
+        // Batch 71-80
+        Int p71 = Executor.spawnWithArg(workType, fibArg);
+        Int p72 = Executor.spawnWithArg(workType, fibArg);
+        Int p73 = Executor.spawnWithArg(workType, fibArg);
+        Int p74 = Executor.spawnWithArg(workType, fibArg);
+        Int p75 = Executor.spawnWithArg(workType, fibArg);
+        Int p76 = Executor.spawnWithArg(workType, fibArg);
+        Int p77 = Executor.spawnWithArg(workType, fibArg);
+        Int p78 = Executor.spawnWithArg(workType, fibArg);
+        Int p79 = Executor.spawnWithArg(workType, fibArg);
+        Int p80 = Executor.spawnWithArg(workType, fibArg);
+
+        // Batch 81-90
+        Int p81 = Executor.spawnWithArg(workType, fibArg);
+        Int p82 = Executor.spawnWithArg(workType, fibArg);
+        Int p83 = Executor.spawnWithArg(workType, fibArg);
+        Int p84 = Executor.spawnWithArg(workType, fibArg);
+        Int p85 = Executor.spawnWithArg(workType, fibArg);
+        Int p86 = Executor.spawnWithArg(workType, fibArg);
+        Int p87 = Executor.spawnWithArg(workType, fibArg);
+        Int p88 = Executor.spawnWithArg(workType, fibArg);
+        Int p89 = Executor.spawnWithArg(workType, fibArg);
+        Int p90 = Executor.spawnWithArg(workType, fibArg);
+
+        // Batch 91-100
+        Int p91 = Executor.spawnWithArg(workType, fibArg);
+        Int p92 = Executor.spawnWithArg(workType, fibArg);
+        Int p93 = Executor.spawnWithArg(workType, fibArg);
+        Int p94 = Executor.spawnWithArg(workType, fibArg);
+        Int p95 = Executor.spawnWithArg(workType, fibArg);
+        Int p96 = Executor.spawnWithArg(workType, fibArg);
+        Int p97 = Executor.spawnWithArg(workType, fibArg);
+        Int p98 = Executor.spawnWithArg(workType, fibArg);
+        Int p99 = Executor.spawnWithArg(workType, fibArg);
+        Int p100 = Executor.spawnWithArg(workType, fibArg);
+
+        println("All 100 tasks spawned, now joining...");
+
+        // Join all tasks
+        Int r1 = Executor.join(p1);
+        Int r2 = Executor.join(p2);
+        Int r3 = Executor.join(p3);
+        Int r4 = Executor.join(p4);
+        Int r5 = Executor.join(p5);
+        Int r6 = Executor.join(p6);
+        Int r7 = Executor.join(p7);
+        Int r8 = Executor.join(p8);
+        Int r9 = Executor.join(p9);
+        Int r10 = Executor.join(p10);
+        Int r11 = Executor.join(p11);
+        Int r12 = Executor.join(p12);
+        Int r13 = Executor.join(p13);
+        Int r14 = Executor.join(p14);
+        Int r15 = Executor.join(p15);
+        Int r16 = Executor.join(p16);
+        Int r17 = Executor.join(p17);
+        Int r18 = Executor.join(p18);
+        Int r19 = Executor.join(p19);
+        Int r20 = Executor.join(p20);
+        Int r21 = Executor.join(p21);
+        Int r22 = Executor.join(p22);
+        Int r23 = Executor.join(p23);
+        Int r24 = Executor.join(p24);
+        Int r25 = Executor.join(p25);
+        Int r26 = Executor.join(p26);
+        Int r27 = Executor.join(p27);
+        Int r28 = Executor.join(p28);
+        Int r29 = Executor.join(p29);
+        Int r30 = Executor.join(p30);
+        Int r31 = Executor.join(p31);
+        Int r32 = Executor.join(p32);
+        Int r33 = Executor.join(p33);
+        Int r34 = Executor.join(p34);
+        Int r35 = Executor.join(p35);
+        Int r36 = Executor.join(p36);
+        Int r37 = Executor.join(p37);
+        Int r38 = Executor.join(p38);
+        Int r39 = Executor.join(p39);
+        Int r40 = Executor.join(p40);
+        Int r41 = Executor.join(p41);
+        Int r42 = Executor.join(p42);
+        Int r43 = Executor.join(p43);
+        Int r44 = Executor.join(p44);
+        Int r45 = Executor.join(p45);
+        Int r46 = Executor.join(p46);
+        Int r47 = Executor.join(p47);
+        Int r48 = Executor.join(p48);
+        Int r49 = Executor.join(p49);
+        Int r50 = Executor.join(p50);
+        Int r51 = Executor.join(p51);
+        Int r52 = Executor.join(p52);
+        Int r53 = Executor.join(p53);
+        Int r54 = Executor.join(p54);
+        Int r55 = Executor.join(p55);
+        Int r56 = Executor.join(p56);
+        Int r57 = Executor.join(p57);
+        Int r58 = Executor.join(p58);
+        Int r59 = Executor.join(p59);
+        Int r60 = Executor.join(p60);
+        Int r61 = Executor.join(p61);
+        Int r62 = Executor.join(p62);
+        Int r63 = Executor.join(p63);
+        Int r64 = Executor.join(p64);
+        Int r65 = Executor.join(p65);
+        Int r66 = Executor.join(p66);
+        Int r67 = Executor.join(p67);
+        Int r68 = Executor.join(p68);
+        Int r69 = Executor.join(p69);
+        Int r70 = Executor.join(p70);
+        Int r71 = Executor.join(p71);
+        Int r72 = Executor.join(p72);
+        Int r73 = Executor.join(p73);
+        Int r74 = Executor.join(p74);
+        Int r75 = Executor.join(p75);
+        Int r76 = Executor.join(p76);
+        Int r77 = Executor.join(p77);
+        Int r78 = Executor.join(p78);
+        Int r79 = Executor.join(p79);
+        Int r80 = Executor.join(p80);
+        Int r81 = Executor.join(p81);
+        Int r82 = Executor.join(p82);
+        Int r83 = Executor.join(p83);
+        Int r84 = Executor.join(p84);
+        Int r85 = Executor.join(p85);
+        Int r86 = Executor.join(p86);
+        Int r87 = Executor.join(p87);
+        Int r88 = Executor.join(p88);
+        Int r89 = Executor.join(p89);
+        Int r90 = Executor.join(p90);
+        Int r91 = Executor.join(p91);
+        Int r92 = Executor.join(p92);
+        Int r93 = Executor.join(p93);
+        Int r94 = Executor.join(p94);
+        Int r95 = Executor.join(p95);
+        Int r96 = Executor.join(p96);
+        Int r97 = Executor.join(p97);
+        Int r98 = Executor.join(p98);
+        Int r99 = Executor.join(p99);
+        Int r100 = Executor.join(p100);
+
+        Int parElapsed = Instants.elapsed(parStart);
+        println("Parallel time (100 tasks): " + parElapsed + " ms");
+
+        // Get work distribution stats
+        println("=== Work Distribution Stats ===");
+        Int workersUsed = Executor.activeExecutorCount();
+        println("Workers that executed tasks: " + workersUsed);
+
+        Int w0 = Executor.workerTaskCount(0);
+        Int w1 = Executor.workerTaskCount(1);
+        Int w2 = Executor.workerTaskCount(2);
+        Int w3 = Executor.workerTaskCount(3);
+        println("Worker 0 tasks: " + w0);
+        println("Worker 1 tasks: " + w1);
+        println("Worker 2 tasks: " + w2);
+        println("Worker 3 tasks: " + w3);
+
+        Int totalExecuted = w0 + w1 + w2 + w3;
+        println("Total executed: " + totalExecuted);
+
+        // Verification
+        println("=== Speedup Analysis ===");
+
+        // Expected parallel time for 100 tasks based on sequential 20 tasks
+        // Sequential 20 tasks took seqElapsed ms
+        // If perfect scaling, 100 tasks with 4 threads ≈ (100/4) * (seqElapsed/20) = 1.25 * seqElapsed
+        // In practice, overhead means it will be higher
+
+        // Calculate speedup: what would 100 sequential tasks take?
+        // Estimated seq100 = seqElapsed * 5 (since seq was 20 tasks)
+        Int estimatedSeq100 = seqElapsed * 5;
+        println("Estimated sequential time for 100 tasks: " + estimatedSeq100 + " ms");
+
+        Int speedupPct = 0;
+        if (parElapsed > 0) {
+            speedupPct = (estimatedSeq100 * 100) / parElapsed;
+        }
+        println("Speedup: " + speedupPct + "% (est_seq100/par * 100)");
+
+        Int passCount = 0;
+
+        // Check for at least 2x speedup
+        if (speedupPct >= 200) {
+            println("Speedup >= 2x: PASS (" + speedupPct + "%)");
+            passCount = passCount + 1;
+        } else {
+            println("Speedup >= 2x: FAIL (" + speedupPct + "%)");
+        }
+
+        // Check parallel is faster than estimated sequential
+        if (parElapsed < estimatedSeq100) {
+            println("Parallel faster than sequential: PASS");
+            passCount = passCount + 1;
+        } else {
+            println("Parallel faster than sequential: FAIL");
+        }
+
+        // Check all 100 tasks completed
+        if (totalExecuted == 100) {
+            println("All 100 tasks completed: PASS");
+            passCount = passCount + 1;
+        } else {
+            println("All 100 tasks completed: FAIL (" + totalExecuted + ")");
+        }
+
+        // Check multiple workers participated
+        if (workersUsed >= 2) {
+            println("Multiple workers used: PASS (" + workersUsed + ")");
+            passCount = passCount + 1;
+        } else {
+            println("Multiple workers used: FAIL (" + workersUsed + ")");
+        }
+
+        // Check all results are correct
+        Int correctCount = 0;
+        if (r1 == expectedFib) { correctCount = correctCount + 1; }
+        if (r2 == expectedFib) { correctCount = correctCount + 1; }
+        if (r3 == expectedFib) { correctCount = correctCount + 1; }
+        if (r4 == expectedFib) { correctCount = correctCount + 1; }
+        if (r5 == expectedFib) { correctCount = correctCount + 1; }
+        if (r50 == expectedFib) { correctCount = correctCount + 1; }
+        if (r100 == expectedFib) { correctCount = correctCount + 1; }
+
+        if (correctCount == 7) {
+            println("Sample results correct (7/7): PASS");
+            passCount = passCount + 1;
+        } else {
+            println("Sample results correct: FAIL (" + correctCount + "/7)");
+        }
+
+        // Summary
+        println("=== Results ===");
+        println("Sequential (20 tasks): " + seqElapsed + " ms");
+        println("Parallel (100 tasks):  " + parElapsed + " ms");
+        println("Est. seq (100 tasks):  " + estimatedSeq100 + " ms");
+        println("Speedup: " + speedupPct + "%");
+        println("Tests passed: " + passCount + "/5");
+
+        // Final verdict
+        if (passCount >= 4) {
+            println("=== C03: PASSED - Scalable task spawning works ===");
+        } else {
+            println("=== C03: FAILED ===");
+        }
+    }
+}

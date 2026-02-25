@@ -1,0 +1,273 @@
+package crypto;
+
+/**
+ * Binary encoding utilities for cryptographic data.
+ *
+ * Provides encoding and decoding for:
+ * - Base64 (standard RFC 4648)
+ * - Base64URL (URL-safe variant)
+ * - Hex (lowercase)
+ *
+ * These encodings are commonly used for:
+ * - Storing binary keys/hashes as text
+ * - Transmitting binary data in JSON/URLs
+ * - Displaying cryptographic values to users
+ *
+ * Example usage:
+ * ```arth
+ * import crypto.*;
+ *
+ * module Example {
+ *     public void encoding() throws EncodingError {
+ *         bytes data = Hash.hash(HashAlgorithm.SHA256, "hello".toBytes()).then(Hash.toBytes());
+ *
+ *         // Hex encoding
+ *         String hex = Encoding.toHex(data);
+ *         bytes decoded = Encoding.fromHex(hex);
+ *
+ *         // Base64 encoding
+ *         String b64 = Encoding.toBase64(data);
+ *         bytes decoded2 = Encoding.fromBase64(b64);
+ *
+ *         // URL-safe Base64
+ *         String b64url = Encoding.toBase64Url(data);
+ *         bytes decoded3 = Encoding.fromBase64Url(b64url);
+ *     }
+ * }
+ * ```
+ */
+
+/**
+ * Module for binary encoding/decoding operations.
+ *
+ * NOTE: This file is an INTRINSIC-BACKED STUB for IDE/tooling support.
+ * The function bodies are placeholders - actual implementation is provided
+ * by the compiler via intrinsic lowering to C FFI runtime functions.
+ */
+module Encoding {
+    // =========================================================================
+    // Hex Encoding
+    // =========================================================================
+
+    /**
+     * Encodes bytes to lowercase hexadecimal string.
+     *
+     * Each byte is encoded as two hex characters (00-ff).
+     *
+     * @param data The bytes to encode
+     * @return The hex string
+     */
+    @intrinsic("crypto.encoding_to_hex")
+    public static String toHex(bytes data) {
+        // Intrinsic: encodes to hex via C FFI
+        return "";
+    }
+
+    /**
+     * Decodes a hexadecimal string to bytes.
+     *
+     * Accepts both uppercase and lowercase hex characters.
+     *
+     * @param hex The hex string to decode
+     * @return The decoded bytes
+     * @throws EncodingError if the string contains invalid characters or odd length
+     */
+    @intrinsic("crypto.encoding_from_hex")
+    public static bytes fromHex(String hex) throws EncodingError {
+        // Intrinsic: decodes hex via C FFI
+        return bytes.allocate(0);
+    }
+
+    // =========================================================================
+    // Base64 Encoding (Standard)
+    // =========================================================================
+
+    /**
+     * Encodes bytes to standard Base64 (RFC 4648).
+     *
+     * Uses the standard alphabet (A-Z, a-z, 0-9, +, /) with = padding.
+     *
+     * @param data The bytes to encode
+     * @return The Base64 string
+     */
+    @intrinsic("crypto.encoding_to_base64")
+    public static String toBase64(bytes data) {
+        // Intrinsic: encodes to base64 via C FFI
+        return "";
+    }
+
+    /**
+     * Decodes a standard Base64 string to bytes.
+     *
+     * @param base64 The Base64 string to decode
+     * @return The decoded bytes
+     * @throws EncodingError if the string contains invalid characters
+     */
+    @intrinsic("crypto.encoding_from_base64")
+    public static bytes fromBase64(String base64) throws EncodingError {
+        // Intrinsic: decodes base64 via C FFI
+        return bytes.allocate(0);
+    }
+
+    // =========================================================================
+    // Base64URL Encoding (URL-Safe)
+    // =========================================================================
+
+    /**
+     * Encodes bytes to URL-safe Base64 (RFC 4648 Section 5).
+     *
+     * Uses the URL-safe alphabet (A-Z, a-z, 0-9, -, _) without padding.
+     * Safe for use in URLs and filenames.
+     *
+     * @param data The bytes to encode
+     * @return The Base64URL string (no padding)
+     */
+    @intrinsic("crypto.encoding_to_base64url")
+    public static String toBase64Url(bytes data) {
+        // Intrinsic: encodes to base64url via C FFI
+        return "";
+    }
+
+    /**
+     * Decodes a URL-safe Base64 string to bytes.
+     *
+     * Accepts both padded and unpadded input.
+     *
+     * @param base64url The Base64URL string to decode
+     * @return The decoded bytes
+     * @throws EncodingError if the string contains invalid characters
+     */
+    @intrinsic("crypto.encoding_from_base64url")
+    public static bytes fromBase64Url(String base64url) throws EncodingError {
+        // Intrinsic: decodes base64url via C FFI
+        return bytes.allocate(0);
+    }
+
+    // =========================================================================
+    // Convenience Methods
+    // =========================================================================
+
+    /**
+     * Encodes a Hash to hexadecimal string.
+     *
+     * @param hash The hash to encode
+     * @return The hex string
+     */
+    public static String hashToHex(Hash hash) {
+        return Encoding.toHex(Hash.toBytes(hash));
+    }
+
+    /**
+     * Encodes a Hash to Base64 string.
+     *
+     * @param hash The hash to encode
+     * @return The Base64 string
+     */
+    public static String hashToBase64(Hash hash) {
+        return Encoding.toBase64(Hash.toBytes(hash));
+    }
+
+    /**
+     * Encodes a Signature to hexadecimal string.
+     *
+     * @param sig The signature to encode
+     * @return The hex string
+     */
+    public static String signatureToHex(Signature sig) {
+        return Encoding.toHex(Signature.toBytes(sig));
+    }
+
+    /**
+     * Encodes a Signature to Base64 string.
+     *
+     * @param sig The signature to encode
+     * @return The Base64 string
+     */
+    public static String signatureToBase64(Signature sig) {
+        return Encoding.toBase64(Signature.toBytes(sig));
+    }
+
+    /**
+     * Encodes a PublicKey to hexadecimal string.
+     *
+     * @param key The public key to encode
+     * @return The hex string
+     */
+    public static String publicKeyToHex(PublicKey key) {
+        return Encoding.toHex(PublicKey.toBytes(key));
+    }
+
+    /**
+     * Encodes a PublicKey to Base64 string.
+     *
+     * @param key The public key to encode
+     * @return The Base64 string
+     */
+    public static String publicKeyToBase64(PublicKey key) {
+        return Encoding.toBase64(PublicKey.toBytes(key));
+    }
+
+    // =========================================================================
+    // Length Calculation
+    // =========================================================================
+
+    /**
+     * Calculates the hex-encoded length for the given byte count.
+     *
+     * @param byteLength The number of bytes
+     * @return The hex string length (always 2 * byteLength)
+     */
+    public static int hexEncodedLength(int byteLength) {
+        return byteLength * 2;
+    }
+
+    /**
+     * Calculates the Base64-encoded length for the given byte count.
+     *
+     * @param byteLength The number of bytes
+     * @return The Base64 string length (with padding)
+     */
+    public static int base64EncodedLength(int byteLength) {
+        if (byteLength == 0) {
+            return 0;
+        }
+        return ((byteLength + 2) / 3) * 4;
+    }
+
+    /**
+     * Calculates the Base64URL-encoded length for the given byte count.
+     *
+     * @param byteLength The number of bytes
+     * @return The Base64URL string length (without padding)
+     */
+    public static int base64UrlEncodedLength(int byteLength) {
+        if (byteLength == 0) {
+            return 0;
+        }
+        // Without padding: ceil(byteLength * 4 / 3)
+        return (byteLength * 4 + 2) / 3;
+    }
+
+    /**
+     * Calculates the decoded byte length for a hex string.
+     *
+     * @param hexLength The hex string length
+     * @return The decoded byte count
+     */
+    public static int hexDecodedLength(int hexLength) {
+        return hexLength / 2;
+    }
+
+    /**
+     * Calculates the maximum decoded byte length for a Base64 string.
+     *
+     * @param base64Length The Base64 string length
+     * @return The maximum decoded byte count
+     */
+    public static int base64DecodedLength(int base64Length) {
+        if (base64Length == 0) {
+            return 0;
+        }
+        return (base64Length / 4) * 3;
+    }
+}

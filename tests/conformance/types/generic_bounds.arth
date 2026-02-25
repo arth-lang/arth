@@ -1,0 +1,21 @@
+package conformance;
+
+// @spec: spec.md §12 - Generic type parameters
+// @expect: pass
+// @description: Validates generic functions work correctly
+
+module GenericFns {
+    public T identity<T>(T value) {
+        return value;
+    }
+}
+
+module Main {
+    public static void main() {
+        // Generic function calls
+        Int x = GenericFns.identity(42);
+        String s = GenericFns.identity("hello");
+
+        println("generic_bounds: pass");
+    }
+}

@@ -1,0 +1,26 @@
+package benchmark;
+
+/**
+ * Arithmetic benchmark.
+ * Tests basic math operations in a tight loop.
+ * Uses while loop (not for loop) to avoid region_enter/exit.
+ */
+module Main {
+    public static void main() {
+        Int iterations = 100000;
+        Int result = 0;
+        Int i = 0;
+
+        while (i < iterations) {
+            Int a = i * 7;
+            Int b = a + 13;
+            Int c = b - 5;
+            Int d = c / 3;
+            Int e = d % 17;
+            result = result + e;
+            i = i + 1;
+        }
+
+        println("done");
+    }
+}

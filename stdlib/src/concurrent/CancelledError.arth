@@ -1,0 +1,58 @@
+/**
+ * INTRINSIC-BACKED STUB for IDE/tooling support.
+ *
+ * CancelledError is thrown when an awaited task has been cancelled.
+ *
+ * @see src/compiler/lower/hir_to_ir.rs - await cancellation handling
+ * @see crates/arth-vm/src/runtime.rs - cancellation runtime
+ */
+package concurrent;
+
+/**
+ * CancelledError is thrown when attempting to await a cancelled task.
+ *
+ * When a task is cancelled via Task.cancel(), any await on that task
+ * will throw CancelledError. This allows callers to handle cancellation
+ * gracefully.
+ *
+ * Example:
+ * ```
+ * Task<Response> task = fetchData(url);
+ * task.cancel();
+ *
+ * try {
+ *     Response r = await task;
+ * } catch (CancelledError e) {
+ *     log.info("fetch", "Task was cancelled");
+ * }
+ * ```
+ */
+struct CancelledError {
+    /** The task handle that was cancelled. */
+    public final int taskHandle;
+    /** Optional message describing why the task was cancelled. */
+    public final String message;
+}
+
+module CancelledErrorFns {
+    /**
+     * Creates a new CancelledError with the given task handle.
+     *
+     * @param taskHandle The handle of the cancelled task
+     * @return A new CancelledError
+     */
+    public CancelledError new(int taskHandle) {
+        return CancelledError { taskHandle: taskHandle, message: "Task was cancelled" };
+    }
+
+    /**
+     * Creates a new CancelledError with a custom message.
+     *
+     * @param taskHandle The handle of the cancelled task
+     * @param message A description of why the task was cancelled
+     * @return A new CancelledError
+     */
+    public CancelledError withMessage(int taskHandle, String message) {
+        return CancelledError { taskHandle: taskHandle, message: message };
+    }
+}

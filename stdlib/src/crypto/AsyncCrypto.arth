@@ -1,0 +1,467 @@
+package crypto;
+
+/**
+ * Async Crypto Operations.
+ *
+ * This module provides async versions of CPU-intensive cryptographic operations.
+ * These operations run in background threads and don't block the async runtime,
+ * making them suitable for use in async code without impacting responsiveness.
+ *
+ * Use these async versions when:
+ * - Running in an async context (event loops, servers)
+ * - Processing multiple requests concurrently
+ * - Password hashing in web applications
+ * - Key derivation during user authentication
+ *
+ * For simple synchronous use cases, the regular sync versions in `Password`
+ * and `Kdf` modules are fine.
+ *
+ * Example usage:
+ * ```arth
+ * import crypto.*;
+ * import concurrent.*;
+ *
+ * module Example {
+ *     public async String hashPasswordAsync(String password) throws PasswordHashError {
+ *         // Hash runs in background thread, doesn't block async runtime
+ *         return await AsyncPassword.hashArgon2id(password, Argon2Params.recommended());
+ *     }
+ *
+ *     public async void handleMultipleLogins() throws PasswordHashError {
+ *         // Hash multiple passwords concurrently
+ *         Task<String> hash1 = AsyncPassword.hashArgon2id("password1", Argon2Params.recommended());
+ *         Task<String> hash2 = AsyncPassword.hashArgon2id("password2", Argon2Params.recommended());
+ *         Task<String> hash3 = AsyncPassword.hashArgon2id("password3", Argon2Params.recommended());
+ *
+ *         // Wait for all to complete
+ *         String h1 = await hash1;
+ *         String h2 = await hash2;
+ *         String h3 = await hash3;
+ *     }
+ * }
+ * ```
+ *
+ * @see crypto.Password for synchronous password hashing
+ * @see crypto.Kdf for synchronous key derivation
+ */
+
+/**
+ * Handle to an async crypto task.
+ *
+ * This is an opaque handle that tracks a background crypto operation.
+ * Use AsyncTask methods to poll, wait, and retrieve results.
+ */
+public struct AsyncCryptoTaskHandle {
+    /// Internal task ID
+    final int taskId;
+}
+
+/**
+ * Module for managing async crypto task handles.
+ *
+ * NOTE: This file is an INTRINSIC-BACKED STUB for IDE/tooling support.
+ */
+module AsyncCryptoTask {
+    /**
+     * Polls the status of an async crypto task.
+     *
+     * @param handle The task handle
+     * @return 0 if running, 1 if completed, 2 if failed, -1 if invalid
+     */
+    @intrinsic("crypto.async_task_poll")
+    public static int poll(AsyncCryptoTaskHandle handle) {
+        return -1;
+    }
+
+    /**
+     * Waits for an async task to complete with optional timeout.
+     *
+     * @param handle The task handle
+     * @param timeoutMs Maximum wait time in milliseconds (0 for no timeout)
+     * @return 1 if completed, 2 if failed, -3 if timeout
+     * @throws CryptoTimeoutError if the operation times out
+     */
+    @intrinsic("crypto.async_task_wait")
+    public static int wait(AsyncCryptoTaskHandle handle, int timeoutMs) throws CryptoTimeoutError {
+        return -1;
+    }
+
+    /**
+     * Gets the string result from a completed task.
+     *
+     * @param handle The task handle
+     * @return The result string (e.g., password hash)
+     * @throws PasswordHashError if the task failed
+     */
+    @intrinsic("crypto.async_task_result_string")
+    public static String getStringResult(AsyncCryptoTaskHandle handle) throws PasswordHashError {
+        return "";
+    }
+
+    /**
+     * Gets the bytes result from a completed task.
+     *
+     * @param handle The task handle
+     * @return The result bytes (e.g., derived key)
+     * @throws KdfError if the task failed
+     */
+    @intrinsic("crypto.async_task_result_bytes")
+    public static bytes getBytesResult(AsyncCryptoTaskHandle handle) throws KdfError {
+        return new bytes[0];
+    }
+
+    /**
+     * Cleans up a completed task, releasing resources.
+     *
+     * Always call this after retrieving the result.
+     *
+     * @param handle The task handle
+     */
+    @intrinsic("crypto.async_task_cleanup")
+    public static void cleanup(AsyncCryptoTaskHandle handle) {
+        // Cleanup task
+    }
+
+    /**
+     * Checks if a task is still running.
+     *
+     * @param handle The task handle
+     * @return true if the task is still running
+     */
+    public static Bool isRunning(AsyncCryptoTaskHandle handle) {
+        return AsyncCryptoTask.poll(handle) == 0;
+    }
+
+    /**
+     * Checks if a task has completed successfully.
+     *
+     * @param handle The task handle
+     * @return true if the task completed successfully
+     */
+    public static Bool isCompleted(AsyncCryptoTaskHandle handle) {
+        return AsyncCryptoTask.poll(handle) == 1;
+    }
+
+    /**
+     * Checks if a task has failed.
+     *
+     * @param handle The task handle
+     * @return true if the task failed
+     */
+    public static Bool isFailed(AsyncCryptoTaskHandle handle) {
+        return AsyncCryptoTask.poll(handle) == 2;
+    }
+}
+
+/**
+ * Async password hashing operations.
+ *
+ * These methods hash passwords in background threads, making them
+ * suitable for use in async code without blocking.
+ */
+module AsyncPassword {
+    // =========================================================================
+    // Argon2id Async Hashing
+    // =========================================================================
+
+    /**
+     * Starts an async Argon2id password hash operation.
+     *
+     * Returns a task handle that can be awaited or polled.
+     *
+     * @param password The password to hash
+     * @param params Argon2 parameters
+     * @return A task handle for the operation
+     * @throws PasswordHashError if starting the operation fails
+     */
+    @intrinsic("crypto.password_hash_argon2id_async")
+    public static AsyncCryptoTaskHandle hashArgon2idStart(
+        String password,
+        Argon2Params params
+    ) throws PasswordHashError {
+        return AsyncCryptoTaskHandle { taskId: 0 };
+    }
+
+    /**
+     * Hashes a password using Argon2id asynchronously.
+     *
+     * This is a convenience method that starts the operation,
+     * waits for completion, and returns the result.
+     *
+     * @param password The password to hash
+     * @param params Argon2 parameters
+     * @return The password hash in PHC format
+     * @throws PasswordHashError if hashing fails
+     */
+    public static async String hashArgon2id(
+        String password,
+        Argon2Params params
+    ) throws PasswordHashError {
+        AsyncCryptoTaskHandle handle = AsyncPassword.hashArgon2idStart(password, params);
+        try {
+            // Wait for completion (no timeout)
+            AsyncCryptoTask.wait(handle, 0);
+            return AsyncCryptoTask.getStringResult(handle);
+        } finally {
+            AsyncCryptoTask.cleanup(handle);
+        }
+    }
+
+    /**
+     * Hashes a password using Argon2id with recommended parameters.
+     *
+     * @param password The password to hash
+     * @return The password hash in PHC format
+     * @throws PasswordHashError if hashing fails
+     */
+    public static async String hashArgon2id(String password) throws PasswordHashError {
+        return await AsyncPassword.hashArgon2id(password, Argon2Params.recommended());
+    }
+
+    // =========================================================================
+    // bcrypt Async Hashing
+    // =========================================================================
+
+    /**
+     * Starts an async bcrypt password hash operation.
+     *
+     * @param password The password to hash
+     * @param params bcrypt parameters
+     * @return A task handle for the operation
+     * @throws PasswordHashError if starting the operation fails
+     */
+    @intrinsic("crypto.password_hash_bcrypt_async")
+    public static AsyncCryptoTaskHandle hashBcryptStart(
+        String password,
+        BcryptParams params
+    ) throws PasswordHashError {
+        return AsyncCryptoTaskHandle { taskId: 0 };
+    }
+
+    /**
+     * Hashes a password using bcrypt asynchronously.
+     *
+     * @param password The password to hash
+     * @param params bcrypt parameters
+     * @return The password hash in MCF format
+     * @throws PasswordHashError if hashing fails
+     */
+    public static async String hashBcrypt(
+        String password,
+        BcryptParams params
+    ) throws PasswordHashError {
+        AsyncCryptoTaskHandle handle = AsyncPassword.hashBcryptStart(password, params);
+        try {
+            AsyncCryptoTask.wait(handle, 0);
+            return AsyncCryptoTask.getStringResult(handle);
+        } finally {
+            AsyncCryptoTask.cleanup(handle);
+        }
+    }
+
+    /**
+     * Hashes a password using bcrypt with recommended cost.
+     *
+     * @param password The password to hash
+     * @return The password hash in MCF format
+     * @throws PasswordHashError if hashing fails
+     */
+    public static async String hashBcrypt(String password) throws PasswordHashError {
+        return await AsyncPassword.hashBcrypt(password, BcryptParams.recommended());
+    }
+}
+
+/**
+ * Async key derivation operations.
+ *
+ * These methods derive keys in background threads, making them
+ * suitable for use in async code without blocking.
+ */
+module AsyncKdf {
+    // =========================================================================
+    // PBKDF2 Async Derivation
+    // =========================================================================
+
+    /**
+     * Starts an async PBKDF2 key derivation operation.
+     *
+     * @param algorithm The PBKDF2 algorithm (PBKDF2_SHA256 or PBKDF2_SHA512)
+     * @param password The password bytes
+     * @param salt The salt bytes
+     * @param iterations Number of iterations
+     * @param outputLength Desired output length
+     * @return A task handle for the operation
+     * @throws KdfError if starting the operation fails
+     */
+    @intrinsic("crypto.pbkdf2_derive_async")
+    public static AsyncCryptoTaskHandle pbkdf2Start(
+        KdfAlgorithm algorithm,
+        bytes password,
+        bytes salt,
+        int iterations,
+        int outputLength
+    ) throws KdfError {
+        return AsyncCryptoTaskHandle { taskId: 0 };
+    }
+
+    /**
+     * Derives key material from a password using PBKDF2 asynchronously.
+     *
+     * @param algorithm The PBKDF2 algorithm
+     * @param password The password bytes
+     * @param salt The salt bytes
+     * @param iterations Number of iterations
+     * @param outputLength Desired output length
+     * @return The derived key material
+     * @throws KdfError if derivation fails
+     */
+    public static async bytes pbkdf2(
+        KdfAlgorithm algorithm,
+        bytes password,
+        bytes salt,
+        int iterations,
+        int outputLength
+    ) throws KdfError {
+        AsyncCryptoTaskHandle handle = AsyncKdf.pbkdf2Start(
+            algorithm, password, salt, iterations, outputLength
+        );
+        try {
+            AsyncCryptoTask.wait(handle, 0);
+            return AsyncCryptoTask.getBytesResult(handle);
+        } finally {
+            AsyncCryptoTask.cleanup(handle);
+        }
+    }
+
+    // =========================================================================
+    // Argon2id Async Derivation
+    // =========================================================================
+
+    /**
+     * Starts an async Argon2id key derivation operation.
+     *
+     * @param password The password bytes
+     * @param salt The salt bytes
+     * @param params Argon2 parameters
+     * @return A task handle for the operation
+     * @throws KdfError if starting the operation fails
+     */
+    @intrinsic("crypto.argon2_derive_async")
+    public static AsyncCryptoTaskHandle argon2idStart(
+        bytes password,
+        bytes salt,
+        Argon2Params params
+    ) throws KdfError {
+        return AsyncCryptoTaskHandle { taskId: 0 };
+    }
+
+    /**
+     * Derives key material from a password using Argon2id asynchronously.
+     *
+     * @param password The password bytes
+     * @param salt The salt bytes
+     * @param params Argon2 parameters
+     * @return The derived key material
+     * @throws KdfError if derivation fails
+     */
+    public static async bytes argon2id(
+        bytes password,
+        bytes salt,
+        Argon2Params params
+    ) throws KdfError {
+        AsyncCryptoTaskHandle handle = AsyncKdf.argon2idStart(password, salt, params);
+        try {
+            AsyncCryptoTask.wait(handle, 0);
+            return AsyncCryptoTask.getBytesResult(handle);
+        } finally {
+            AsyncCryptoTask.cleanup(handle);
+        }
+    }
+
+    /**
+     * Derives key material using Argon2id with recommended parameters.
+     *
+     * @param password The password bytes
+     * @param salt The salt bytes
+     * @param outputLength Desired output length
+     * @return The derived key material
+     * @throws KdfError if derivation fails
+     */
+    public static async bytes argon2id(
+        bytes password,
+        bytes salt,
+        int outputLength
+    ) throws KdfError {
+        Argon2Params params = Argon2Params {
+            memoryKib: 65536,
+            iterations: 3,
+            parallelism: 4,
+            outputLength: outputLength
+        };
+        return await AsyncKdf.argon2id(password, salt, params);
+    }
+}
+
+/**
+ * Error for crypto operation timeouts.
+ */
+public struct CryptoTimeoutError {
+    public final String message;
+    public final int timeoutMs;
+}
+
+module CryptoTimeoutError implements CryptoError {
+    public static CryptoTimeoutError new(String message) {
+        return CryptoTimeoutError {
+            message: message,
+            timeoutMs: 0
+        };
+    }
+
+    public static CryptoTimeoutError withTimeout(String message, int timeoutMs) {
+        return CryptoTimeoutError {
+            message: message,
+            timeoutMs: timeoutMs
+        };
+    }
+
+    public String getMessage(CryptoTimeoutError self) {
+        return self.message;
+    }
+
+    public static int getTimeoutMs(CryptoTimeoutError self) {
+        return self.timeoutMs;
+    }
+}
+
+/**
+ * Error for KDF operations (alias for consistency with async module).
+ */
+public struct KdfError {
+    public final String message;
+    public final String algorithm;
+}
+
+module KdfError implements CryptoError {
+    public static KdfError new(String message) {
+        return KdfError {
+            message: message,
+            algorithm: ""
+        };
+    }
+
+    public static KdfError forAlgorithm(String message, String algorithm) {
+        return KdfError {
+            message: message,
+            algorithm: algorithm
+        };
+    }
+
+    public String getMessage(KdfError self) {
+        return self.message;
+    }
+
+    public static String getAlgorithm(KdfError self) {
+        return self.algorithm;
+    }
+}

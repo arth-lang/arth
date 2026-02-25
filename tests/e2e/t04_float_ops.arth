@@ -1,0 +1,20 @@
+package test;
+
+// Test: Float arithmetic
+// Expected output:
+//   6.5
+//   1.5
+//   10.0
+//   1.6
+
+module Main {
+    public static void main() {
+        Float a = 4.0;
+        Float b = 2.5;
+
+        println(a + b);  // 6.5
+        println(a - b);  // 1.5
+        println(a * b);  // 10.0
+        println(a / b);  // 1.6
+    }
+}

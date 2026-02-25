@@ -1,0 +1,483 @@
+package demo.single;
+
+import log.*;
+import list.*;
+import map.*;
+import math.*;
+import demo.util.Util;
+
+// Simple provider with a shared counter field
+provider CounterProvider { public shared int count; }
+
+// --- Generics surface demo types ---
+// A simple interface to use as a generic bound
+interface Showable { void show(); }
+
+// A generic struct using an extends-style bound (no where-clauses)
+struct Box<T extends Showable> { public final T value; }
+
+// Enum demo: variants lower to integer tags (payloads ignored for now)
+enum Status { OK, Value(String) }
+
+// (public free functions are not supported; keep functions inside modules)
+
+module QuickDemo {
+  public void main() {
+    demoProvidersAndSharedFields();
+    demoMath();
+    demoArithmetic();
+    demoBitwise();
+    demoCastsAndConversions();
+    demoWidthCasts();
+    demoUtilities();
+    demoLogging();
+    demoStructs();
+    demoCollections();
+    demoEnums();
+    demoFunctionsAndReturns();
+    demoOptionals();
+    demoGenerics();
+    demoControlFlows();
+    demoConditionalFlows();
+  }
+
+  // --- Provider + shared field demo ---
+  public void demoProvidersAndSharedFields() {
+    CounterProvider prov;
+    prov.count = 0;
+    println("prov.count@start");
+    println(prov.count);
+    prov.count = prov.count + 1;
+    println("prov.count@after_inc");
+    println(prov.count);
+
+    // Demonstrate cross-function shared field updates
+    bumpCount();
+    println("prov.count@after_bump");
+    println(prov.count);
+  }
+
+  // --- Math functions demo ---
+  public void demoMath() {
+    println("sqrt");
+    println(Math.sqrt(9.0));
+    println("pow");
+    println(Math.pow(2.0, 3.0));
+    println("sin");
+    println(Math.sin(0.0));
+    println("cos");
+    println(Math.cos(0.0));
+    println("tan");
+    println(Math.tan(0.0));
+
+    println("minF");
+    println(Math.minF(1.0, 2.0));
+    println("maxF");
+    println(Math.maxF(1.0, 2.0));
+    println("clampF");
+    println(Math.clampF(2.5, 0.0, 2.0));
+    println("floor");
+    println(Math.floor(1.9));
+    println("ceil");
+    println(Math.ceil(1.1));
+    println("round");
+    println(Math.roundTo(1.5678, 2));
+    println("absF");
+    println(Math.absF(-3.0));
+
+    println("minI");
+    println(Math.minI(1, 2));
+    println("maxI");
+    println(Math.maxI(1, 2));
+    println("clampI");
+    println(Math.clampI(3, 0, 2));
+    println("absI");
+    println(Math.absI(-5));
+  }
+
+  // --- Basic arithmetic demo ---
+  public void demoArithmetic() {
+    println("sum");
+    int x = 1 + 1;
+    println(x);
+
+    x = 3 * 2;
+    println("Multiply 3 * 2 = " + x);
+
+    x = 4 / 2;
+    println("Divide 4/2 = " + x);
+
+    println("parenthesis");
+    x = 5 * (2 + 2);
+    println(x);
+  }
+
+  // --- Bitwise operators and shifts demo ---
+  public void demoBitwise() {
+    println("bitwise:start");
+
+    // Basic bitwise operations
+    int a = 6 & 3;      // 110 & 011 = 010 -> 2
+    println(a);
+    println(5 | 2);     // 101 | 010 = 111 -> 7
+    println(5 ^ 3);     // 101 ^ 011 = 110 -> 6
+
+    // Shifts
+    println(1 << 3);    // 1 << 3 = 8
+    println(8 >> 1);    // 8 >> 1 = 4
+
+    // Compound assignments
+    int m = 1;
+    m <<= 3;            // 8
+    println(m);
+    m >>= 2;            // 2
+    println(m);
+
+    int n = 5;          // 0101
+    n &= 3;             // 0101 & 0011 = 0001 -> 1
+    println(n);
+    n |= 4;             // 0001 | 0100 = 0101 -> 5
+    println(n);
+    n ^= 7;             // 0101 ^ 0111 = 0010 -> 2
+    println(n);
+
+    println("bitwise:end");
+  }
+
+  // --- Casting and numeric conversions demo ---
+  public void demoCastsAndConversions() {
+    println("casts");
+
+    // Implicit widening in arithmetic (int + float -> Float)
+    Float wf1 = 1 + 2.0;
+    Float wf2 = 2.0 * 3;
+    println("widen 1+2.0 -> "); println(wf1);
+    println("widen 2.0*3 -> "); println(wf2);
+
+    // Explicit numeric casts
+    Float cf = (Float) 42;   // 42.0
+    Int ci = (Int) 3.7;      // 3
+    println("(Float)42 -> "); println(cf);
+    println("(Int)3.7 -> "); println(ci);
+
+    // Bool <-> numeric
+    Bool b1 = (Bool) 0;      // false
+    Bool b2 = (Bool) 7;      // true
+    Int bi = (Int) true;     // 1
+    Float bf = (Float) false;// 0.0
+    println("(Bool)0 -> "); println(b1);
+    println("(Bool)7 -> "); println(b2);
+    println("(Int)true -> "); println(bi);
+    println("(Float)false -> "); println(bf);
+
+    // Char <-> numeric/bool
+    Int code = (Int) 'A';    // 65
+    Char ch1 = (Char) 65;    // 'A'
+    Char ch2 = (Char) true;  // '1'
+    Char ch3 = (Char) false; // '0'
+    println("(Int)'A' -> "); println(code);
+    println("(Char)65 -> "); println(ch1);
+    println("(Char)true -> "); println(ch2);
+    println("(Char)false -> "); println(ch3);
+
+    // String -> numeric parsing (non-numeric falls back to first char codepoint or 0)
+    // String-to-number casts are invalid in Arth; parsing helpers would live in stdlib.
+
+    // Enum -> Int (by tag)
+    Status t = Status.Value("hello");
+    Int tagCast = (Int) t;
+    println("(Int)t -> "); println(tagCast);
+  }
+
+  // --- Width-aware numeric casts demo ---
+  public void demoWidthCasts() {
+    println("width casts");
+
+    // Signed widths (truncate then sign-extend)
+    Int i8a = (i8) 300;            // 300 -> 44
+    Int i16a = (i16) 65535;        // -> -1
+    Int i32a = (i32) 4294967295;   // -> -1
+
+    // Unsigned widths (truncate, zero-extend)
+    Int u8a = (u8) -1;             // -> 255
+    Int u16a = (u16) -1;           // -> 65535
+    Int u32a = (u32) -1;           // -> 4294967295 (printed as Int)
+
+    // Float32 rounding (stored as Float but rounded to f32 precision)
+    Float f32a = (f32) 1.2345679;
+
+    println("(i8)300 -> "); println(i8a);
+    println("(i16)65535 -> "); println(i16a);
+    println("(i32)4294967295 -> "); println(i32a);
+    println("(u8)-1 -> "); println(u8a);
+    println("(u16)-1 -> "); println(u16a);
+    println("(u32)-1 -> "); println(u32a);
+    println("(f32)1.2345679 -> "); println(f32a);
+  }
+
+  // --- Custom module import demo ---
+  public void demoUtilities() {
+    println("util.fortyTwo");
+    Util.fortyTwo();
+    println("util.hello");
+    Util.hello();
+  }
+
+  // --- Logging demo ---
+  public void demoLogging() {
+    Logger logger = Logger.get("demo.single");
+    logger.info("startup", "Single-file demo started");
+    logTwice(logger);
+    logger.debug("done", "Still usable after helper call");
+    logAfter(logger);
+  }
+
+  // --- Struct usage demo ---
+  public void demoStructs() {
+    Point p;
+    p.x = 10;
+    p.y = 20;
+    println("p.x = " + p.x);
+    println("p.y = " + p.y);
+
+    int sumPoints = p.x + p.y;
+    println("sumPoints: " + sumPoints);
+  }
+
+  // --- Collections demo: List + Map ---
+  public void demoCollections() {
+    // List demo (typed generics accepted; runtime uses ints)
+    List<String> xs = List.new();
+    println("list.len@start");
+    println(List.len(xs));
+    println("push 'ten', 'twenty'");
+    println(xs.push("ten"));
+    println(xs.push("twenty"));
+    println("list.len@end");
+    println(List.len(xs));
+    println("list.get(1)");
+    println(xs.get(1));
+
+    // Map demo (show typed generics)
+    Map<Int, Int> tbl = Map.new();
+    Map<String, String> strTbl = Map.new(); // unused; demonstrates String,String type form
+    println("map.len@start");
+    println(Map.len(tbl));
+    println("put 1=>42");
+    tbl.put(1, 42);
+    println("get 1");
+    println(Map.get(tbl, 1));
+    println("map.len@end");
+    println(Map.len(tbl));
+  }
+
+  // --- Enum demo (tags only for now) ---
+  public void demoEnums() {
+    println("enum");
+    Status s = Status.OK;
+    println(s); // handle for enum value
+    // Enum with payload
+    Status t = Status.Value("hello");
+    println(Enum.tag(t));
+    println("Enum.payloadCount " + Enum.payloadCount(t));
+    println("Enum get " + Enum.get(t, 0));
+
+    // Not yet supported examples (left as comments):
+    // 1) Payloads are ignored during lowering; payload values aren’t stored:
+    //    Status t2 = Status.Value(42); // would print 1; no way to read 42 yet
+    // 2) Pattern matching on enums is not implemented:
+    //    switch (s) { case Status.OK: println("ok"); break; /* case Status.Value(v): println(v); break; */ }
+  }
+
+  // --- Generics demo (extends-style bounds only) ---
+  public void demoGenerics() {
+    println("generics");
+    // Type parameters with extends-style bounds:
+    // Here we just demonstrate declarations; generics are erased in lowering.
+    Box<Showable> b; // generic struct with bound satisfied by the interface itself
+    // Lists/Maps already use surface generics:
+    List<String> names = List.new();
+    names.push("alice");
+    names.push("bob");
+    println(List.len(names));
+    // VM demo supports Map<int,int> for now
+    Map<Int, Int> idToName = Map.new();
+    idToName.put(1, 100);
+    idToName.put(2, 200);
+    println(Map.len(idToName));
+  }
+
+  // Generic function with an extends-style bound parameter
+  public void process<T extends Showable>(T x) {
+    println("processed");
+  }
+
+  // --- Params + return demo ---
+  public void demoFunctionsAndReturns() {
+    println("inc(41)");
+    println(QuickDemo.inc(41));
+    println("add(2,3)");
+    println(QuickDemo.add(2, 3));
+  }
+
+  // --- Optional demo (MVP semantics in VM) ---
+  public void demoOptionals() {
+    println("optional");
+    Optional<int> a = Optional.of(7);
+    Optional<int> b = Optional.empty();
+    println(a.isPresent());
+    println(a.isEmpty());
+    println(b.isPresent());
+    println(b.isEmpty());
+    println(a.orElse(9)); // 7
+    println(b.orElse(9)); // 9
+    a.ifPresent(QuickDemo.showInt);
+    b.ifPresent(QuickDemo.showInt);
+    // orElseThrow prints an error and exits in the VM demo
+    // Uncomment to see early-exit behavior:
+    // b.orElseThrow();
+    // println("After orElseThrow");
+  }
+
+  public void showInt(int x) {
+    println("present: " + x);
+  }
+
+  public int inc(int x) {
+    return x + 1;
+  }
+
+  public int add(int a, int b) { return a + b; }
+
+  public void logTwice(Logger log) {
+    log.info("phase1", "Inside helper");
+    log.info("phase2", "Still inside helper");
+  }
+
+  public void logAfter(Logger log) {
+    log.info("phase3", "Inside logAfter");
+  }
+
+  public void bumpCount() {
+    CounterProvider any;
+    any.count = any.count + 5;
+  }
+
+  // --- Control Flow demo: while, for, foreach, switch, try/catch/finally, labeled break/continue ---
+  public void demoControlFlows() {
+    println("control:start");
+
+    // while loop
+    int i = 0;
+    while (i < 2) {
+      println("while:i=");
+      println(i);
+      i += 1;
+    }
+
+    // for (C-style) — declare loop var outside init for MVP
+    int j;
+    for (j = 0; j < 2; j++) {
+      println("for:j=");
+      println(j);
+      int k;
+      for (k = 0; k < 2; k++) {
+         println("for:k=");
+         println(k);
+      }
+    }
+
+    // foreach over a list
+    List<String> names = List.new();
+    names.push("alice");
+    names.push("bob");
+    for (String name : names) {
+      println("foreach:name=");
+      println(name);
+    }
+
+    // unlabeled break/continue on nested loops (simple and safe for VM demo)
+    int outerCount = 0;
+    while (outerCount < 2) {
+      int k = 0;
+      while (k < 3) {
+        if (k == 0) { k += 1; continue; }
+        if (k == 1) { break; }
+        k += 1;
+      }
+      outerCount += 1;
+    }
+
+    // switch (basic integer switch)
+    int v = 1;
+    switch (v) {
+      case 0: { println("switch:zero"); }
+      case 1: { println("switch:one"); }
+      default: { println("switch:other"); }
+    }
+
+    // try/catch/finally
+    try {
+      println("try:block");
+    } catch (Error e) {
+      println("caught:error");
+    } finally {
+      println("finally:block");
+    }
+
+    println("control:end");
+  }
+
+  public void demoConditionalFlows() {
+    int x = 5;
+    // Basic conditionals
+    if (x != 10) {
+      println("x is not equal to 10");
+    } else if (x < 10) {
+      println("x is less than 10");
+    } else {
+      println("x is not less than 10");
+    }
+
+    // Short-circuit demo for && and ||
+    println("shortcircuit:start");
+
+    // AND: left false -> skip right
+    if (side("AND:left=false", false) && side("AND:right (should NOT print)", true)) {
+      println("AND both true");
+    }
+
+    // AND: left true -> evaluate right
+    if (side("AND:left=true", true) && side("AND:right (should print)", true)) {
+      println("AND both true");
+    }
+
+    // OR: left true -> skip right
+    if (side("OR:left=true", true) || side("OR:right (should NOT print)", true)) {
+      println("OR short-circuited at left");
+    }
+
+    // OR: left false -> evaluate right
+    if (side("OR:left=false", false) || side("OR:right (should print)", true)) {
+      println("OR evaluated right");
+    }
+
+    println("shortcircuit:end");
+
+    // Ternary operator demos
+    int chosen = (x < 10) ? 1 : 2;
+    println("ternary:chosen=");
+    println(chosen);
+
+    // Nested ternary (right-associative)
+    int nested = x < 5 ? 0 : x < 10 ? 1 : 2;
+    println("ternary:nested=");
+    println(nested);
+  }
+
+  // Helper to log evaluation and return a boolean value
+  public Bool side(String label, Bool value) {
+    println(label);
+    return value;
+  }
+}

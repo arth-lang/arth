@@ -1,0 +1,55 @@
+package actor.counter;
+
+import concurrent.*;
+
+enum Msg {
+  Inc(int),
+  Get(Sender<int>),
+  Quit
+}
+
+provider Counter {
+  state {
+    private final Atomic<int> value;
+    private final Sender<Msg> tx;
+  }
+}
+
+module CounterActor {
+  public Counter start(int initial) {
+    Channel<Msg> ch = Channels.create(Msg.class);
+    Sender<Msg> tx = ch.sender();
+    Receiver<Msg> rx = ch.receiver();
+
+    Task.spawn(fn() { loop(rx, initial); });
+    return Counter { value: Atomic.of(initial), tx: tx };
+  }
+
+  public void inc(Counter c, int by) { c.tx.send(Msg.Inc(by)); }
+
+  public int get(Counter c) {
+    Channel<int> oneshot = Channels.create(int.class);
+    Sender<int> tx = oneshot.sender();
+    Receiver<int> rx = oneshot.receiver();
+    c.tx.send(Msg.Get(tx));
+    Optional<int> v = rx.tryRecv();
+    return v.isPresent() ? v.get() : -1;
+  }
+
+  public void stop(Counter c) { c.tx.send(Msg.Quit); c.tx.close(); }
+
+  public async void loop(Receiver<Msg> rx, int value) {
+    int v = value;
+    while (true) {
+      Optional<Msg> m = await rx.recv();
+      if (m.isEmpty()) break;
+      switch (m.get()) {
+        case Msg.Inc(n): v = v + n;
+        case Msg.Get(tx): tx.send(v);
+        case Msg.Quit: break;
+        default: break;
+      }
+      if (m.get() == Msg.Quit) break;
+    }
+  }
+}

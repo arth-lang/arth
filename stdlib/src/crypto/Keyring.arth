@@ -1,0 +1,367 @@
+package crypto;
+
+/**
+ * OS-Level Secure Secret Storage (Keyring/Keychain Integration).
+ *
+ * This module provides access to the platform's secure secret storage:
+ *
+ * - **macOS**: Keychain Services (Security.framework)
+ * - **Windows**: Credential Manager (wincred.h)
+ * - **Linux**: Secret Service API (GNOME Keyring, KWallet, etc.)
+ *
+ * The keyring is designed for storing sensitive data that persists across
+ * application restarts:
+ * - API keys and tokens
+ * - Database passwords
+ * - Encryption keys
+ * - User credentials
+ *
+ * Security properties:
+ * - Secrets are encrypted at rest by the OS
+ * - Access control is enforced by the OS (user authentication)
+ * - Secrets survive application restarts and reboots
+ * - On macOS, applications may prompt for keychain access
+ *
+ * Example usage:
+ * ```arth
+ * import crypto.*;
+ *
+ * module Example {
+ *     public void storeApiKey() throws (KeyringError, KeyringUnavailableError) {
+ *         // Check if keyring is available
+ *         if (!Keyring.isAvailable()) {
+ *             throw KeyringUnavailableError.new("Keyring not available on this system");
+ *         }
+ *
+ *         // Store a secret
+ *         Keyring.storePassword("my-app", "api-key", "sk_live_abc123");
+ *
+ *         // Retrieve the secret later
+ *         String apiKey = Keyring.loadPassword("my-app", "api-key");
+ *
+ *         // Store binary data (e.g., encryption key)
+ *         bytes keyData = Random.bytes(32);
+ *         Keyring.store("my-app", "encryption-key", keyData);
+ *
+ *         // Clean up when no longer needed
+ *         Keyring.delete("my-app", "api-key");
+ *     }
+ * }
+ * ```
+ *
+ * @see crypto.KeyStore for in-memory key storage
+ * @see crypto.KeyringError for error handling
+ * @see crypto.SecretKey for symmetric key operations
+ */
+
+/**
+ * Module for OS keyring operations.
+ *
+ * NOTE: This file is an INTRINSIC-BACKED STUB for IDE/tooling support.
+ * The function bodies are placeholders - actual implementation is provided
+ * by the compiler via intrinsic lowering to C FFI runtime functions.
+ */
+module Keyring {
+    // =========================================================================
+    // Platform Detection and Availability
+    // =========================================================================
+
+    /**
+     * Checks if the system keyring is available.
+     *
+     * Returns true if the platform's keyring service is available and
+     * accessible. This can be used to gracefully handle environments
+     * where keyring access is not possible.
+     *
+     * Keyring may be unavailable when:
+     * - Running on a headless Linux server without Secret Service
+     * - Running in a container without keyring access
+     * - Running as a system service without user session
+     *
+     * @return true if keyring is available
+     */
+    @intrinsic("crypto.keyring_is_available")
+    public static Bool isAvailable() {
+        // Intrinsic: checks keyring availability via C FFI
+        return true;
+    }
+
+    /**
+     * Returns the name of the keyring platform backend.
+     *
+     * This can be useful for logging or debugging keyring issues.
+     *
+     * Possible return values:
+     * - "macos-keychain" - macOS Keychain Services
+     * - "windows-credential-manager" - Windows Credential Manager
+     * - "linux-secret-service" - Linux Secret Service (GNOME Keyring, KWallet)
+     * - "mock" - Mock backend (for testing)
+     * - "unknown" - Platform detection failed
+     *
+     * @return The platform backend name
+     */
+    @intrinsic("crypto.keyring_platform")
+    public static String platform() {
+        // Intrinsic: returns platform name via C FFI
+        return "unknown";
+    }
+
+    // =========================================================================
+    // Password/String Storage
+    // =========================================================================
+
+    /**
+     * Stores a password string in the keyring.
+     *
+     * This is the recommended method for storing text secrets like
+     * API keys, tokens, and passwords.
+     *
+     * @param service The service name (e.g., "my-app")
+     * @param account The account name (e.g., "api-key", "user@example.com")
+     * @param password The password/secret string to store
+     * @throws KeyringError if the operation fails
+     * @throws KeyringUnavailableError if the keyring is not available
+     */
+    @intrinsic("crypto.keyring_store_password")
+    public static void storePassword(String service, String account, String password)
+        throws (KeyringError, KeyringUnavailableError) {
+        // Intrinsic: stores password via C FFI
+    }
+
+    /**
+     * Loads a password string from the keyring.
+     *
+     * @param service The service name
+     * @param account The account name
+     * @return The stored password/secret string
+     * @throws KeyringNotFoundError if the entry does not exist
+     * @throws KeyringAccessDeniedError if the user denied access
+     * @throws KeyringUnavailableError if the keyring is not available
+     */
+    @intrinsic("crypto.keyring_load_password")
+    public static String loadPassword(String service, String account)
+        throws (KeyringNotFoundError, KeyringAccessDeniedError, KeyringUnavailableError) {
+        // Intrinsic: loads password via C FFI
+        return "";
+    }
+
+    // =========================================================================
+    // Binary Data Storage
+    // =========================================================================
+
+    /**
+     * Stores binary data in the keyring.
+     *
+     * Use this method for storing raw bytes like encryption keys,
+     * binary tokens, or other non-text secrets.
+     *
+     * Note: Binary data is base64-encoded before storage on platforms
+     * that only support string secrets.
+     *
+     * @param service The service name (e.g., "my-app")
+     * @param account The account name (e.g., "encryption-key")
+     * @param secret The binary data to store
+     * @throws KeyringError if the operation fails
+     * @throws KeyringUnavailableError if the keyring is not available
+     */
+    @intrinsic("crypto.keyring_store")
+    public static void store(String service, String account, bytes secret)
+        throws (KeyringError, KeyringUnavailableError) {
+        // Intrinsic: stores binary data via C FFI
+    }
+
+    /**
+     * Loads binary data from the keyring.
+     *
+     * @param service The service name
+     * @param account The account name
+     * @return The stored binary data
+     * @throws KeyringNotFoundError if the entry does not exist
+     * @throws KeyringAccessDeniedError if the user denied access
+     * @throws KeyringUnavailableError if the keyring is not available
+     */
+    @intrinsic("crypto.keyring_load")
+    public static bytes load(String service, String account)
+        throws (KeyringNotFoundError, KeyringAccessDeniedError, KeyringUnavailableError) {
+        // Intrinsic: loads binary data via C FFI
+        return new bytes[0];
+    }
+
+    // =========================================================================
+    // Entry Management
+    // =========================================================================
+
+    /**
+     * Deletes an entry from the keyring.
+     *
+     * @param service The service name
+     * @param account The account name
+     * @return true if the entry was deleted, false if it did not exist
+     * @throws KeyringError if the operation fails
+     * @throws KeyringUnavailableError if the keyring is not available
+     */
+    @intrinsic("crypto.keyring_delete")
+    public static Bool delete(String service, String account)
+        throws (KeyringError, KeyringUnavailableError) {
+        // Intrinsic: deletes entry via C FFI
+        return false;
+    }
+
+    /**
+     * Checks if an entry exists in the keyring.
+     *
+     * This is a non-throwing method that returns false if the entry
+     * does not exist or if access is denied.
+     *
+     * @param service The service name
+     * @param account The account name
+     * @return true if the entry exists and is accessible
+     */
+    @intrinsic("crypto.keyring_exists")
+    public static Bool exists(String service, String account) {
+        // Intrinsic: checks existence via C FFI
+        return false;
+    }
+
+    // =========================================================================
+    // SecretKey Storage (Convenience Methods)
+    // =========================================================================
+
+    /**
+     * Stores a SecretKey in the keyring.
+     *
+     * The key is stored as raw bytes with metadata about the algorithm.
+     * The stored format is: algorithm-id (1 byte) + key material.
+     *
+     * @param service The service name
+     * @param account The account name
+     * @param key The secret key to store
+     * @throws KeyringError if the operation fails
+     * @throws KeyringUnavailableError if the keyring is not available
+     */
+    public static void storeKey(String service, String account, SecretKey key)
+        throws (KeyringError, KeyringUnavailableError) {
+        bytes keyBytes = SecretKey.toBytes(key);
+        AeadAlgorithm algorithm = SecretKey.algorithm(key);
+
+        // Encode algorithm as first byte, then key material
+        bytes encoded = bytes.allocate(1 + keyBytes.length);
+        encoded[0] = Keyring.algorithmToByte(algorithm);
+        bytes.copy(keyBytes, 0, encoded, 1, keyBytes.length);
+
+        Keyring.store(service, account, encoded);
+    }
+
+    /**
+     * Loads a SecretKey from the keyring.
+     *
+     * @param service The service name
+     * @param account The account name
+     * @return The stored secret key
+     * @throws KeyringNotFoundError if the entry does not exist
+     * @throws KeyringAccessDeniedError if the user denied access
+     * @throws KeyringUnavailableError if the keyring is not available
+     * @throws InvalidKeyError if the stored data is not a valid key
+     */
+    public static SecretKey loadKey(String service, String account)
+        throws (KeyringNotFoundError, KeyringAccessDeniedError, KeyringUnavailableError, InvalidKeyError) {
+        bytes encoded = Keyring.load(service, account);
+
+        if (encoded.length < 2) {
+            throw InvalidKeyError.new("Invalid key data: too short");
+        }
+
+        AeadAlgorithm algorithm = Keyring.byteToAlgorithm(encoded[0]);
+
+        // Extract key material (skip algorithm byte)
+        bytes keyBytes = bytes.allocate(encoded.length - 1);
+        bytes.copy(encoded, 1, keyBytes, 0, encoded.length - 1);
+
+        return SecretKey.fromBytes(algorithm, keyBytes);
+    }
+
+    // =========================================================================
+    // Optional Entry Loading
+    // =========================================================================
+
+    /**
+     * Loads a password string from the keyring, returning Optional.none() if not found.
+     *
+     * This is a convenience method that handles the not-found case gracefully.
+     *
+     * @param service The service name
+     * @param account The account name
+     * @return Optional containing the password, or none if not found
+     * @throws KeyringAccessDeniedError if the user denied access
+     * @throws KeyringUnavailableError if the keyring is not available
+     */
+    public static Optional<String> tryLoadPassword(String service, String account)
+        throws (KeyringAccessDeniedError, KeyringUnavailableError) {
+        if (!Keyring.exists(service, account)) {
+            return Optional.none();
+        }
+        try {
+            String password = Keyring.loadPassword(service, account);
+            return Optional.some(password);
+        } catch (KeyringNotFoundError e) {
+            // Race condition: entry was deleted between exists() and load()
+            return Optional.none();
+        }
+    }
+
+    /**
+     * Loads binary data from the keyring, returning Optional.none() if not found.
+     *
+     * @param service The service name
+     * @param account The account name
+     * @return Optional containing the data, or none if not found
+     * @throws KeyringAccessDeniedError if the user denied access
+     * @throws KeyringUnavailableError if the keyring is not available
+     */
+    public static Optional<bytes> tryLoad(String service, String account)
+        throws (KeyringAccessDeniedError, KeyringUnavailableError) {
+        if (!Keyring.exists(service, account)) {
+            return Optional.none();
+        }
+        try {
+            bytes data = Keyring.load(service, account);
+            return Optional.some(data);
+        } catch (KeyringNotFoundError e) {
+            // Race condition: entry was deleted between exists() and load()
+            return Optional.none();
+        }
+    }
+
+    // =========================================================================
+    // Private Helpers
+    // =========================================================================
+
+    /**
+     * Converts an AEAD algorithm to its byte identifier.
+     */
+    private static byte algorithmToByte(AeadAlgorithm algorithm) {
+        // AES_128_GCM = 1, AES_256_GCM = 2, CHACHA20_POLY1305 = 3
+        if (algorithm == AeadAlgorithm.AES_128_GCM) {
+            return 1;
+        } else if (algorithm == AeadAlgorithm.AES_256_GCM) {
+            return 2;
+        } else if (algorithm == AeadAlgorithm.CHACHA20_POLY1305) {
+            return 3;
+        }
+        return 0;
+    }
+
+    /**
+     * Converts a byte identifier to an AEAD algorithm.
+     */
+    private static AeadAlgorithm byteToAlgorithm(byte b) throws InvalidKeyError {
+        if (b == 1) {
+            return AeadAlgorithm.AES_128_GCM;
+        } else if (b == 2) {
+            return AeadAlgorithm.AES_256_GCM;
+        } else if (b == 3) {
+            return AeadAlgorithm.CHACHA20_POLY1305;
+        }
+        throw InvalidKeyError.new("Unknown algorithm identifier: " + b);
+    }
+}

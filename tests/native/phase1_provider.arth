@@ -1,0 +1,19 @@
+package test.native;
+
+provider Counter {
+    final Int id;
+    shared Int count;
+}
+
+module Main {
+    public static void main() {
+        Counter c = Counter { id: 9, count: 10 };
+        c.count = c.count + 5;
+
+        if (c.id == 9 && c.count == 15) {
+            println("PHASE1_PROVIDER_OK");
+        } else {
+            println("PHASE1_PROVIDER_BAD");
+        }
+    }
+}

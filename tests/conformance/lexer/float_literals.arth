@@ -1,0 +1,28 @@
+package conformance;
+
+// @spec: spec.md §2 - Floating-point literals with exponents
+// @expect: pass
+// @description: Validates float literal lexing including exponent notation
+
+module Main {
+    public static void main() {
+        // Basic float literals
+        Float f1 = 3.14;
+        Float f2 = 0.5;
+        Float f3 = 100.0;
+
+        // Exponent notation
+        Float exp1 = 1e10;
+        Float exp2 = 1E10;
+        Float exp3 = 1.5e-3;
+        Float exp4 = 2.0E+5;
+
+        // Underscore separators in floats
+        Float sep = 1_000.000_001;
+
+        // Negative floats
+        Float neg = -3.14159;
+
+        println("float_literals: pass");
+    }
+}

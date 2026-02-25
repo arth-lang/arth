@@ -1,0 +1,50 @@
+package conformance;
+
+// @spec: spec.md §8 - Lifetime inference
+// @expect: pass
+// @description: Validates that borrows don't outlive their source
+
+public struct Data {
+    public Int value;
+}
+
+module DataFns {
+    public Data new(Int value) {
+        return Data { value: value };
+    }
+
+    // Function-scoped allocation - data destroyed at scope end
+    public Int compute() {
+        Data d = DataFns.new(42);
+        Int result = d.value * 2;
+        // d is destroyed here when function returns
+        return result;
+    }
+
+    // Return owned value - ownership transfers to caller
+    public Data createData() {
+        Data d = DataFns.new(100);
+        return d;  // Ownership moves to caller
+    }
+}
+
+module Main {
+    public static void main() {
+        // Function-scoped allocation
+        Int result = DataFns.compute();
+
+        // Ownership transfer through return
+        Data d = DataFns.createData();
+        Int value = d.value;
+
+        // Nested scopes
+        {
+            Data inner = DataFns.new(1);
+            Int innerVal = inner.value;
+            // inner destroyed at block end
+        }
+        // inner is no longer accessible here
+
+        println("lifetimes: pass");
+    }
+}

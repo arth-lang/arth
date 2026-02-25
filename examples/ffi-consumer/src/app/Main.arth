@@ -1,0 +1,20 @@
+package app;
+
+import demo.Math;
+
+module Main {
+  public void main() {
+    // Test cross-library function calls to external package demo.Math
+    println("Testing cross-library function calls:");
+
+    // Call Math.add from external library
+    int sum = Math.add(10, 25);
+    println("Math.add(10, 25) = " + sum);
+
+    // Call Math.mul from external library
+    float product = Math.mul(3.5, 2.0);
+    println("Math.mul(3.5, 2.0) = " + product);
+
+    println("Cross-library function calls successful!");
+  }
+}

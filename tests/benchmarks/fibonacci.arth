@@ -1,0 +1,20 @@
+package benchmark;
+
+/**
+ * Fibonacci benchmark.
+ * Tests recursive function calls.
+ */
+module Main {
+    public static Int fib(Int n) {
+        if (n <= 1) {
+            return n;
+        }
+        return Main.fib(n - 1) + Main.fib(n - 2);
+    }
+
+    public static void main() {
+        // fib(25) = 75025, takes measurable time
+        Int result = Main.fib(25);
+        println("done");
+    }
+}

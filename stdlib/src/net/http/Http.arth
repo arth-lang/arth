@@ -1,0 +1,371 @@
+package net.http;
+
+import map.*;
+
+/**
+ * HTTP client and server surface for Arth programs.
+ *
+ * This module provides HTTP functionality with a minimal intrinsic footprint.
+ * Only 4 operations require VM intrinsics (actual I/O):
+ *   - Http.fetch()   - perform HTTP client request
+ *   - Http.serve()   - start HTTP server
+ *   - Http.accept()  - accept incoming request
+ *   - Http.respond() - send HTTP response
+ *
+ * All other helpers are pure Arth code using existing primitives:
+ *   - Request module: get(), post(), header() - struct construction
+ *   - Headers module: empty(), put(), get(), size() - uses Map intrinsics
+ *   - Body module: empty(), of(), text() - struct construction
+ *   - Response module: status(), reason(), headers(), body() - field access
+ *
+ * Example client usage:
+ *
+ *   import net.http.*;
+ *
+ *   async String fetchText(String url) throws (HttpError, TimeoutError) {
+ *     Request req = Request.get(url).header("Accept", "text/plain");
+ *     Response res = await Http.fetch(req);
+ *     if (Response.status(res) != 200) {
+ *       throw HttpError { status: Response.status(res), message: Response.reason(res) };
+ *     }
+ *     return await Response.body(res).text();
+ *   }
+ *
+ * Example server usage:
+ *
+ *   import net.http.*;
+ *
+ *   module Server {
+ *     public void main() {
+ *       Int server = Http.serve(8080);
+ *       while (true) {
+ *         Request req = await Http.accept(server);
+ *         Http.respond(req, 200, Headers.empty(), Body.of("Hello!"));
+ *       }
+ *     }
+ *   }
+ *
+ * @see docs/spec.md   (Standard Library – IO/Net section)
+ * @see docs/scope.md  (Standard Library overview and HTTP examples)
+ */
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Core HTTP Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// HTTP method enumeration (subset; extended later as needed).
+public enum Method {
+    GET,
+    POST,
+    PUT,
+    DELETE,
+    PATCH
+}
+
+/// HTTP status code wrapper with helpers for common cases.
+public struct StatusCode {
+    /// Numeric status code (e.g., 200, 404).
+    public final Int code;
+}
+
+/// HTTP request: method, url, headers, and optional body.
+public struct Request {
+    public final Method method;
+    public final String url;
+    public final Headers headers;
+    public final Body body;
+}
+
+/// HTTP response: status line, headers, and body.
+public struct Response {
+    public final StatusCode status;
+    public final String reason;
+    public final Headers headers;
+    public final Body body;
+}
+
+/// Wrapper over an HTTP header map. Backed by a Map<String, String>.
+public struct Headers {
+    /// Opaque handle to an underlying Map<String, String>.
+    public final Int handle;
+}
+
+/// HTTP body wrapper. Backed by an opaque bytes buffer.
+public struct Body {
+    /// Opaque handle to an underlying byte buffer.
+    public final Int handle;
+}
+
+/// HTTP error type with status code and reason.
+public struct HttpError {
+    public final Int status;
+    public final String message;
+}
+
+// TimeoutError is currently modeled at the `net` package level by the
+// resolver stubs. The concrete definition will live in the `net` package
+// when IO/Net are implemented end-to-end. For now, this file references
+// it only in signatures.
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Request Builders
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Static helpers for building Request values.
+ *
+ * These functions are intentionally side-effect free and return new Request
+ * instances rather than mutating in place. The VM/runtime will eventually
+ * lower them to efficient handle-based operations.
+ */
+module Request {
+    /// Creates a GET request for the given URL with empty headers and body.
+    public static Request get(String url) {
+        return Request {
+            method: Method.GET,
+            url: url,
+            headers: Headers.empty(),
+            body: Body.empty()
+        };
+    }
+
+    /// Creates a POST request with a raw bytes body.
+    public static Request post(String url, bytes body) {
+        return Request {
+            method: Method.POST,
+            url: url,
+            headers: Headers.empty(),
+            body: Body.of(body)
+        };
+    }
+
+    /// Returns a new Request with an added or replaced header.
+    ///
+    /// Example:
+    ///   Request req = Request.get(url).header("Accept", "text/plain");
+    public static Request header(Request self, String name, String value) {
+        return Request {
+            method: self.method,
+            url: self.url,
+            headers: Headers.put(self.headers, name, value),
+            body: self.body
+        };
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Headers Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Header manipulation helpers.
+ *
+ * NOTE: These helpers are written in terms of the core Map/Array APIs used
+ * in other stdlib modules. The actual backing representation may change once
+ * IO/Net is wired to the VM.
+ */
+module Headers {
+    /// Returns an empty header set.
+    public static Headers empty() {
+        Headers h;
+        h.handle = Map.new();
+        return h;
+    }
+
+    /// Returns the number of headers.
+    public static Int size(Headers self) {
+        return Map.len(self.handle);
+    }
+
+    /// Adds or replaces a header and returns a new Headers value.
+    public static Headers put(Headers self, String name, String value) {
+        Headers h = self;
+        Map.put(h.handle, name, value);
+        return h;
+    }
+
+    /// Looks up a header by name. Returns empty string if not present.
+    public static String get(Headers self, String name) {
+        // Map.get returns 0 for missing; cast through String.
+        return Map.get(self.handle, name);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Body Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Body helpers for constructing and decoding HTTP bodies.
+ *
+ * In this prototype, bodies are treated as opaque bytes; text helpers assume
+ * UTF‑8 encoding.
+ */
+module Body {
+    /// Returns an empty body.
+    public static Body empty() {
+        Body b;
+        b.handle = 0;
+        return b;
+    }
+
+    /// Wraps a raw bytes buffer as a Body.
+    public static Body of(bytes raw) {
+        Body b;
+        // In the current prototype, bytes are already an opaque handle.
+        // We simply store the integer representation.
+        b.handle = (Int) raw;
+        return b;
+    }
+
+    /// Asynchronously decodes the body as UTF‑8 text.
+    ///
+    /// NOTE: For now this is modeled as `async String` at the surface, but
+    /// the VM path will treat it as a placeholder; real async I/O will be
+    /// introduced once the executor is wired up.
+    public async String text() {
+        // Placeholder implementation for tooling.
+        return "";
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Response Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Convenience accessors for Response values.
+ *
+ * These helpers match the method-style usage from the spec, but are written
+ * as module functions to match the current Arth surface (no instance methods
+ * on structs yet).
+ */
+module Response {
+    /// Returns the numeric status code (e.g., 200, 404).
+    public static Int status(Response self) {
+        return self.status.code;
+    }
+
+    /// Returns the status reason phrase (e.g., "OK", "Not Found").
+    public static String reason(Response self) {
+        return self.reason;
+    }
+
+    /// Returns the response headers.
+    public static Headers headers(Response self) {
+        return self.headers;
+    }
+
+    /// Returns the response body wrapper.
+    public static Body body(Response self) {
+        return self.body;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Http module – high-level client entrypoint
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * High-level HTTP client entrypoint.
+ *
+ * In the final design, Http will offer:
+ * - async Response fetch(Request req) throws (HttpError, TimeoutError, CancelledError)
+ * - Convenience helpers for common methods (get/post/put/delete)
+ * - Configuration via an HttpClient provider
+ *
+ * The current stub keeps just the core shape used in examples.
+ */
+module Http {
+    /// Performs an HTTP request.
+    ///
+    /// This is the core HTTP client function. It takes a Request and returns
+    /// a Response asynchronously.
+    ///
+    /// Example:
+    /// ```
+    /// Request req = Request.get("https://api.example.com/data");
+    /// Response res = await Http.fetch(req);
+    /// String body = await res.body().text();
+    /// ```
+    ///
+    /// @param req The HTTP request to perform
+    /// @return The HTTP response
+    /// @throws HttpError for HTTP protocol/status failures
+    /// @throws TimeoutError when the request times out
+    /// @throws concurrent.CancelledError when cancelled
+    @intrinsic("http.fetch")
+    public static async Response fetch(Request req) throws (HttpError, TimeoutError, concurrent.CancelledError) {
+        // Intrinsic: performs HTTP request via VM runtime
+        Response res;
+        res.status = StatusCode { code: 200 };
+        res.reason = "OK";
+        res.headers = req.headers;
+        res.body = req.body;
+        return res;
+    }
+
+    /**
+     * Starts an HTTP server listening on the given port.
+     *
+     * Example:
+     * ```
+     * import net.http.*;
+     *
+     * module Main {
+     *     public void main() {
+     *         Int server = Http.serve(8080);
+     *         while (true) {
+     *             Request req = await Http.accept(server);
+     *             Http.respond(req, 200, Headers.empty(), Body.of("Hello!"));
+     *         }
+     *     }
+     * }
+     * ```
+     *
+     * @param port The port number to listen on
+     * @return A server handle
+     */
+    @intrinsic("http.serve")
+    public static Int serve(Int port) {
+        return 0;
+    }
+
+    /**
+     * Accepts the next incoming HTTP request from a server.
+     *
+     * This is an async operation that returns when a client connects
+     * and sends a request. The returned Request contains the method,
+     * path, headers, and body from the client.
+     *
+     * @param server The server handle from Http.serve()
+     * @return The incoming Request
+     */
+    @intrinsic("http.accept")
+    public static async Request accept(Int server) {
+        Request req;
+        req.method = Method.GET;
+        req.url = "/";
+        req.headers = Headers.empty();
+        req.body = Body.empty();
+        return req;
+    }
+
+    /**
+     * Sends an HTTP response for a request.
+     *
+     * @param req The request to respond to (from Http.accept)
+     * @param status HTTP status code (e.g., 200, 404)
+     * @param headers Response headers
+     * @param body Response body
+     */
+    @intrinsic("http.respond")
+    public static void respond(Request req, Int status, Headers headers, Body body) {
+        // Intrinsic: sends response via VM runtime
+    }
+
+    // Note: Request/Response data is accessed through the struct fields directly.
+    // The Request returned from Http.accept() contains method, url, headers, body.
+    // The Response returned from Http.fetch() contains status, reason, headers, body.
+    // Use the Response module helpers (status(), reason(), headers(), body()) for access.
+}

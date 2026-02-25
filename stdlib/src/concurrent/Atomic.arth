@@ -1,0 +1,190 @@
+package concurrent;
+
+/// Memory ordering for atomic operations.
+///
+/// These values correspond to the C++ memory model orderings:
+/// - Relaxed: No synchronization, only atomicity guaranteed
+/// - Acquire: Prevents loads/stores after this from moving before
+/// - Release: Prevents loads/stores before this from moving after
+/// - AcqRel: Both Acquire and Release semantics
+/// - SeqCst: Total sequential consistency (default, strongest)
+enum Ordering {
+    Relaxed = 0,
+    Acquire = 1,
+    Release = 2,
+    AcqRel = 3,
+    SeqCst = 4
+}
+
+/// An atomic wrapper for an integer value, providing lock-free thread-safe operations.
+///
+/// Atomic<int> values are Shareable and can be safely accessed from multiple tasks
+/// concurrently. All operations are atomic and use the specified memory ordering.
+///
+/// Example:
+/// ```
+/// Atomic<int> counter = AtomicInt.new(0);
+/// int old = AtomicIntFns.fetchAdd(counter, 1, Ordering.SeqCst);
+/// int current = AtomicIntFns.load(counter, Ordering.SeqCst);
+/// ```
+struct AtomicInt {
+    /// Internal handle to the atomic value
+    final int handle;
+}
+
+/// Functions for operating on AtomicInt values.
+export module AtomicIntFns {
+    /// Create a new atomic integer with the given initial value.
+    @intrinsic("atomic.i64.new")
+    public AtomicInt new(int initial);
+
+    /// Load the current value with the specified memory ordering.
+    @intrinsic("atomic.i64.load")
+    public int load(AtomicInt self, Ordering ordering);
+
+    /// Load the current value with SeqCst ordering (convenience).
+    public int load(AtomicInt self) {
+        return load(self, Ordering.SeqCst);
+    }
+
+    /// Store a new value with the specified memory ordering.
+    @intrinsic("atomic.i64.store")
+    public void store(AtomicInt self, int value, Ordering ordering);
+
+    /// Store a new value with SeqCst ordering (convenience).
+    public void store(AtomicInt self, int value) {
+        store(self, value, Ordering.SeqCst);
+    }
+
+    /// Atomically swap the value, returning the old value.
+    @intrinsic("atomic.i64.swap")
+    public int swap(AtomicInt self, int value, Ordering ordering);
+
+    /// Compare-and-swap: if current value equals expected, set to newValue.
+    /// Returns true if the swap succeeded, false otherwise.
+    @intrinsic("atomic.i64.cas")
+    public bool compareAndSwap(AtomicInt self, int expected, int newValue, Ordering successOrd, Ordering failureOrd);
+
+    /// Compare-and-swap with SeqCst ordering for both success and failure.
+    public bool compareAndSwap(AtomicInt self, int expected, int newValue) {
+        return compareAndSwap(self, expected, newValue, Ordering.SeqCst, Ordering.SeqCst);
+    }
+
+    /// Weak compare-and-swap: may fail spuriously even if values match.
+    /// More efficient on some architectures when used in a retry loop.
+    @intrinsic("atomic.i64.cas_weak")
+    public bool compareAndSwapWeak(AtomicInt self, int expected, int newValue, Ordering successOrd, Ordering failureOrd);
+
+    /// Atomically add to the value, returning the old value.
+    @intrinsic("atomic.i64.fetch_add")
+    public int fetchAdd(AtomicInt self, int delta, Ordering ordering);
+
+    /// Atomically add to the value with SeqCst ordering.
+    public int fetchAdd(AtomicInt self, int delta) {
+        return fetchAdd(self, delta, Ordering.SeqCst);
+    }
+
+    /// Atomically subtract from the value, returning the old value.
+    @intrinsic("atomic.i64.fetch_sub")
+    public int fetchSub(AtomicInt self, int delta, Ordering ordering);
+
+    /// Atomically subtract from the value with SeqCst ordering.
+    public int fetchSub(AtomicInt self, int delta) {
+        return fetchSub(self, delta, Ordering.SeqCst);
+    }
+
+    /// Atomically bitwise-OR with the value, returning the old value.
+    @intrinsic("atomic.i64.fetch_or")
+    public int fetchOr(AtomicInt self, int mask, Ordering ordering);
+
+    /// Atomically bitwise-AND with the value, returning the old value.
+    @intrinsic("atomic.i64.fetch_and")
+    public int fetchAnd(AtomicInt self, int mask, Ordering ordering);
+
+    /// Atomically bitwise-XOR with the value, returning the old value.
+    @intrinsic("atomic.i64.fetch_xor")
+    public int fetchXor(AtomicInt self, int mask, Ordering ordering);
+
+    /// Atomically compute the maximum, returning the old value.
+    @intrinsic("atomic.i64.fetch_max")
+    public int fetchMax(AtomicInt self, int value, Ordering ordering);
+
+    /// Atomically compute the minimum, returning the old value.
+    @intrinsic("atomic.i64.fetch_min")
+    public int fetchMin(AtomicInt self, int value, Ordering ordering);
+
+    /// Increment by 1, returning the old value (convenience for counters).
+    public int increment(AtomicInt self) {
+        return fetchAdd(self, 1, Ordering.SeqCst);
+    }
+
+    /// Decrement by 1, returning the old value.
+    public int decrement(AtomicInt self) {
+        return fetchSub(self, 1, Ordering.SeqCst);
+    }
+}
+
+/// An atomic wrapper for a boolean value, providing lock-free thread-safe operations.
+///
+/// Atomic<bool> values are Shareable and can be safely accessed from multiple tasks.
+///
+/// Example:
+/// ```
+/// AtomicBool flag = AtomicBoolFns.new(false);
+/// bool wasSet = AtomicBoolFns.swap(flag, true, Ordering.SeqCst);
+/// ```
+struct AtomicBool {
+    /// Internal handle to the atomic value
+    final int handle;
+}
+
+/// Functions for operating on AtomicBool values.
+export module AtomicBoolFns {
+    /// Create a new atomic boolean with the given initial value.
+    @intrinsic("atomic.bool.new")
+    public AtomicBool new(bool initial);
+
+    /// Load the current value with the specified memory ordering.
+    @intrinsic("atomic.bool.load")
+    public bool load(AtomicBool self, Ordering ordering);
+
+    /// Load the current value with SeqCst ordering (convenience).
+    public bool load(AtomicBool self) {
+        return load(self, Ordering.SeqCst);
+    }
+
+    /// Store a new value with the specified memory ordering.
+    @intrinsic("atomic.bool.store")
+    public void store(AtomicBool self, bool value, Ordering ordering);
+
+    /// Store a new value with SeqCst ordering (convenience).
+    public void store(AtomicBool self, bool value) {
+        store(self, value, Ordering.SeqCst);
+    }
+
+    /// Atomically swap the value, returning the old value.
+    @intrinsic("atomic.bool.swap")
+    public bool swap(AtomicBool self, bool value, Ordering ordering);
+
+    /// Compare-and-swap: if current value equals expected, set to newValue.
+    @intrinsic("atomic.bool.cas")
+    public bool compareAndSwap(AtomicBool self, bool expected, bool newValue, Ordering successOrd, Ordering failureOrd);
+
+    /// Compare-and-swap with SeqCst ordering.
+    public bool compareAndSwap(AtomicBool self, bool expected, bool newValue) {
+        return compareAndSwap(self, expected, newValue, Ordering.SeqCst, Ordering.SeqCst);
+    }
+}
+
+/// Memory fences for synchronization.
+export module AtomicFence {
+    /// Insert a memory fence with the specified ordering.
+    /// This prevents certain reorderings of memory operations across the fence.
+    @intrinsic("atomic.fence")
+    public void fence(Ordering ordering);
+
+    /// Insert a compiler fence (prevents compiler reordering only, not hardware).
+    /// Useful for signal handlers and similar situations.
+    @intrinsic("atomic.compiler_fence")
+    public void compilerFence(Ordering ordering);
+}
