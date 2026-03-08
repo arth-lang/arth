@@ -103,7 +103,7 @@ actor Counter {
 
 ## Documentation
 
-Full documentation at [arth-lang.github.io/arth](https://arth-lang.github.io/arth)
+Full documentation at [splentainc.github.io/arth](https://splentainc.github.io/arth)
 
 ## Contributing
 
