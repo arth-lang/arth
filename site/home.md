@@ -88,7 +88,8 @@ Write frontend logic in TypeScript, backend in Arth. Both compile through the sa
 
 | Backend | Best For |
 |---------|----------|
-| **VM** | Development, scripting, fast iteration. Portable `.abc` bytecode with optional Cranelift JIT. |
+| **VM** | Development, scripting, fast iteration. Portable `.abc` bytecode. |
+| **Cranelift** | JIT compilation for hot functions in the VM. Feature-gated (`--features cranelift`). |
 | **LLVM** | Production. Native AOT binaries with full debug info and optimizations. |
 
 ## Get Started

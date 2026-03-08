@@ -92,7 +92,8 @@ actor Counter {
 
 | Backend | Description |
 |---------|-------------|
-| **VM** | Portable bytecode (`.abc`), fast iteration, optional Cranelift JIT |
+| **VM** | Portable bytecode (`.abc`), fast iteration |
+| **Cranelift** | JIT compilation for hot functions in the VM (feature-gated) |
 | **LLVM** | Native AOT compilation with full debug info |
 
 ## Tooling
